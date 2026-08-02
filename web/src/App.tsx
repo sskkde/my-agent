@@ -1,4 +1,4 @@
-import { useCallback, useEffect, Suspense, lazy } from 'react'
+import { useCallback, useEffect, useRef, Suspense, lazy } from 'react'
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import AgentShell from './layout/AgentShell'
 import ChatPage from './features/session/chat/ChatPage'
@@ -6,21 +6,23 @@ import LoginPage from './features/auth/LoginPage'
 import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { routeToNavigation, navigationToRoute } from './router/route-mapping'
+import { ROUTES } from './router/route-constants'
 import { resolveSessionId, safeReadLocalStorage } from './features/session/session-migration'
 import { SELECTED_SESSION_KEY } from './features/session/session-constants'
 import { readStoredTheme, applyDocumentTheme, type AppTheme } from './theme-storage'
-import { SecondaryModalHostProvider } from './features/settings/secondary-modal-host-contract'
+import { SecondaryModalHostProvider, useSecondaryModalHost } from './features/settings/secondary-modal-host-contract'
+import { isValidModalDestination, type ModalDestination } from './features/settings/modal-destination-registry'
 import SecondaryModal from './features/settings/SecondaryModal'
 import type { TabId } from './components/TabNav'
 import './styles.css'
 import './theme.css'
 
-const WorkspacePage = lazy(() => import('./features/workspace/WorkspacePage'))
-const OperationsPage = lazy(() => import('./features/operations/OperationsPage'))
-const AdminPage = lazy(() => import('./features/admin/AdminPage'))
 const SessionMapPage = lazy(() => import('./features/map/SessionMapPage'))
 
 const APP_THEMES = new Set<AppTheme>(['default', 'warm-paper', 'dark'])
+
+/** Location state key carrying the one-shot modal destination from a legacy deep link. */
+export const LEGACY_MODAL_STATE_KEY = 'modalDestination' as const
 
 /**
  * ChatRouteContent - Renders the Chat section for /, /chat, /chat/:sessionId routes.
@@ -40,38 +42,63 @@ function ChatRouteContent() {
 }
 
 /**
- * WorkspaceRouteContent - Renders WorkspacePage with tab derived from URL.
+ * LegacyRouteRedirect - Redirects a legacy secondary route to Chat.
  *
- * Integrates URL/localStorage precedence for sessionId:
- * - URL sessionId takes priority when valid
- * - localStorage is fallback when URL has no sessionId
- * - Uses resolveSessionId for safe precedence handling
+ * workspace/operations/admin paths no longer render standalone pages:
+ * - Valid tab id (per the modal destination registry) → redirect to Chat
+ *   carrying a one-shot `modalDestination` location state consumed by
+ *   `LegacyModalDestinationConsumer`.
+ * - Invalid/unknown tab id → plain redirect to Chat, no modal state.
+ *
+ * The raw path segment is validated directly (NOT via validateTabOrFallback,
+ * which would silently turn an invalid id into the section default and open
+ * the wrong modal).
  */
-function WorkspaceRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
+function LegacyRouteRedirect() {
   const location = useLocation()
-  const navState = routeToNavigation(location.pathname)
-  const localStorageSessionId = safeReadLocalStorage(SELECTED_SESSION_KEY)
-  const resolvedSessionId = resolveSessionId(navState.sessionId ?? null, localStorageSessionId)
+  const navigate = useNavigate()
 
-  return <WorkspacePage activeTab={navState.tabId} onTabChange={onTabChange} sessionId={resolvedSessionId} />
+  useEffect(() => {
+    const rawTabId = location.pathname.split('/').filter(Boolean)[1] ?? null
+    if (rawTabId && isValidModalDestination(rawTabId)) {
+      navigate(ROUTES.CHAT, { replace: true, state: { [LEGACY_MODAL_STATE_KEY]: rawTabId } })
+    } else {
+      navigate(ROUTES.CHAT, { replace: true })
+    }
+  }, [location.pathname, navigate])
+
+  return null
 }
 
 /**
- * OperationsRouteContent - Renders OperationsPage with tab derived from URL.
+ * LegacyModalDestinationConsumer - One-shot modal opener for legacy deep links.
+ *
+ * Rendered under `SecondaryModalHostProvider`: reads the `modalDestination`
+ * location state left by `LegacyRouteRedirect`, opens the modal at that
+ * destination, then clears the state (replace) so refresh/back never re-open
+ * it. A consumed-location guard additionally protects against re-entry within
+ * the same history entry (e.g. React StrictMode double effects).
  */
-function OperationsRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
+function LegacyModalDestinationConsumer() {
+  const { openModal } = useSecondaryModalHost()
   const location = useLocation()
-  const navState = routeToNavigation(location.pathname)
-  return <OperationsPage activeTab={navState.tabId} onTabChange={onTabChange} />
-}
+  const navigate = useNavigate()
+  const consumedKeyRef = useRef<string | null>(null)
 
-/**
- * AdminRouteContent - Renders AdminPage with tab derived from URL.
- */
-function AdminRouteContent({ onTabChange }: { onTabChange: (tab: TabId) => void }) {
-  const location = useLocation()
-  const navState = routeToNavigation(location.pathname)
-  return <AdminPage activeTab={navState.tabId} onTabChange={onTabChange} />
+  useEffect(() => {
+    const destination = (location.state as Record<string, unknown> | null)?.[LEGACY_MODAL_STATE_KEY]
+    if (typeof destination !== 'string' || !isValidModalDestination(destination)) {
+      return
+    }
+    if (consumedKeyRef.current === location.key) {
+      return
+    }
+    consumedKeyRef.current = location.key
+    openModal(destination as ModalDestination)
+    navigate(location.pathname, { replace: true, state: {} })
+  }, [location, navigate, openModal])
+
+  return null
 }
 
 /**
@@ -137,6 +164,7 @@ function AppRoutes() {
     // The modal dialog itself is rendered via a portal to document.body by the
     // secondary modal shell task.
     <SecondaryModalHostProvider sessionId={selectedSessionId}>
+      <LegacyModalDestinationConsumer />
       <AgentShell
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -153,14 +181,10 @@ function AppRoutes() {
             <Route path="/chat" element={<ChatRouteContent />} />
             <Route path="/chat/:sessionId" element={<ChatRouteContent />} />
 
-            {/* Workspace section route with tab parameter */}
-            <Route path="/workspace/:tabId" element={<WorkspaceRouteContent onTabChange={handleTabChange} />} />
-
-            {/* Operations section route with tab parameter */}
-            <Route path="/operations/:tabId" element={<OperationsRouteContent onTabChange={handleTabChange} />} />
-
-            {/* Admin section route with tab parameter */}
-            <Route path="/admin/:tabId" element={<AdminRouteContent onTabChange={handleTabChange} />} />
+            {/* Legacy secondary routes: redirected to Chat, opening the modal */}
+            <Route path="/workspace/:tabId" element={<LegacyRouteRedirect />} />
+            <Route path="/operations/:tabId" element={<LegacyRouteRedirect />} />
+            <Route path="/admin/:tabId" element={<LegacyRouteRedirect />} />
 
             {/* AMap standalone route */}
             <Route path="/map/:sessionId" element={<SessionMapPage />} />

@@ -34,6 +34,12 @@ export interface RouteMetadata {
   defaultTab?: TabId
   /** Description of the route's purpose */
   description: string
+  /**
+   * True for routes that no longer render standalone pages. Legacy
+   * workspace/operations/admin paths are redirected to Chat and open the
+   * secondary modal at the destination carried in location state.
+   */
+  isLegacy?: boolean
 }
 
 /**
@@ -103,7 +109,8 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
       hasTabParam: true,
       hasSessionParam: false,
       defaultTab: DEFAULT_TABS.workspace,
-      description: 'Workspace section with tab-based navigation',
+      isLegacy: true,
+      description: 'LEGACY workspace route - redirected to Chat; the tab opens in the secondary modal',
     },
     validateTab: (tabId: string) => isValidTabForSection(tabId, 'workspace'),
     getValidatedTab: (tabId: string | undefined) => validateTabOrFallback(tabId, 'workspace'),
@@ -117,7 +124,8 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
       hasTabParam: true,
       hasSessionParam: false,
       defaultTab: DEFAULT_TABS.operations,
-      description: 'Operations section with tab-based navigation',
+      isLegacy: true,
+      description: 'LEGACY operations route - redirected to Chat; the tab opens in the secondary modal',
     },
     validateTab: (tabId: string) => isValidTabForSection(tabId, 'operations'),
     getValidatedTab: (tabId: string | undefined) => validateTabOrFallback(tabId, 'operations'),
@@ -131,7 +139,8 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
       hasTabParam: true,
       hasSessionParam: false,
       defaultTab: DEFAULT_TABS.admin,
-      description: 'Admin section with tab-based navigation',
+      isLegacy: true,
+      description: 'LEGACY admin route - redirected to Chat; the tab opens in the secondary modal',
     },
     validateTab: (tabId: string) => isValidTabForSection(tabId, 'admin'),
     getValidatedTab: (tabId: string | undefined) => validateTabOrFallback(tabId, 'admin'),
@@ -258,6 +267,10 @@ export function getRouteConfigSummary(): RouteConfigSummary {
 /**
  * Verify that route configurations cover all product sections.
  * Used by tests to ensure complete coverage.
+ *
+ * Legacy workspace/operations/admin configs still count toward coverage:
+ * their paths remain parseable for deep-link redirect purposes even though
+ * the app no longer renders standalone pages for them.
  *
  * @returns True if all sections are covered
  */

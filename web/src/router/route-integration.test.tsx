@@ -14,10 +14,6 @@ vi.mock('../features/session/chat/ChatPage', () => ({
   ),
 }))
 
-vi.mock('../features/monitor/AgentMonitorTab', () => ({
-  default: () => <div data-testid="agent-monitor-tab">AgentMonitorTab</div>,
-}))
-
 vi.mock('../features/map/SessionMapPage', () => ({
   default: ({ sessionId }: { sessionId?: string }) => (
     <div data-testid="session-map-page">
@@ -26,17 +22,20 @@ vi.mock('../features/map/SessionMapPage', () => ({
   ),
 }))
 
-vi.mock('../features/workspace/WorkspacePage', () => ({
-  default: () => <div data-testid="container-page-workspace">WorkspacePage</div>,
-}))
-
-vi.mock('../features/operations/OperationsPage', () => ({
-  default: () => <div data-testid="container-page-operations">OperationsPage</div>,
-}))
-
-vi.mock('../features/admin/AdminPage', () => ({
-  default: () => <div data-testid="container-page-admin">AdminPage</div>,
-}))
+// SecondaryModal is a portal + focus-management shell; the route-integration
+// suite only needs to observe WHICH destination the host opened, so it is
+// replaced by a lightweight probe reading the same host contract.
+vi.mock('../features/settings/SecondaryModal', async () => {
+  const contract = await vi.importActual<
+    typeof import('../features/settings/secondary-modal-host-contract')
+  >('../features/settings/secondary-modal-host-contract')
+  return {
+    default: () => {
+      const { destination } = contract.useSecondaryModalHost()
+      return destination ? <div data-testid="secondary-modal-open">{destination}</div> : null
+    },
+  }
+})
 
 const mockAuthenticatedUser = () => {
   vi.mocked(client.getSetupStatus).mockResolvedValue({ needsSetup: false })
@@ -74,6 +73,8 @@ const renderApp = (initialEntries: string[] = ['/']) => {
     router,
   }
 }
+
+const openModalProbe = () => screen.getByTestId('secondary-modal-open')
 
 describe('Route Integration', () => {
   beforeEach(() => {
@@ -115,145 +116,136 @@ describe('Route Integration', () => {
     })
   })
 
-  describe('Workspace route', () => {
-    it('/workspace/dashboard renders workspace container with dashboard tab', async () => {
+  describe('Legacy secondary route redirects', () => {
+    it('/workspace/dashboard redirects to /chat and opens modal at dashboard', async () => {
       mockAuthenticatedUser()
-      renderApp(['/workspace/dashboard'])
+      const { router } = renderApp(['/workspace/dashboard'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('dashboard')
       })
 
-      expect(screen.getByTestId('product-nav-workspace')).toBeInTheDocument()
+      expect(router.state.location.pathname).toBe('/chat')
+      expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
     })
 
-    it('/workspace/sessions renders workspace container with sessions tab', async () => {
+    it('/workspace/sessions redirects and opens modal at sessions', async () => {
       mockAuthenticatedUser()
       renderApp(['/workspace/sessions'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('sessions')
       })
+
+      expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
     })
 
-    it('/workspace/invalid-tab falls back to dashboard', async () => {
+    it('/operations/agent-monitor redirects and opens modal at agent-monitor', async () => {
       mockAuthenticatedUser()
-      renderApp(['/workspace/invalid-tab'])
+      const { router } = renderApp(['/operations/agent-monitor'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('agent-monitor')
       })
-    })
-  })
 
-  describe('Operations route', () => {
-    it('/operations/agent-monitor renders operations container', async () => {
+      expect(router.state.location.pathname).toBe('/chat')
+    })
+
+    it('/admin/settings redirects and opens modal at settings (SettingsTab)', async () => {
       mockAuthenticatedUser()
-      renderApp(['/operations/agent-monitor'])
+      const { router } = renderApp(['/admin/settings'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('settings')
       })
+
+      expect(router.state.location.pathname).toBe('/chat')
     })
 
-    it('/operations/skills renders operations container with skills tab', async () => {
-      mockAuthenticatedUser()
-      renderApp(['/operations/skills'])
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
-      })
-    })
-
-    it('/operations/invalid-tab falls back to agent-monitor', async () => {
-      mockAuthenticatedUser()
-      renderApp(['/operations/invalid-tab'])
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Admin route', () => {
-    it('/admin/settings renders admin container', async () => {
-      mockAuthenticatedUser()
-      renderApp(['/admin/settings'])
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-admin')).toBeInTheDocument()
-      })
-    })
-
-    it('/admin/admin renders admin container with admin tab', async () => {
+    it('/admin/admin redirects and opens modal at admin', async () => {
       mockAuthenticatedUser()
       renderApp(['/admin/admin'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-admin')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('admin')
       })
     })
 
-    it('/admin/invalid-tab falls back to settings', async () => {
+    it('/workspace/not-real redirects to /chat without opening a modal', async () => {
       mockAuthenticatedUser()
-      renderApp(['/admin/invalid-tab'])
+      const { router } = renderApp(['/workspace/not-real'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-admin')).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe('/chat')
       })
-    })
-  })
+      await waitFor(() => {
+        expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
+      })
 
-  describe('URL-derived activeTab', () => {
-    it('highlights correct product nav section for workspace route', async () => {
+      expect(screen.queryByTestId('secondary-modal-open')).not.toBeInTheDocument()
+    })
+
+    it('/operations/invalid-tab redirects without modal state', async () => {
       mockAuthenticatedUser()
-      renderApp(['/workspace/dashboard'])
+      const { router } = renderApp(['/operations/invalid-tab'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('app-shell')).toBeInTheDocument()
+        expect(router.state.location.pathname).toBe('/chat')
       })
 
-      const workspaceButton = screen.getByTestId('product-nav-workspace')
-      expect(workspaceButton).toHaveClass('product-nav__item--active')
+      expect(screen.queryByTestId('secondary-modal-open')).not.toBeInTheDocument()
     })
 
-    it('highlights correct product nav section for operations route', async () => {
+    it('modal destination state is consumed once and cleared from the location', async () => {
       mockAuthenticatedUser()
-      renderApp(['/operations/agent-monitor'])
+      const { router } = renderApp(['/workspace/dashboard'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('app-shell')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('dashboard')
       })
 
-      const operationsButton = screen.getByTestId('product-nav-operations')
-      expect(operationsButton).toHaveClass('product-nav__item--active')
+      expect(router.state.location.state).toEqual({})
     })
 
-    it('highlights correct product nav section for admin route', async () => {
+    it('reloading the redirect target does not re-open the modal', async () => {
       mockAuthenticatedUser()
-      renderApp(['/admin/settings'])
+      const { unmount } = renderApp(['/workspace/dashboard'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('app-shell')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('dashboard')
       })
 
-      const adminButton = screen.getByTestId('product-nav-admin')
-      expect(adminButton).toHaveClass('product-nav__item--active')
-    })
+      unmount()
 
-    it('highlights correct product nav section for chat route', async () => {
-      mockAuthenticatedUser()
+      // Simulate a refresh of the redirected /chat URL: the one-shot state was
+      // cleared during consumption, so no modal destination is re-injected.
       renderApp(['/chat'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('app-shell')).toBeInTheDocument()
+        expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
       })
 
-      // Chat section is now rendered full-screen by ChatPage; legacy product
-      // nav is not rendered. ChatPage itself is mocked in this test, so we
-      // verify the shell-level behavior only.
-      expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
-      expect(screen.queryByTestId('product-nav-chat')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('secondary-modal-open')).not.toBeInTheDocument()
+    })
+
+    it('back navigation after consumption does not re-open the modal', async () => {
+      mockAuthenticatedUser()
+      const { router } = renderApp(['/chat', '/workspace/dashboard'])
+
+      await waitFor(() => {
+        expect(openModalProbe()).toHaveTextContent('dashboard')
+      })
+      expect(router.state.location.pathname).toBe('/chat')
+
+      router.navigate(-1)
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/chat')
+      })
+
+      // The previous entry has no modalDestination state; navigating back must
+      // not re-trigger the one-shot opener.
+      expect(router.state.location.state?.modalDestination).toBeUndefined()
     })
   })
 
@@ -328,121 +320,84 @@ describe('Route Integration', () => {
         expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
       })
 
-      // Router state should reflect the session ID from URL
       expect(router.state.location.pathname).toBe('/chat/ses_preserve_456')
     })
 
-    it('deep link to workspace dashboard tab renders correct container', async () => {
+    it('legacy workspace dashboard deep link lands on chat with modal open', async () => {
       mockAuthenticatedUser()
       renderApp(['/workspace/dashboard'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('dashboard')
       })
 
-      expect(screen.getByTestId('product-nav-workspace')).toHaveClass('product-nav__item--active')
+      expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
     })
 
-    it('deep link to operations agent-monitor tab renders correct container', async () => {
+    it('legacy operations agent-monitor deep link lands on chat with modal open', async () => {
       mockAuthenticatedUser()
       renderApp(['/operations/agent-monitor'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('agent-monitor')
       })
 
-      expect(screen.getByTestId('product-nav-operations')).toHaveClass('product-nav__item--active')
+      expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
     })
 
-    it('deep link to admin settings tab renders correct container', async () => {
+    it('legacy admin settings deep link lands on chat with modal open', async () => {
       mockAuthenticatedUser()
       renderApp(['/admin/settings'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-admin')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('settings')
       })
 
-      expect(screen.getByTestId('product-nav-admin')).toHaveClass('product-nav__item--active')
+      expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
     })
   })
 
   describe('Browser history navigation', () => {
-    it('browser back navigation updates active section', async () => {
+    it('back navigation from a legacy deep link returns to the previous chat entry', async () => {
       mockAuthenticatedUser()
-      const { router } = renderApp(['/workspace/dashboard'])
+      const { router } = renderApp(['/chat/ses_history_789', '/workspace/dashboard'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('dashboard')
       })
+      expect(router.state.location.pathname).toBe('/chat')
 
-      // Navigate to operations
-      router.navigate('/operations/agent-monitor')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
-      })
-
-      // Go back
-      router.navigate(-1)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
-      })
-    })
-
-    it('browser forward navigation updates active section', async () => {
-      mockAuthenticatedUser()
-      const { router } = renderApp(['/workspace/dashboard'])
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
-      })
-
-      // Navigate to operations
-      router.navigate('/operations/agent-monitor')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
-      })
-
-      // Go back
-      router.navigate(-1)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
-      })
-
-      // Go forward
-      router.navigate(1)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
-      })
-    })
-
-    it('browser history preserves session ID on back navigation', async () => {
-      mockAuthenticatedUser()
-      const { router } = renderApp(['/chat/ses_history_789'])
-
-      await waitFor(() => {
-        expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
-      })
-
-      // Navigate away
-      router.navigate('/workspace/dashboard')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
-      })
-
-      // Go back
       router.navigate(-1)
 
       await waitFor(() => {
         const workspace = screen.getByTestId('session-workspace')
-        expect(workspace).toBeInTheDocument()
         expect(workspace).toHaveTextContent('ses_history_789')
       })
+
+      expect(router.state.location.pathname).toBe('/chat/ses_history_789')
+    })
+
+    it('forward navigation back to the legacy redirect does not re-open the modal', async () => {
+      mockAuthenticatedUser()
+      const { router } = renderApp(['/chat/ses_history_789', '/workspace/dashboard'])
+
+      await waitFor(() => {
+        expect(openModalProbe()).toHaveTextContent('dashboard')
+      })
+
+      router.navigate(-1)
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/chat/ses_history_789')
+      })
+
+      router.navigate(1)
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/chat')
+      })
+
+      // Forward returns to the redirected entry whose state was cleared during
+      // one-shot consumption; no destination is re-injected on arrival.
+      expect(router.state.location.state?.modalDestination).toBeUndefined()
     })
   })
 
@@ -451,14 +406,12 @@ describe('Route Integration', () => {
       mockAuthenticatedUser()
       const sessionId = 'ses_reload_test'
 
-      // Initial render with session ID in URL
       const { unmount } = renderApp([`/chat/${sessionId}`])
 
       await waitFor(() => {
         expect(screen.getByTestId('session-workspace')).toBeInTheDocument()
       })
 
-      // Simulate reload by unmounting and re-rendering with same URL
       unmount()
 
       renderApp([`/chat/${sessionId}`])
@@ -470,43 +423,40 @@ describe('Route Integration', () => {
       })
     })
 
-    it('workspace tab persists across simulated reload', async () => {
+    it('legacy workspace deep link re-opens the modal on re-entry', async () => {
       mockAuthenticatedUser()
 
-      // Initial render
       const { unmount } = renderApp(['/workspace/sessions'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('sessions')
       })
 
-      // Simulate reload
       unmount()
 
+      // Re-entering the legacy URL performs the redirect + one-shot open again.
       renderApp(['/workspace/sessions'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-workspace')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('sessions')
       })
     })
 
-    it('operations tab persists across simulated reload', async () => {
+    it('legacy operations deep link re-opens the modal on re-entry', async () => {
       mockAuthenticatedUser()
 
-      // Initial render
       const { unmount } = renderApp(['/operations/skills'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('skills')
       })
 
-      // Simulate reload
       unmount()
 
       renderApp(['/operations/skills'])
 
       await waitFor(() => {
-        expect(screen.getByTestId('container-page-operations')).toBeInTheDocument()
+        expect(openModalProbe()).toHaveTextContent('skills')
       })
     })
   })
@@ -523,16 +473,13 @@ describe('Route Integration', () => {
     it('URL session ID takes precedence over localStorage', async () => {
       mockAuthenticatedUser()
 
-      // Set localStorage to a different session
       localStorage.setItem('session-console-selected-session', 'ses_localstorage')
 
-      // Render with URL session ID
       renderApp(['/chat/ses_url_precedence'])
 
       await waitFor(() => {
         const workspace = screen.getByTestId('session-workspace')
         expect(workspace).toBeInTheDocument()
-        // URL session ID should be used, not localStorage
         expect(workspace).toHaveTextContent('ses_url_precedence')
       })
     })
@@ -540,16 +487,13 @@ describe('Route Integration', () => {
     it('localStorage session ID is used when URL has no session', async () => {
       mockAuthenticatedUser()
 
-      // Set localStorage session
       localStorage.setItem('session-console-selected-session', 'ses_local_fallback')
 
-      // Render chat route without session ID in URL
       renderApp(['/chat'])
 
       await waitFor(() => {
         const workspace = screen.getByTestId('session-workspace')
         expect(workspace).toBeInTheDocument()
-        // localStorage session should be used as fallback
         expect(workspace).toHaveTextContent('ses_local_fallback')
       })
     })
@@ -557,13 +501,11 @@ describe('Route Integration', () => {
     it('no session in URL or localStorage renders workspace without session', async () => {
       mockAuthenticatedUser()
 
-      // No localStorage, no URL session
       renderApp(['/chat'])
 
       await waitFor(() => {
         const workspace = screen.getByTestId('session-workspace')
         expect(workspace).toBeInTheDocument()
-        // Should render without session ID
         expect(workspace).not.toHaveTextContent('ses_')
       })
     })
@@ -571,7 +513,6 @@ describe('Route Integration', () => {
     it('invalid localStorage session ID is handled gracefully', async () => {
       mockAuthenticatedUser()
 
-      // Set invalid localStorage value
       localStorage.setItem('session-console-selected-session', '')
 
       renderApp(['/chat'])

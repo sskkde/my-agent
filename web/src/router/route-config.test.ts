@@ -94,6 +94,18 @@ describe('route-config', () => {
       expect(config.metadata.hasSessionParam).toBe(false)
       expect(config.metadata.defaultTab).toBe('settings')
     })
+
+    it('marks legacy workspace/operations/admin routes as legacy', () => {
+      expect(ROUTE_CONFIGS.workspace.metadata.isLegacy).toBe(true)
+      expect(ROUTE_CONFIGS.operations.metadata.isLegacy).toBe(true)
+      expect(ROUTE_CONFIGS.admin.metadata.isLegacy).toBe(true)
+    })
+
+    it('keeps chat and root routes non-legacy', () => {
+      expect(ROUTE_CONFIGS.root.metadata.isLegacy).toBeFalsy()
+      expect(ROUTE_CONFIGS.chat.metadata.isLegacy).toBeFalsy()
+      expect(ROUTE_CONFIGS.chatSession.metadata.isLegacy).toBeFalsy()
+    })
   })
 
   describe('Route validation', () => {

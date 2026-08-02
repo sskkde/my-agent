@@ -107,4 +107,146 @@ test.describe('Centered secondary settings modal', () => {
     await monitorGroup.click()
     await expect(dialog.getByTestId('nav-content-monitor')).toBeVisible()
   })
+
+  test('all modal destinations render in place without changing the URL', async ({ page }) => {
+    const { dialog } = await openSettings(page)
+    const initialUrl = page.url()
+
+    const groupButtons = dialog.locator('button[data-testid^="settings-tab-nav-"]')
+    const groupTestIds = await groupButtons.evaluateAll((buttons) =>
+      buttons
+        .map((button) => button.getAttribute('data-testid'))
+        .filter((testId): testId is string => Boolean(testId)),
+    )
+    expect(groupTestIds.length).toBeGreaterThan(0)
+
+    for (const testId of groupTestIds) {
+      const groupButton = dialog.getByTestId(testId)
+      await groupButton.click()
+      await expect(dialog).toBeVisible()
+      await expect(groupButton).toHaveAttribute('aria-selected', 'true')
+      await expect(dialog.locator('[data-testid^="nav-content-"]')).toBeVisible()
+      expect(page.url()).toBe(initialUrl)
+    }
+
+    const destinationButtons = dialog.locator('button.floating-settings__tab')
+    const destinationTestIds = await destinationButtons.evaluateAll((buttons) =>
+      buttons
+        .map((button) => button.getAttribute('data-testid'))
+        .filter((testId): testId is string => Boolean(testId)),
+    )
+    expect(destinationTestIds.length).toBe(24)
+
+    for (const testId of destinationTestIds) {
+      const destinationButton = dialog.getByTestId(testId)
+      await destinationButton.click()
+      await expect(dialog).toBeVisible()
+      await expect(destinationButton).toHaveAttribute('aria-selected', 'true')
+      await expect(dialog.locator('[data-testid^="nav-content-"]')).toBeVisible()
+      await expect(dialog.locator('button.floating-settings__tab[aria-selected="true"]')).toHaveAttribute(
+        'data-testid',
+        testId,
+      )
+      expect(page.url()).toBe(initialUrl)
+    }
+
+    await page.screenshot({ path: resolve(evidenceDirectory, 'secondary-modal-destinations.png') })
+  })
+
+  test('back to chat closes the modal and keeps the current chat URL', async ({ page }) => {
+    const { dialog } = await openSettings(page)
+    const chatUrl = page.url()
+
+    await dialog.getByTestId('tab-status').click()
+    await expect(dialog.getByTestId('status-panel')).toBeVisible()
+    await dialog.getByTestId('status-open-session').click()
+
+    await expect(dialog).toBeHidden()
+    await expect(page).toHaveURL(chatUrl)
+    expect(new URL(page.url()).pathname).toMatch(/^\/chat(?:\/[^/]+)?$/)
+  })
+})
+
+test.describe('Legacy route deep links', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+  })
+
+  test('legacy route /workspace/dashboard lands on chat with dashboard modal open', async ({ page }) => {
+    await page.goto('/workspace/dashboard')
+
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    const dialog = page.getByTestId('floating-settings-panel')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByTestId('tab-dashboard')).toHaveAttribute('aria-selected', 'true')
+    await expect(dialog.getByTestId('nav-content-monitor')).toBeVisible()
+  })
+
+  test('legacy route /operations/agent-monitor lands on chat with agent-monitor modal open', async ({ page }) => {
+    await page.goto('/operations/agent-monitor')
+
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    const dialog = page.getByTestId('floating-settings-panel')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByTestId('tab-agent-monitor')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  test('legacy route /admin/admin and /admin/settings land on chat with modal open', async ({ page }) => {
+    await page.goto('/admin/admin')
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    let dialog = page.getByTestId('floating-settings-panel')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByTestId('tab-admin')).toHaveAttribute('aria-selected', 'true')
+
+    await page.goto('/admin/settings')
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    dialog = page.getByTestId('floating-settings-panel')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByTestId('tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await expect(dialog.getByTestId('nav-content-settings')).toBeVisible()
+  })
+
+  test('invalid legacy tab /workspace/not-real redirects to chat without opening the modal', async ({ page }) => {
+    await page.goto('/workspace/not-real')
+
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    await expect(page.getByTestId('agent-shell')).toBeVisible()
+    await expect(page.getByTestId('floating-settings-panel')).not.toBeVisible()
+  })
+
+  test('legacy route modal does not re-open after refresh', async ({ page }) => {
+    await page.goto('/workspace/dashboard')
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+
+    await page.reload()
+
+    await expect(page.getByTestId('agent-shell')).toBeVisible()
+    await expect(page.getByTestId('floating-settings-panel')).not.toBeVisible()
+  })
+
+  test('legacy route modal does not re-open after closing and going back', async ({ page }) => {
+    await page.goto('/chat')
+    await expect(page.getByTestId('agent-shell')).toBeVisible()
+
+    await page.goto('/workspace/dashboard')
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('floating-settings-panel')).not.toBeVisible()
+
+    await page.goBack()
+
+    await expect(page).toHaveURL(/\/chat\/?$/)
+    await expect(page.getByTestId('agent-shell')).toBeVisible()
+    await expect(page.getByTestId('floating-settings-panel')).not.toBeVisible()
+  })
+
+  test('standalone map route /map/:sessionId renders the map without opening the modal', async ({ page }) => {
+    await page.goto('/map/test-session')
+
+    await expect(page.locator('.session-map-page')).toBeVisible()
+    await expect(page.getByTestId('floating-settings-panel')).not.toBeVisible()
+  })
 })

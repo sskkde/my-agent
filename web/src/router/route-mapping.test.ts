@@ -14,6 +14,7 @@ import {
   routeToNavigation,
   navigationToRoute,
   getSectionDefaultRoute,
+  getLegacyRedirectRoute,
   type NavigationState,
 } from './route-mapping'
 
@@ -358,56 +359,47 @@ describe('route-mapping', () => {
       })
     })
 
-    describe('workspace section', () => {
-      it('returns /workspace/:tabId for workspace tabs', () => {
-        expect(navigationToRoute('dashboard')).toBe('/workspace/dashboard')
-        expect(navigationToRoute('sessions')).toBe('/workspace/sessions')
-        expect(navigationToRoute('usage')).toBe('/workspace/usage')
-        expect(navigationToRoute('logs-debug')).toBe('/workspace/logs-debug')
-        expect(navigationToRoute('channels')).toBe('/workspace/channels')
-        expect(navigationToRoute('instances')).toBe('/workspace/instances')
-        expect(navigationToRoute('status')).toBe('/workspace/status')
-        expect(navigationToRoute('workflows')).toBe('/workspace/workflows')
-        expect(navigationToRoute('approvals')).toBe('/workspace/approvals')
-        expect(navigationToRoute('triggers')).toBe('/workspace/triggers')
-        expect(navigationToRoute('memory')).toBe('/workspace/memory')
-        expect(navigationToRoute('observability')).toBe('/workspace/observability')
+    describe('legacy sections', () => {
+      it('collapses workspace tabs onto /chat', () => {
+        for (const tabId of VALID_TABS.workspace) {
+          expect(navigationToRoute(tabId)).toBe('/chat')
+        }
       })
 
-      it('ignores session ID for workspace tabs', () => {
+      it('collapses operations tabs onto /chat', () => {
+        for (const tabId of VALID_TABS.operations) {
+          expect(navigationToRoute(tabId)).toBe('/chat')
+        }
+      })
+
+      it('collapses admin tabs onto /chat', () => {
+        for (const tabId of VALID_TABS.admin) {
+          expect(navigationToRoute(tabId)).toBe('/chat')
+        }
+      })
+
+      it('ignores session ID for legacy tabs', () => {
         const result = navigationToRoute('dashboard', 'session-123')
-        expect(result).toBe('/workspace/dashboard')
-      })
-    })
-
-    describe('operations section', () => {
-      it('returns /operations/:tabId for operations tabs', () => {
-        expect(navigationToRoute('agent-monitor')).toBe('/operations/agent-monitor')
-        expect(navigationToRoute('skills')).toBe('/operations/skills')
-        expect(navigationToRoute('agents')).toBe('/operations/agents')
-        expect(navigationToRoute('connectors')).toBe('/operations/connectors')
-        expect(navigationToRoute('dlq')).toBe('/operations/dlq')
-      })
-    })
-
-    describe('admin section', () => {
-      it('returns /admin/:tabId for admin tabs', () => {
-        expect(navigationToRoute('settings')).toBe('/admin/settings')
-        expect(navigationToRoute('admin')).toBe('/admin/admin')
+        expect(result).toBe('/chat')
       })
     })
   })
 
+  describe('getLegacyRedirectRoute', () => {
+    it('always returns the Chat route regardless of tab id', () => {
+      expect(getLegacyRedirectRoute('dashboard')).toBe('/chat')
+      expect(getLegacyRedirectRoute('agent-monitor')).toBe('/chat')
+      expect(getLegacyRedirectRoute('settings')).toBe('/chat')
+      expect(getLegacyRedirectRoute('admin')).toBe('/chat')
+    })
+  })
+
   describe('bidirectional mapping', () => {
-    it('round-trips all valid routes correctly', () => {
-      // Test all valid routes
+    it('round-trips chat routes correctly', () => {
       const testCases = [
         { path: '/', expected: { tabId: 'session-console' as TabId, sessionId: undefined } },
         { path: '/chat', expected: { tabId: 'session-console' as TabId, sessionId: undefined } },
         { path: '/chat/abc123', expected: { tabId: 'session-console' as TabId, sessionId: 'abc123' } },
-        { path: '/workspace/dashboard', expected: { tabId: 'dashboard' as TabId, sessionId: undefined } },
-        { path: '/operations/agent-monitor', expected: { tabId: 'agent-monitor' as TabId, sessionId: undefined } },
-        { path: '/admin/settings', expected: { tabId: 'settings' as TabId, sessionId: undefined } },
       ]
 
       for (const { path, expected } of testCases) {
@@ -415,24 +407,39 @@ describe('route-mapping', () => {
         expect(navState.tabId).toBe(expected.tabId)
         expect(navState.sessionId).toBe(expected.sessionId)
 
-        // Round-trip back to path
         const reconstructedPath = navigationToRoute(expected.tabId, expected.sessionId)
         expect(reconstructedPath).toBe(path === '/' ? '/chat' : path)
+      }
+    })
+
+    it('legacy paths parse to their section but reconstruct onto /chat', () => {
+      const legacyPaths = [
+        { path: '/workspace/dashboard', tabId: 'dashboard' as TabId },
+        { path: '/operations/agent-monitor', tabId: 'agent-monitor' as TabId },
+        { path: '/admin/settings', tabId: 'settings' as TabId },
+      ]
+
+      for (const { path, tabId } of legacyPaths) {
+        const navState = routeToNavigation(path)
+        expect(navState.tabId).toBe(tabId)
+
+        const reconstructedPath = navigationToRoute(tabId)
+        expect(reconstructedPath).toBe('/chat')
       }
     })
   })
 
   describe('getSectionDefaultRoute', () => {
-    it('returns correct default route for each section', () => {
+    it('returns /chat for chat and all legacy sections', () => {
       expect(getSectionDefaultRoute('chat')).toBe('/chat')
-      expect(getSectionDefaultRoute('workspace')).toBe('/workspace/dashboard')
-      expect(getSectionDefaultRoute('operations')).toBe('/operations/agent-monitor')
-      expect(getSectionDefaultRoute('admin')).toBe('/admin/settings')
+      expect(getSectionDefaultRoute('workspace')).toBe('/chat')
+      expect(getSectionDefaultRoute('operations')).toBe('/chat')
+      expect(getSectionDefaultRoute('admin')).toBe('/chat')
     })
   })
 
   describe('coverage verification', () => {
-    it('ensures all TabIds have valid routes', () => {
+    it('ensures all TabIds produce a navigable path', () => {
       const allTabIds: TabId[] = [
         'dashboard',
         'session-console',
@@ -460,10 +467,41 @@ describe('route-mapping', () => {
         const path = navigationToRoute(tabId)
         expect(path, `TabId '${tabId}' should produce a valid path`).toBeTruthy()
         expect(path.startsWith('/'), `Path for '${tabId}' should start with /`).toBe(true)
+      }
+    })
 
-        // Verify round-trip
-        const navState = routeToNavigation(path)
-        expect(navState.tabId, `Round-trip for '${tabId}' should preserve tabId`).toBe(tabId)
+    it('round-trips the chat tab through /chat', () => {
+      const path = navigationToRoute('session-console')
+      const navState = routeToNavigation(path)
+      expect(navState.tabId).toBe('session-console')
+    })
+
+    it('legacy tabs resolve to the Chat surface', () => {
+      const legacyTabs: TabId[] = [
+        'dashboard',
+        'sessions',
+        'usage',
+        'logs-debug',
+        'channels',
+        'instances',
+        'status',
+        'workflows',
+        'approvals',
+        'triggers',
+        'todos',
+        'memory',
+        'observability',
+        'agent-monitor',
+        'skills',
+        'agents',
+        'connectors',
+        'dlq',
+        'settings',
+        'admin',
+      ]
+
+      for (const tabId of legacyTabs) {
+        expect(navigationToRoute(tabId)).toBe('/chat')
       }
     })
   })

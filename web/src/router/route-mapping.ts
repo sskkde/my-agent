@@ -3,6 +3,11 @@
  *
  * Provides bidirectional mapping between URL paths and navigation state.
  * Handles validation of tab IDs and provides safe fallback behavior.
+ *
+ * NOTE (Task 4): workspace/operations/admin are LEGACY routes — they no
+ * longer render standalone pages. Navigation targets for non-Chat tabs
+ * collapse onto `/chat`, and old deep links are redirected to Chat with a
+ * one-shot `modalDestination` location state (see `getLegacyRedirectRoute`).
  */
 
 import type { TabId } from '../navigation/navigation-config'
@@ -12,7 +17,12 @@ import { ROUTES, buildPath } from './route-constants'
 
 /**
  * Valid tab IDs for each product section.
- * Extracted from PRODUCT_NAV_MAPPING in product-navigation.ts.
+ *
+ * Extracted from PRODUCT_NAV_MAPPING in product-navigation.ts. The
+ * workspace/operations/admin lists are kept for legacy deep-link validation:
+ * they describe which tab IDs a legacy URL may carry before it is redirected
+ * to Chat (see `getLegacyRedirectRoute` and App's `LegacyRouteRedirect`).
+ * No route renders these sections standalone anymore.
  */
 export const VALID_TABS: Record<ProductSection, readonly TabId[]> = {
   chat: ['session-console'] as const,
@@ -37,7 +47,10 @@ export const VALID_TABS: Record<ProductSection, readonly TabId[]> = {
 
 /**
  * Default tab for each product section.
- * Used as fallback when invalid tab ID is provided.
+ *
+ * Used as fallback when an invalid tab ID is provided. For the legacy
+ * sections the default only matters while parsing an incoming legacy URL;
+ * the resulting route is always Chat.
  */
 export const DEFAULT_TABS: Record<ProductSection, TabId> = {
   chat: 'session-console',
@@ -106,11 +119,14 @@ export function validateTabOrFallback(tabId: string | undefined, section: Produc
  * - / → redirects to /chat (returns chat section with default tab)
  * - /chat → chat section with default tab
  * - /chat/:sessionId → chat section with specific session
- * - /workspace/:tabId → workspace section with specific tab
- * - /operations/:tabId → operations section with specific tab
- * - /admin/:tabId → admin section with specific tab
+ * - /workspace/:tabId → workspace section with specific tab (LEGACY)
+ * - /operations/:tabId → operations section with specific tab (LEGACY)
+ * - /admin/:tabId → admin section with specific tab (LEGACY)
  *
- * Invalid tab IDs are replaced with the section's default tab.
+ * The legacy section paths are parsed for deep-link redirect purposes only —
+ * App redirects them to Chat via `getLegacyRedirectRoute` and never renders a
+ * standalone page for them. Invalid tab IDs are replaced with the section's
+ * default tab.
  *
  * @param path - The URL path to parse
  * @returns Navigation state extracted from the path
@@ -175,7 +191,26 @@ export function routeToNavigation(path: string): NavigationState {
 }
 
 /**
+ * Build the redirect target for a legacy secondary route.
+ *
+ * All legacy section paths (workspace/operations/admin) collapse onto the
+ * Chat surface. The tab id is accepted so callers can validate it against the
+ * modal destination registry before attaching a one-shot `modalDestination`
+ * location state; the URL target itself is always Chat.
+ *
+ * @param _tabId - The legacy tab id (kept for call-site symmetry/validation)
+ * @returns The Chat route path every legacy URL redirects to
+ */
+export function getLegacyRedirectRoute(_tabId: TabId): string {
+  return ROUTES.CHAT
+}
+
+/**
  * Build a URL path from navigation state.
+ *
+ * Chat tabs map to their own routes; every other tab id (workspace/
+ * operations/admin) is a modal destination now, so navigation collapses onto
+ * the Chat route.
  *
  * @param tabId - The tab ID
  * @param sessionId - Optional session ID (only used for chat section)
@@ -192,17 +227,12 @@ export function navigationToRoute(tabId: TabId, sessionId?: string): string {
       return ROUTES.CHAT
     }
 
-    case 'workspace': {
-      return buildPath(ROUTES.WORKSPACE, { tabId })
-    }
-
-    case 'operations': {
-      return buildPath(ROUTES.OPERATIONS, { tabId })
-    }
-
-    case 'admin': {
-      return buildPath(ROUTES.ADMIN, { tabId })
-    }
+    case 'workspace':
+    case 'operations':
+    case 'admin':
+      // Legacy sections no longer have standalone routes; the destination is
+      // opened via the secondary modal from the Chat surface.
+      return ROUTES.CHAT
 
     default:
       // Fallback to chat
@@ -212,6 +242,9 @@ export function navigationToRoute(tabId: TabId, sessionId?: string): string {
 
 /**
  * Get the route path for a product section's default tab.
+ *
+ * For the legacy sections this is now always the Chat route — the section's
+ * default tab is only meaningful for validating legacy deep links.
  *
  * @param section - The product section
  * @returns The URL path for the section's default tab
