@@ -8,7 +8,7 @@
  */
 
 import React from 'react'
-import type { TabId } from '../../navigation/navigation-config'
+import type { TabId, SettingsCategoryId } from '../../navigation/navigation-config'
 import type { ProductSection } from '../../navigation/product-navigation'
 
 // Reuse existing feature tab components - no rewrites
@@ -33,6 +33,10 @@ import ObservabilityTab from '../observability/ObservabilityTab'
 import ConnectorsTab from '../connectors/ConnectorsTab'
 import DLQTab from '../dlq/DLQTab'
 import AdminTab from '../admin/AdminTab'
+import GeneralTab from '../settings/GeneralTab'
+import AppearanceTab from '../settings/AppearanceTab'
+import ProviderTab from '../settings/ProviderTab'
+import AgentTab from '../settings/AgentTab'
 
 /**
  * Props that may be passed to tab components.
@@ -69,6 +73,16 @@ export type TabComponent =
   | typeof ConnectorsTab
   | typeof DLQTab
   | typeof AdminTab
+  | typeof GeneralTab
+  | typeof AppearanceTab
+  | typeof ProviderTab
+  | typeof AgentTab
+
+/**
+ * Every id that can resolve to a composed feature component:
+ * all `TabId`s plus the four settings categories (which have no routed page).
+ */
+export type ComposableDestinationId = TabId | SettingsCategoryId
 
 /**
  * Mapping from each TabId to its corresponding feature tab component.
@@ -78,8 +92,12 @@ export type TabComponent =
  * - Operations container renders: agent-monitor, skills, agents, connectors, dlq
  * - Admin container renders: settings, admin
  * - Chat container renders: session-console
+ *
+ * The four settings-* categories are modal-only destinations rendered by the
+ * secondary modal; they are registered here so the modal destination registry
+ * can resolve components without duplicating imports.
  */
-export const TAB_COMPONENT_MAPPING: Record<TabId, TabComponent> = {
+export const TAB_COMPONENT_MAPPING: Record<ComposableDestinationId, TabComponent> = {
   // Chat section
   'session-console': SessionWorkspace,
 
@@ -108,6 +126,12 @@ export const TAB_COMPONENT_MAPPING: Record<TabId, TabComponent> = {
   // Admin section
   settings: SettingsTab,
   admin: AdminTab,
+
+  // Settings categories (modal-only destinations)
+  'settings-general': GeneralTab,
+  'settings-appearance': AppearanceTab,
+  'settings-provider': ProviderTab,
+  'settings-agent': AgentTab,
 }
 
 /**

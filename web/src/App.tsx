@@ -9,6 +9,7 @@ import { routeToNavigation, navigationToRoute } from './router/route-mapping'
 import { resolveSessionId, safeReadLocalStorage } from './features/session/session-migration'
 import { SELECTED_SESSION_KEY } from './features/session/session-constants'
 import { readStoredTheme, applyDocumentTheme, type AppTheme } from './theme-storage'
+import { SecondaryModalHostProvider } from './features/settings/secondary-modal-host-contract'
 import type { TabId } from './components/TabNav'
 import './styles.css'
 import './theme.css'
@@ -130,39 +131,45 @@ function AppRoutes() {
   }
 
   return (
-    <AgentShell
-      activeTab={activeTab}
-      onTabChange={handleTabChange}
-      user={user}
-      onLogout={logout}
-      sessionId={selectedSessionId}
-    >
-      <Suspense fallback={<div className="center-stage-loading" data-testid="route-loading" />}>
-        <Routes>
-          {/* Root → renders Chat section (same as /chat) */}
-          <Route path="/" element={<ChatRouteContent />} />
+    // SecondaryModalHostProvider owns the modal destination state at App level
+    // and carries the resolved Chat sessionId into modal feature props.
+    // The modal dialog itself is rendered via a portal to document.body by the
+    // secondary modal shell task.
+    <SecondaryModalHostProvider sessionId={selectedSessionId}>
+      <AgentShell
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        user={user}
+        onLogout={logout}
+        sessionId={selectedSessionId}
+      >
+        <Suspense fallback={<div className="center-stage-loading" data-testid="route-loading" />}>
+          <Routes>
+            {/* Root → renders Chat section (same as /chat) */}
+            <Route path="/" element={<ChatRouteContent />} />
 
-          {/* Chat section routes */}
-          <Route path="/chat" element={<ChatRouteContent />} />
-          <Route path="/chat/:sessionId" element={<ChatRouteContent />} />
+            {/* Chat section routes */}
+            <Route path="/chat" element={<ChatRouteContent />} />
+            <Route path="/chat/:sessionId" element={<ChatRouteContent />} />
 
-          {/* Workspace section route with tab parameter */}
-          <Route path="/workspace/:tabId" element={<WorkspaceRouteContent onTabChange={handleTabChange} />} />
+            {/* Workspace section route with tab parameter */}
+            <Route path="/workspace/:tabId" element={<WorkspaceRouteContent onTabChange={handleTabChange} />} />
 
-          {/* Operations section route with tab parameter */}
-          <Route path="/operations/:tabId" element={<OperationsRouteContent onTabChange={handleTabChange} />} />
+            {/* Operations section route with tab parameter */}
+            <Route path="/operations/:tabId" element={<OperationsRouteContent onTabChange={handleTabChange} />} />
 
-          {/* Admin section route with tab parameter */}
-          <Route path="/admin/:tabId" element={<AdminRouteContent onTabChange={handleTabChange} />} />
+            {/* Admin section route with tab parameter */}
+            <Route path="/admin/:tabId" element={<AdminRouteContent onTabChange={handleTabChange} />} />
 
-          {/* AMap standalone route */}
-          <Route path="/map/:sessionId" element={<SessionMapPage />} />
+            {/* AMap standalone route */}
+            <Route path="/map/:sessionId" element={<SessionMapPage />} />
 
-          {/* Catch-all: redirect to root (renders Chat) */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
-    </AgentShell>
+            {/* Catch-all: redirect to root (renders Chat) */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </AgentShell>
+    </SecondaryModalHostProvider>
   )
 }
 

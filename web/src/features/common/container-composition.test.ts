@@ -40,6 +40,17 @@ describe('container-composition', () => {
     'admin',
   ]
 
+  /**
+   * The four settings categories registered in TAB_COMPONENT_MAPPING as
+   * modal-only destinations (no routed page, not part of TabId).
+   */
+  const SETTINGS_CATEGORY_IDS = [
+    'settings-general',
+    'settings-appearance',
+    'settings-provider',
+    'settings-agent',
+  ]
+
   describe('TAB_COMPONENT_MAPPING', () => {
     it('maps every TabId to exactly one component', () => {
       // Verify all TabIds are mapped
@@ -47,9 +58,14 @@ describe('container-composition', () => {
         expect(tabId in TAB_COMPONENT_MAPPING, `TabId '${tabId}' should be mapped to a component`).toBe(true)
       }
 
-      // Verify no extra tabs in mapping
+      // Verify the four settings categories are mapped too
+      for (const categoryId of SETTINGS_CATEGORY_IDS) {
+        expect(categoryId in TAB_COMPONENT_MAPPING, `Settings category '${categoryId}' should be mapped`).toBe(true)
+      }
+
+      // Verify no extra entries beyond TabIds + settings categories
       const mappedTabs = Object.keys(TAB_COMPONENT_MAPPING)
-      expect(mappedTabs.length).toBe(ALL_TAB_IDS.length)
+      expect(mappedTabs.length).toBe(ALL_TAB_IDS.length + SETTINGS_CATEGORY_IDS.length)
     })
 
     it('maps each TabId to a valid React component', () => {
@@ -274,9 +290,9 @@ describe('container-composition', () => {
         tabToComponent.set(tabId, Component)
       }
 
-      // Verify each tab appears exactly once
+      // Verify each tab appears exactly once (plus the four settings categories)
       const allComponents = Object.values(TAB_COMPONENT_MAPPING)
-      expect(allComponents.length).toBe(ALL_TAB_IDS.length)
+      expect(allComponents.length).toBe(ALL_TAB_IDS.length + SETTINGS_CATEGORY_IDS.length)
     })
 
     it('ensures all container tabs are renderable', () => {

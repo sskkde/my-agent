@@ -23,6 +23,16 @@ export type TabId =
 
 export type NavGroupId = 'chat' | 'control' | 'agent' | 'settings'
 
+/**
+ * The four settings categories that live inside the settings panel / secondary modal.
+ * These are modal destinations but NOT `TabId`s: they have no routed page of their own.
+ */
+export type SettingsCategoryId =
+  | 'settings-general'
+  | 'settings-appearance'
+  | 'settings-provider'
+  | 'settings-agent'
+
 export interface NavItem {
   id: TabId
   label: string
