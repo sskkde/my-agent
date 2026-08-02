@@ -22,6 +22,17 @@ vi.mock('../../../commands/formatters', () => ({
   createCommandEvent: vi.fn(),
 }))
 
+const { mockOpenModal } = vi.hoisted(() => ({ mockOpenModal: vi.fn() }))
+
+vi.mock('../../../features/settings/secondary-modal-host-contract', () => ({
+  useOptionalSecondaryModalHost: () => ({
+    destination: null,
+    sessionId: null,
+    openModal: mockOpenModal,
+    closeModal: vi.fn(),
+  }),
+}))
+
 import * as api from '../../../api/client'
 import { isCommand, parseInput } from '../../../commands/parser'
 import { executeCommand } from '../../../commands/executor'
@@ -284,6 +295,93 @@ describe('useComposerSubmission', () => {
     })
 
     expect(result.current.sendError).toBe('Command failed')
+  })
+
+  describe('command result navigation', () => {
+    function mockCommandResult(result: Partial<ReturnType<typeof executeCommand> extends Promise<infer T> ? T : never>) {
+      mockParseInput.mockReturnValue({
+        isCommand: true,
+        isEscaped: false,
+        parsed: { command: 'test', args: [], rawInput: '/test', isEscaped: false },
+      })
+      mockExecuteCommand.mockResolvedValue({
+        success: true,
+        commandName: 'test',
+        output: { type: 'text', content: 'ok' },
+        ...result,
+      })
+      mockCreateCommandEvent.mockReturnValue({
+        eventId: 'cmd-1',
+        eventType: 'system_status',
+        sessionId: 'session-1',
+        timestamp: new Date().toISOString(),
+        content: 'ok',
+      })
+    }
+
+    beforeEach(() => {
+      mockOpenModal.mockClear()
+    })
+
+    it('opens the modal at settings when the command result carries navigateTo settings', async () => {
+      mockCommandResult({ navigateTo: 'settings' })
+      const { result } = renderComposerHook()
+
+      act(() => {
+        result.current.setDraft('/settings')
+      })
+      await act(async () => {
+        await result.current.handleSend()
+      })
+
+      expect(mockOpenModal).toHaveBeenCalledTimes(1)
+      expect(mockOpenModal).toHaveBeenCalledWith('settings')
+      expect(result.current.draft).toBe('')
+    })
+
+    it('opens the modal at settings-provider when the result carries a typed modalDestination', async () => {
+      mockCommandResult({ navigateTo: 'settings', modalDestination: 'settings-provider' })
+      const { result } = renderComposerHook()
+
+      act(() => {
+        result.current.setDraft('/provider connect openai')
+      })
+      await act(async () => {
+        await result.current.handleSend()
+      })
+
+      expect(mockOpenModal).toHaveBeenCalledTimes(1)
+      expect(mockOpenModal).toHaveBeenCalledWith('settings-provider')
+    })
+
+    it('does not open the modal when the command result has no navigation intent', async () => {
+      mockCommandResult({})
+      const { result } = renderComposerHook()
+
+      act(() => {
+        result.current.setDraft('/help')
+      })
+      await act(async () => {
+        await result.current.handleSend()
+      })
+
+      expect(mockOpenModal).not.toHaveBeenCalled()
+      expect(result.current.draft).toBe('')
+    })
+
+    it('never opens the modal for a chat-only navigateTo target', async () => {
+      mockCommandResult({ navigateTo: 'session-console' })
+      const { result } = renderComposerHook()
+
+      act(() => {
+        result.current.setDraft('/session-console')
+      })
+      await act(async () => {
+        await result.current.handleSend()
+      })
+
+      expect(mockOpenModal).not.toHaveBeenCalled()
+    })
   })
 
   it('creates local message event on send', async () => {

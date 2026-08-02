@@ -3,12 +3,15 @@ import * as client from '../../api/client'
 import type { ApprovalsResponse, ApprovalInfo } from '../../api/types'
 import type { TabId } from '../../navigation/navigation-config'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import { useOptionalSecondaryModalHost } from '../settings/secondary-modal-host-contract'
+import { isValidModalDestination } from '../settings/modal-destination-registry'
 
 interface ApprovalsTabProps {
   onTabChange: (tab: TabId) => void
 }
 
 const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
+  const modalHost = useOptionalSecondaryModalHost()
   const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null)
   const [approvalsError, setApprovalsError] = useState(false)
   const [selectedApproval, setSelectedApproval] = useState<ApprovalInfo | null>(null)
@@ -63,6 +66,18 @@ const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
     return 'status-other'
   }
 
+  const handleNavigate = (tab: TabId) => {
+    if (tab === 'session-console') {
+      onTabChange(tab)
+      return
+    }
+    if (modalHost && isValidModalDestination(tab) && modalHost.destination === null) {
+      modalHost.openModal(tab)
+      return
+    }
+    onTabChange(tab)
+  }
+
   const formatDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleString('zh-CN')
@@ -107,7 +122,7 @@ const ApprovalsTab: React.FC<ApprovalsTabProps> = ({ onTabChange }) => {
                       {approval.plannerRunId ? (
                         <button
                           className="run-link-btn"
-                          onClick={() => onTabChange('agent-monitor')}
+                          onClick={() => handleNavigate('agent-monitor')}
                           data-testid={`view-run-${approval.id}`}
                         >
                           查看运行 →

@@ -105,6 +105,7 @@ export async function handleProviderConnect(args: string[], _context: CommandCon
     commandName: 'provider connect',
     output: { type: 'text', content: `Opening settings to configure ${providerType} provider...` },
     navigateTo: 'settings',
+    modalDestination: 'settings-provider',
   }
 }
 

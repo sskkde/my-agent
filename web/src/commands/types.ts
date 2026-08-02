@@ -11,6 +11,7 @@ import type {
   CommandRisk,
   CommandCategory,
 } from '../../../src/command-core/types.js'
+import type { ModalDestination } from '../features/settings/modal-destination-registry'
 
 // Re-export shared types for convenience
 export type {
@@ -142,6 +143,13 @@ export interface FrontendCommandResult extends Omit<SharedCommandResult, 'output
   toastType?: 'success' | 'error' | 'info'
   /** Whether to navigate to a different tab */
   navigateTo?: TabId
+  /**
+   * Typed modal destination intent. When set, the composer consumer opens the
+   * secondary modal at this destination (pathname unchanged). Never widened to
+   * arbitrary strings — only registry-backed destinations are valid. Takes
+   * precedence over `navigateTo` when both are present.
+   */
+  modalDestination?: ModalDestination
 }
 
 /**

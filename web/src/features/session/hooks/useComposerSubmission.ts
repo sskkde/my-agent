@@ -5,6 +5,8 @@ import type { CommandContext } from '../../../commands/types'
 import { isCommand, parseInput } from '../../../commands/parser'
 import { executeCommand } from '../../../commands/executor'
 import { createCommandEvent } from '../../../commands/formatters'
+import { resolveModalDestination } from '../../../commands/modal-navigation'
+import { useOptionalSecondaryModalHost } from '../../settings/secondary-modal-host-contract'
 import {
   POST_SEND_POLL_MAX_ATTEMPTS,
   POST_SEND_POLL_INTERVAL_MS,
@@ -87,6 +89,8 @@ export function useComposerSubmission(options: {
   callbacks: UseComposerSubmissionCallbacks
 }): UseComposerSubmissionReturn {
   const { selectedSessionId, mountedRef, selectedSessionIdRef, callbacks } = options
+
+  const modalHost = useOptionalSecondaryModalHost()
 
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -379,6 +383,15 @@ export function useComposerSubmission(options: {
 
           const commandEvent = createCommandEvent(result, sessionId)
           addLocalCommandEvent(sessionId, commandEvent)
+
+          const destination = resolveModalDestination(result)
+          if (destination) {
+            if (modalHost) {
+              modalHost.openModal(destination)
+            } else {
+              console.warn('[commands] modal host unavailable; navigation request dropped', destination)
+            }
+          }
 
           setDraft('')
         }

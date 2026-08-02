@@ -6,6 +6,8 @@ import LoadingSpinner from '../../components/LoadingSpinner'
 import ErrorMessage from '../../components/ErrorMessage'
 import TodoTree from './TodoTree'
 import { buildTodoTree } from './todo-tree'
+import { useOptionalSecondaryModalHost } from '../settings/secondary-modal-host-contract'
+import { isValidModalDestination } from '../settings/modal-destination-registry'
 
 interface TodosTabProps {
   onTabChange: (tab: TabId) => void
@@ -13,6 +15,7 @@ interface TodosTabProps {
 }
 
 const TodosTab: React.FC<TodosTabProps> = ({ onTabChange, sessionId }) => {
+  const modalHost = useOptionalSecondaryModalHost()
   const [todos, setTodos] = useState<TodoItemWithChildren[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -118,6 +121,18 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange, sessionId }) => {
     }
   }
 
+  const handleNavigate = (tab: TabId) => {
+    if (tab === 'session-console') {
+      onTabChange(tab)
+      return
+    }
+    if (modalHost && isValidModalDestination(tab) && modalHost.destination === null) {
+      modalHost.openModal(tab)
+      return
+    }
+    onTabChange(tab)
+  }
+
   const handleAddChild = (parentTodoId: string) => {
     setParentTodoId(parentTodoId)
     setShowCreateForm(true)
@@ -208,7 +223,7 @@ const TodosTab: React.FC<TodosTabProps> = ({ onTabChange, sessionId }) => {
 
       <button
         data-testid="todos-open-session"
-        onClick={() => onTabChange('session-console')}
+        onClick={() => handleNavigate('session-console')}
       >
         打开会话控制台
       </button>

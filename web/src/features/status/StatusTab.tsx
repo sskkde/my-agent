@@ -4,12 +4,15 @@ import type { HealthResponse, ApprovalsResponse, ApprovalInfo } from '../../api/
 import type { TabId } from '../../components/TabNav'
 import ErrorMessage from '../../components/ErrorMessage'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import { useOptionalSecondaryModalHost } from '../settings/secondary-modal-host-contract'
+import { isValidModalDestination } from '../settings/modal-destination-registry'
 
 interface StatusTabProps {
   onTabChange: (tab: TabId) => void
 }
 
 const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
+  const modalHost = useOptionalSecondaryModalHost()
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [healthError, setHealthError] = useState<Error | null>(null)
   const [approvals, setApprovals] = useState<ApprovalsResponse | null>(null)
@@ -58,6 +61,18 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  const handleNavigate = (tab: TabId) => {
+    if (tab === 'session-console') {
+      onTabChange(tab)
+      return
+    }
+    if (modalHost && isValidModalDestination(tab) && modalHost.destination === null) {
+      modalHost.openModal(tab)
+      return
+    }
+    onTabChange(tab)
   }
 
   const getStatusLabel = (status: string) => {
@@ -217,14 +232,14 @@ const StatusTab: React.FC<StatusTabProps> = ({ onTabChange }) => {
         <div className="quick-actions">
           <button
             data-testid="status-open-session"
-            onClick={() => onTabChange('session-console')}
+            onClick={() => handleNavigate('session-console')}
             className="quick-action-btn"
           >
             打开会话控制台
           </button>
           <button
             data-testid="status-open-monitor"
-            onClick={() => onTabChange('agent-monitor')}
+            onClick={() => handleNavigate('agent-monitor')}
             className="quick-action-btn"
           >
             打开 Agent 监控
