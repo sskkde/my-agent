@@ -70,3 +70,7 @@ export function useSecondaryModalHost(): SecondaryModalHost {
   }
   return context
 }
+
+export function useOptionalSecondaryModalHost(): SecondaryModalHost | null {
+  return useContext(SecondaryModalHostContext)
+}

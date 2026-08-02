@@ -93,6 +93,27 @@
   --warm-paper-active-overlay: rgba(42, 38, 34, 0.04);
   --warm-paper-focus-ring: rgba(91, 140, 133, 0.3);
 
+  --warm-paper-text-rgb: 42, 38, 34;
+  --warm-paper-space-1: 4px;
+  --warm-paper-space-2: 8px;
+  --warm-paper-space-3: 12px;
+  --warm-paper-space-4: 16px;
+  --warm-paper-space-5: 24px;
+  --warm-paper-space-6: 32px;
+  --warm-paper-font-caption: 0.6875rem;
+  --warm-paper-font-body: 0.8125rem;
+  --warm-paper-font-title: 1rem;
+  --warm-paper-control-size: 32px;
+  --warm-paper-control-size-sm: 28px;
+  --warm-paper-modal-nav-width: 224px;
+  --warm-paper-modal-context-width: 264px;
+
+  /* Overlay stacking — secondary settings modal must cover chat drawers/toasts. */
+  --z-chat-drawer-backdrop: 90;
+  --z-chat-drawer: 100;
+  --z-secondary-modal-scrim: 10000;
+  --z-secondary-modal: 10010;
+
   /* ==========================================================================
      Chat Workspace Theme Tokens
      ==========================================================================

@@ -10,6 +10,7 @@ import { resolveSessionId, safeReadLocalStorage } from './features/session/sessi
 import { SELECTED_SESSION_KEY } from './features/session/session-constants'
 import { readStoredTheme, applyDocumentTheme, type AppTheme } from './theme-storage'
 import { SecondaryModalHostProvider } from './features/settings/secondary-modal-host-contract'
+import SecondaryModal from './features/settings/SecondaryModal'
 import type { TabId } from './components/TabNav'
 import './styles.css'
 import './theme.css'
@@ -169,6 +170,7 @@ function AppRoutes() {
           </Routes>
         </Suspense>
       </AgentShell>
+      <SecondaryModal />
     </SecondaryModalHostProvider>
   )
 }

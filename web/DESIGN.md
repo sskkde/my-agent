@@ -66,11 +66,35 @@ Warm-Paper is a paper-inspired design system for the Agent Platform frontend. It
 ## Layout Principles
 
 1. **Chat-only surface**: On `/` and `/chat`, the page shows only conversation content. Settings are accessed exclusively through a floating button-triggered menu.
-2. **Floating settings popover**: A small gear button in the chat header controls opens a floating panel. The panel closes on Escape and outside click, and returns focus to the trigger button.
+2. **Secondary settings modal**: A small gear button in the chat header opens an app-level, centered modal through a portal. The scrim closes on Escape or direct scrim click, traps focus, locks body scrolling, and returns focus to the trigger button.
 3. **No visible product switch in chat**: The chat header retains brand identity and navigation context switches (chat/workspace/operations), but the admin/settings switch is removed — settings live in the floating menu.
 4. **Low radii**: All interactive elements use 2–4px radius. Cards and containers use 3–4px.
 5. **Hairline borders**: All borders are 1px `#d8cfbe`.
 6. **Ink hierarchy**: Three text tiers — dense ink (#2A2622), secondary (#4A433C), muted (#6B6158).
+
+### Overlay Stacking
+
+Overlay layers are tokenized so the secondary settings modal remains above ChatShell drawers and toast surfaces:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--z-chat-drawer-backdrop` | `90` | Chat drawer scrim |
+| `--z-chat-drawer` | `100` | Chat drawer surface |
+| `--z-secondary-modal-scrim` | `10000` | App-level modal scrim |
+| `--z-secondary-modal` | `10010` | App-level modal card |
+
+### Spacing and Type
+
+Modal layout uses the existing 4px rhythm and a compact type scale:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--warm-paper-space-1` … `--warm-paper-space-6` | `4px` … `32px` | Modal gaps, padding, and gutters |
+| `--warm-paper-font-caption` | `0.6875rem` | Group labels and metadata |
+| `--warm-paper-font-body` | `0.8125rem` | Navigation and body copy |
+| `--warm-paper-font-title` | `1rem` | Modal section titles |
+| `--warm-paper-modal-nav-width` | `224px` | Desktop/tablet modal navigation |
+| `--warm-paper-modal-context-width` | `264px` | Desktop/tablet context desk |
 
 ## File Structure
 
@@ -94,4 +118,5 @@ web/src/features/settings/
 ## Component Patterns
 
 - **SettingsContent**: Reusable content extracted from SettingsTab. Accepts an optional `embedMode` prop to omit the header when used inside a floating popover.
-- **FloatingSettingsMenu**: Renders a settings gear button that opens a floating panel containing SettingsContent. Uses `aria-*` attributes for accessibility. Handles Escape key and outside click dismissal.
+- **FloatingSettingsMenu**: Renders a settings gear button that opens the app-level secondary modal through the host contract. Uses `aria-*` attributes for accessibility.
+- **SecondaryModal**: Renders grouped navigation, independently scrolling content, and the ContextDeskPanel in a portal to `document.body`. It owns focus containment and exact body scroll restoration without external modal dependencies.
