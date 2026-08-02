@@ -1,11 +1,11 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const evidenceDirectory = resolve(process.cwd(), '..', '.omo/evidence/opencode-settings-style')
 mkdirSync(evidenceDirectory, { recursive: true })
 
-async function openSettings(page: Parameters<Parameters<typeof test>[1]>[0]['page']) {
+async function openSettings(page: Page) {
   const trigger = page.getByTestId('floating-settings-trigger')
   await expect(trigger).toBeVisible()
   await trigger.click()
@@ -231,10 +231,12 @@ test.describe('Legacy route deep links', () => {
 
     await page.goto('/workspace/dashboard')
     await expect(page).toHaveURL(/\/chat\/?$/)
-    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+    const dialog = page.getByTestId('floating-settings-panel')
+    await expect(dialog).toBeVisible()
+    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden')
 
-    await page.keyboard.press('Escape')
-    await expect(page.getByTestId('floating-settings-panel')).not.toBeVisible()
+    await dialog.press('Escape')
+    await expect(dialog).toBeHidden()
 
     await page.goBack()
 
