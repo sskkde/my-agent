@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
 import ContextDeskPanel from '../context/ContextDeskPanel'
 import { useAuth } from '../../context/AuthContext'
 import { ICONS } from '../../navigation/icons'
-import { navigationToRoute } from '../../router/route-mapping'
+import type { TabId } from '../../navigation/navigation-config'
 import {
   getModalComponent,
   getModalDestination,
   MODAL_DESTINATION_MAP,
   MODAL_DESTINATIONS,
+  isValidModalDestination,
   type ModalDestination,
   type ModalDestinationEntry,
   type ModalDestinationGroup,
@@ -99,23 +99,6 @@ function restoreFocus(element: HTMLElement | null): void {
   })
 }
 
-function navigateDestination(
-  destination: ModalDestination,
-  navigate: (path: string) => void,
-  closeModal: () => void,
-): void {
-  switch (destination) {
-    case 'settings-general':
-    case 'settings-appearance':
-    case 'settings-provider':
-    case 'settings-agent':
-      return
-    default:
-      navigate(navigationToRoute(destination))
-      closeModal()
-  }
-}
-
 function CloseIcon(): React.ReactElement {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -135,7 +118,6 @@ function ChevronIcon({ expanded }: { expanded: boolean }): React.ReactElement {
 const SecondaryModal: React.FC = () => {
   const { destination, sessionId, closeModal } = useSecondaryModalHost()
   const { logout } = useAuth()
-  const navigate = useNavigate()
   const scrimRef = useRef<HTMLDivElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
@@ -269,11 +251,25 @@ const SecondaryModal: React.FC = () => {
   const handleDestinationSelect = useCallback(
     (entry: ModalDestinationEntry) => {
       setActiveDestination(entry.id)
-      navigateDestination(entry.id, navigate, closeModal)
     },
-    [closeModal, navigate],
+    [],
   )
-  const handleModalTabChange = useCallback(() => undefined, [])
+  const handleModalTabChange = useCallback(
+    (tabId: TabId) => {
+      if (tabId === 'session-console') {
+        closeModal()
+        return
+      }
+
+      if (isValidModalDestination(tabId)) {
+        setActiveDestination(tabId)
+        return
+      }
+
+      console.warn(`[SecondaryModal] Ignored unknown modal tab change: ${tabId}`)
+    },
+    [closeModal],
+  )
 
   if (!isOpen || typeof document === 'undefined') {
     return null
