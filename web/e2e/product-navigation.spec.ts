@@ -45,18 +45,26 @@ test.describe('Floating Settings Navigation E2E', () => {
   })
 
   test.describe('Navigation via Floating Panel', () => {
-    test('clicking nav item navigates to correct URL', async ({ page }) => {
+    test('clicking nav item switches the modal destination without navigation', async ({ page }) => {
+      const initialUrl = page.url()
       await page.getByTestId('floating-settings-trigger').click()
       await page.getByTestId('settings-tab-nav-monitor').click()
-      await page.getByTestId('tab-dashboard').click()
-      await expect(page).toHaveURL(/\/workspace\/dashboard/)
+      const dashboardTab = page.getByTestId('tab-dashboard')
+      await dashboardTab.click()
+      await expect(dashboardTab).toHaveAttribute('aria-selected', 'true')
+      await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+      expect(page.url()).toBe(initialUrl)
     })
 
-    test('clicking operations nav item navigates', async ({ page }) => {
+    test('clicking operations nav item switches in place', async ({ page }) => {
+      const initialUrl = page.url()
       await page.getByTestId('floating-settings-trigger').click()
       await page.getByTestId('settings-tab-nav-monitor').click()
-      await page.getByTestId('tab-agent-monitor').click()
-      await expect(page).toHaveURL(/\/operations\/agent-monitor/)
+      const monitorTab = page.getByTestId('tab-agent-monitor')
+      await monitorTab.click()
+      await expect(monitorTab).toHaveAttribute('aria-selected', 'true')
+      await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+      expect(page.url()).toBe(initialUrl)
     })
   })
 
@@ -69,20 +77,29 @@ test.describe('Floating Settings Navigation E2E', () => {
 
     test('/workspace/dashboard renders workspace content', async ({ page }) => {
       await page.goto('/workspace/dashboard')
+      await expect(page).toHaveURL(/\/chat\/?$/)
       await expect(page.getByTestId('agent-shell')).toBeVisible()
       await expect(page.getByTestId('chat-shell')).toBeVisible()
+      await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+      await expect(page.getByTestId('tab-dashboard')).toHaveAttribute('aria-selected', 'true')
     })
 
     test('/operations/agent-monitor renders operations content', async ({ page }) => {
       await page.goto('/operations/agent-monitor')
+      await expect(page).toHaveURL(/\/chat\/?$/)
       await expect(page.getByTestId('agent-shell')).toBeVisible()
       await expect(page.getByTestId('chat-shell')).toBeVisible()
+      await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+      await expect(page.getByTestId('tab-agent-monitor')).toHaveAttribute('aria-selected', 'true')
     })
 
     test('/admin/settings renders admin content', async ({ page }) => {
       await page.goto('/admin/settings')
+      await expect(page).toHaveURL(/\/chat\/?$/)
       await expect(page.getByTestId('agent-shell')).toBeVisible()
       await expect(page.getByTestId('chat-shell')).toBeVisible()
+      await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+      await expect(page.getByTestId('tab-settings')).toHaveAttribute('aria-selected', 'true')
     })
 
     test('invalid workspace tab falls back to dashboard', async ({ page }) => {

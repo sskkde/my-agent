@@ -48,28 +48,41 @@ test.describe('Floating Settings Tab Navigation', () => {
     await expect(page.getByTestId('settings-agent-tab')).toBeVisible()
   })
 
-  test('should navigate to workspace dashboard via floating panel', async ({ page }) => {
+  test('should switch to workspace dashboard in place', async ({ page }) => {
+    const initialUrl = page.url()
     await page.getByTestId('floating-settings-trigger').click()
     await page.getByTestId('settings-tab-nav-monitor').click()
-    await page.getByTestId('tab-dashboard').click()
-    await expect(page).toHaveURL(/\/workspace\/dashboard/)
+    const dashboardTab = page.getByTestId('tab-dashboard')
+    await dashboardTab.click()
+    await expect(dashboardTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+    expect(page.url()).toBe(initialUrl)
   })
 
-  test('should navigate to operations via floating panel', async ({ page }) => {
+  test('should switch to operations in place', async ({ page }) => {
+    const initialUrl = page.url()
     await page.getByTestId('floating-settings-trigger').click()
     await page.getByTestId('settings-tab-nav-monitor').click()
-    await page.getByTestId('tab-agent-monitor').click()
-    await expect(page).toHaveURL(/\/operations\/agent-monitor/)
+    const monitorTab = page.getByTestId('tab-agent-monitor')
+    await monitorTab.click()
+    await expect(monitorTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+    expect(page.url()).toBe(initialUrl)
   })
 
-  test('floating panel closes after navigation', async ({ page }) => {
+  test('floating panel closes with Escape after in-place navigation', async ({ page }) => {
+    const initialUrl = page.url()
     await page.getByTestId('floating-settings-trigger').click()
     await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
 
     await page.getByTestId('settings-tab-nav-monitor').click()
     await page.getByTestId('tab-dashboard').click()
+    await expect(page.getByTestId('tab-dashboard')).toHaveAttribute('aria-selected', 'true')
+    expect(page.url()).toBe(initialUrl)
 
+    await page.keyboard.press('Escape')
     await expect(page.getByTestId('floating-settings-panel')).not.toBeVisible()
+    await expect(page.getByTestId('floating-settings-trigger')).toBeFocused()
   })
 
   test('should have no console errors during tab navigation', async ({ page }) => {
@@ -86,16 +99,19 @@ test.describe('Floating Settings Tab Navigation', () => {
     })
 
     await page.getByTestId('floating-settings-trigger').click()
+    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
     const navTabs = ['settings-tab-nav-monitor', 'settings-tab-nav-resource', 'settings-tab-nav-automation', 'settings-tab-nav-extension']
     for (const tabId of navTabs) {
-      await page.getByTestId(tabId).click()
-      await page.waitForTimeout(200)
+      const tab = page.getByTestId(tabId)
+      await tab.click()
+      await expect(tab).toHaveAttribute('aria-selected', 'true')
     }
 
     const settingsTabs = ['settings-tab-settings-general', 'settings-tab-settings-appearance', 'settings-tab-settings-provider', 'settings-tab-settings-agent']
     for (const tabId of settingsTabs) {
-      await page.getByTestId(tabId).click()
-      await page.waitForTimeout(200)
+      const tab = page.getByTestId(tabId)
+      await tab.click()
+      await expect(tab).toHaveAttribute('aria-selected', 'true')
     }
 
     expect(consoleErrors).toHaveLength(0)

@@ -33,20 +33,30 @@ test.describe('Comprehensive Chat Flow', () => {
   })
 
   test('should navigate between sections via floating panel', async ({ page }) => {
+    const initialUrl = page.url()
     await page.getByTestId('floating-settings-trigger').click()
     await page.getByTestId('settings-tab-nav-monitor').click()
-    await page.getByTestId('tab-dashboard').click()
-    await expect(page).toHaveURL(/\/workspace\/dashboard/)
+    const dashboardTab = page.getByTestId('tab-dashboard')
+    await dashboardTab.click()
+    await expect(dashboardTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+    await expect(page).toHaveURL(initialUrl)
     await expect(page.getByTestId('chat-shell')).toBeVisible()
   })
 
-  test('should navigate to operations and back to chat', async ({ page }) => {
+  test('should switch to operations and close back to chat', async ({ page }) => {
+    const initialUrl = page.url()
     await page.getByTestId('floating-settings-trigger').click()
     await page.getByTestId('settings-tab-nav-monitor').click()
-    await page.getByTestId('tab-agent-monitor').click()
-    await expect(page).toHaveURL(/\/operations\/agent-monitor/)
+    const monitorTab = page.getByTestId('tab-agent-monitor')
+    await monitorTab.click()
+    await expect(monitorTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+    await expect(page).toHaveURL(initialUrl)
 
-    await page.goto('/chat')
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('floating-settings-panel')).toBeHidden()
+    await expect(page).toHaveURL(initialUrl)
     await expect(page.getByTestId('chat-shell')).toBeVisible({ timeout: 10000 })
   })
 
@@ -55,6 +65,10 @@ test.describe('Comprehensive Chat Flow', () => {
       await page.goto(route)
       await expect(page.getByTestId('chat-shell')).toBeVisible({ timeout: 10000 })
       await expect(page.getByTestId('floating-settings-trigger')).toBeVisible()
+      if (route !== '/chat') {
+        await expect(page).toHaveURL(/\/chat\/?$/)
+        await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+      }
     }
   })
 
@@ -73,7 +87,11 @@ test.describe('Comprehensive Chat Flow', () => {
 
     for (const route of ['/chat', '/workspace/dashboard', '/operations/agent-monitor', '/admin/settings']) {
       await page.goto(route)
-      await page.waitForTimeout(500)
+      await expect(page.getByTestId('chat-shell')).toBeVisible({ timeout: 10000 })
+      if (route !== '/chat') {
+        await expect(page).toHaveURL(/\/chat\/?$/)
+        await expect(page.getByTestId('floating-settings-panel')).toBeVisible()
+      }
     }
 
     expect(consoleErrors).toHaveLength(0)
