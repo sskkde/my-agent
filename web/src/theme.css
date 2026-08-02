@@ -245,6 +245,18 @@
   --warm-paper-hover-overlay: rgba(247, 242, 232, 0.05);
   --warm-paper-active-overlay: rgba(247, 242, 232, 0.08);
   --warm-paper-focus-ring: rgba(143, 183, 198, 0.42);
+
+  /* Chat workspace surfaces — align with warm-paper dark tokens so
+     workspace cards/panels (e.g. Context Desk) stay dark instead of
+     inheriting the light defaults from styles.css. */
+  --chat-workspace-bg: var(--warm-paper-bg);
+  --chat-workspace-bg-elevated: var(--warm-paper-bg-elevated);
+  --chat-workspace-bg-deep: var(--warm-paper-bg-deep);
+  --chat-workspace-border: var(--warm-paper-border);
+  --chat-workspace-border-strong: #5a5044;
+  --chat-workspace-text: var(--warm-paper-text);
+  --chat-workspace-text-secondary: var(--warm-paper-text-secondary);
+  --chat-workspace-text-muted: var(--warm-paper-text-muted);
 }
 
 @media (max-width: 640px) {
