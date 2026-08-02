@@ -1,9 +1,8 @@
 /* ==========================================================================
    Settings Primitives - SettingsList + SettingsRow
    ==========================================================================
-   Reusable card/list/row primitives for the FloatingSettingsMenu and
-   full-screen settings page. Uses --chat-* CSS variables from chat-theme.css
-   to stay consistent with the Warm-Paper design system.
+    Reusable card/list/row primitives for the FloatingSettingsMenu and
+    full-screen settings page.
    ========================================================================== */
 
 /* --- SettingsList (card container) --- */
@@ -11,9 +10,10 @@
 .settings-list {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--chat-border, rgba(216, 207, 190, 0.45));
-  border-radius: var(--chat-radius-sm, 3px);
-  background-color: var(--chat-bg-card, #fbf7ee);
+  border: 0;
+  border-radius: var(--warm-paper-radius-md);
+  background-color: var(--warm-paper-bg-elevated);
+  box-shadow: inset 0 0 0 var(--warm-paper-hairline-width) var(--warm-paper-border);
   overflow: hidden;
 }
 
@@ -22,16 +22,17 @@
 .settings-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--chat-border, rgba(216, 207, 190, 0.3));
+  gap: var(--warm-paper-space-3);
+  min-height: var(--warm-paper-touch-target);
+  padding: var(--warm-paper-space-2) var(--warm-paper-space-3);
+  border-bottom: var(--warm-paper-hairline-width) solid var(--warm-paper-border);
   text-align: left;
   width: 100%;
   background: transparent;
   cursor: default;
   font: inherit;
-  color: var(--chat-text, #3d3833);
-  transition: background-color 0.15s ease;
+  color: var(--warm-paper-text);
+  transition: background-color var(--warm-paper-motion-fast) ease;
 }
 
 .settings-row:last-child {
@@ -45,33 +46,33 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  color: var(--chat-text-muted, #6b655d);
+  width: var(--warm-paper-space-4);
+  height: var(--warm-paper-space-4);
+  color: var(--warm-paper-text-muted);
 }
 
 .settings-row__copy {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--warm-paper-space-1);
   flex: 1;
   min-width: 0;
 }
 
 .settings-row__title {
-  font-size: 13px;
+  font-size: var(--warm-paper-font-body);
   font-weight: 500;
   line-height: 1.3;
-  color: var(--chat-text, #3d3833);
+  color: var(--warm-paper-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .settings-row__description {
-  font-size: 12px;
+  font-size: var(--warm-paper-font-label);
   line-height: 1.3;
-  color: var(--chat-text-faint, #9a948c);
+  color: var(--warm-paper-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -87,8 +88,8 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  color: var(--chat-text-faint, #9a948c);
-  transition: transform 0.15s ease, color 0.15s ease;
+  color: var(--warm-paper-text-muted);
+  transition: transform var(--warm-paper-motion-fast) ease, color var(--warm-paper-motion-fast) ease;
 }
 
 /* --- Navigation rows (clickable) --- */
@@ -98,36 +99,43 @@
 }
 
 .settings-row--nav:hover {
-  background-color: var(--chat-accent-subtle, rgba(83, 125, 150, 0.06));
+  background-color: var(--warm-paper-hover-overlay);
 }
 
 .settings-row--nav:hover .settings-row__arrow {
-  color: var(--chat-accent, #537d96);
+  color: var(--warm-paper-accent);
   transform: translateX(2px);
 }
 
 .settings-row--nav:hover .settings-row__title {
-  color: var(--chat-accent, #537d96);
+  color: var(--warm-paper-accent);
 }
 
 /* --- Active navigation row --- */
 
 .settings-row--active {
-  background-color: var(--chat-accent-subtle, rgba(83, 125, 150, 0.08));
+  background-color: var(--warm-paper-accent-subtle);
 }
 
 .settings-row--active .settings-row__title {
-  color: var(--chat-accent, #537d96);
+  color: var(--warm-paper-accent);
   font-weight: 600;
 }
 
 .settings-row--active .settings-row__arrow {
-  color: var(--chat-accent, #537d96);
+  color: var(--warm-paper-accent);
 }
 
 /* --- Focus visible (a11y) --- */
 
 .settings-row--nav:focus-visible {
-  outline: 2px solid var(--chat-accent, #537d96);
-  outline-offset: -2px;
+  outline: var(--warm-paper-focus-width) solid var(--warm-paper-accent);
+  outline-offset: var(--warm-paper-focus-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-row,
+  .settings-row__arrow {
+    transition: none;
+  }
 }
