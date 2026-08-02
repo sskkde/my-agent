@@ -46,6 +46,9 @@ Warm-Paper is a paper-inspired design system for the Agent Platform frontend. It
 | `--warm-paper-success` | `#4a6b4a` | Ink green |
 | `--warm-paper-warning` | `#8b6f47` | Aged paper amber |
 | `--warm-paper-danger` | `#8b2c1f` | Deep coral (zhu sha) |
+| `--warm-paper-success-subtle` | `rgba(74, 107, 74, 0.12)` | Success surface |
+| `--warm-paper-warning-subtle` | `rgba(139, 111, 71, 0.12)` | Warning surface |
+| `--warm-paper-danger-subtle` | `rgba(139, 44, 31, 0.12)` | Error surface |
 
 ### Border Radius (minimal, seal-like)
 
@@ -91,10 +94,31 @@ Modal layout uses the existing 4px rhythm and a compact type scale:
 |-------|-------|-------|
 | `--warm-paper-space-1` … `--warm-paper-space-6` | `4px` … `32px` | Modal gaps, padding, and gutters |
 | `--warm-paper-font-caption` | `0.6875rem` | Group labels and metadata |
+| `--warm-paper-font-label` | `0.75rem` | Compact labels and badges |
 | `--warm-paper-font-body` | `0.8125rem` | Navigation and body copy |
+| `--warm-paper-font-section` | `0.875rem` | Section headings and form labels |
 | `--warm-paper-font-title` | `1rem` | Modal section titles |
+| `--warm-paper-control-size` | `32px` | Standard compact trigger |
 | `--warm-paper-modal-nav-width` | `224px` | Desktop/tablet modal navigation |
 | `--warm-paper-modal-context-width` | `264px` | Desktop/tablet context desk |
+| `--warm-paper-modal-nav-min-width` | `200px` | Tablet navigation floor |
+| `--warm-paper-modal-nav-mobile-width` | `108px` | Phone navigation rail |
+| `--warm-paper-modal-width` / `--warm-paper-modal-height` | `1180px` / `760px` | Modal maximum bounds |
+| `--warm-paper-effective-column-min` | `140px` | Responsive effective-config column floor |
+| `--warm-paper-control-size-sm` | `28px` | Compact visual control height |
+| `--warm-paper-touch-target` | `36px` | Minimum desktop interactive hit area |
+| `--warm-paper-hairline-width` | `0.5px` | Inset list/card edge and fine dividers |
+| `--warm-paper-focus-width` / `--warm-paper-focus-offset` | `2px` / `-2px` | Keyboard focus ring |
+| `--warm-paper-scrim` | `rgba(42, 38, 34, 0.52)` | Modal overlay |
+| `--warm-paper-disabled-opacity` | `0.5` | Disabled control state |
+| `--warm-paper-motion-fast` | `150ms` | Compact control transitions |
+
+### Theme variants
+
+`default` and `warm-paper` use the light paper palette. `dark` keeps the same
+semantic token names and compact geometry while swapping the surface, ink, and
+semantic values for charcoal paper and light ink. Components must continue to
+reference `--warm-paper-*` tokens rather than branching on the theme name.
 
 ## File Structure
 
@@ -107,13 +131,40 @@ web/src/features/settings/
   FloatingSettingsMenu.tsx              # Floating settings trigger + popover
   floating-settings.css                 # Floating menu styles
   SettingsTab.tsx                       # /admin/settings route (uses SettingsContent)
+web/src/components/settings/
+  SettingsList.tsx                       # Inset-border grouped settings list
+  SettingsRow.tsx                        # Compact navigation/control row
+  settings-primitives.css                # Warm-Paper primitive styles
 ```
 
 ## CSS Architecture
 
 - `styles.css` defines base design tokens and the Hana-inspired override at the bottom.
 - `theme.css` provides `[data-theme="warm-paper"]` overrides that activate the warm-paper palette when the theme is selected. It is imported **after** `styles.css` in `App.tsx`.
-- `floating-settings.css` provides styles for the floating settings menu popover.
+- `theme.css` also maps the shared tokens to the charcoal `dark` variant; component CSS never uses theme-specific selectors for behavior.
+- `floating-settings.css` provides styles for the floating settings menu popover and secondary modal.
+- `settings-primitives.css` is the shared SettingsList/SettingsRow layer; it uses an inset hairline rather than a heavy card border.
+
+## Settings visual primitives
+
+- **SettingsList** is a grouped surface: `--warm-paper-bg-elevated`,
+  `--warm-paper-radius-md`, and `inset 0 0 0 var(--warm-paper-hairline-width)
+  var(--warm-paper-border)`. Rows are separated by the same hairline.
+- **SettingsRow** is a compact 36px minimum row with a 28px visual control
+  rhythm. Navigation rows use only the subtle accent surface when hovered or
+  active; they do not add a second shadow or saturated fill.
+- **Modal navigation** uses a 224px desktop/tablet rail, a 108px phone rail,
+  sticky content heading, independently scrolling content, and a 264px context
+  desk. All three columns collapse to the existing mobile drawer behavior at
+  640px.
+- **Compact controls** use `--warm-paper-control-size-sm` for the visual
+  switch/select/button/input geometry. Labels and controls remain at least
+  `--warm-paper-touch-target` when they are directly interactive, and mobile
+  controls use the existing 44px `--mobile-touch-target`.
+- **State surfaces** map loading and empty content to muted ink, saving and
+  information to the seal accent, success to ink green, warning to aged amber,
+  and errors/destructive actions to zhu-sha danger tokens. Disabled controls
+  retain their layout and use reduced opacity rather than disappearing.
 
 ## Component Patterns
 
