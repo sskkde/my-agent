@@ -42,6 +42,6 @@ setup('authenticate', async ({ page, request }) => {
     await page.getByTestId('login-submit').click();
   }
 
-  await page.waitForSelector('[data-testid="sidebar"], [data-testid="product-nav"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="agent-shell"]', { timeout: 10000 });
   await page.context().storageState({ path: authFile });
 });

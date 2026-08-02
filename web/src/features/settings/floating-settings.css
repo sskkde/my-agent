@@ -148,3 +148,153 @@
     max-height: calc(100vh - 32px);
   }
 }
+
+/* ==========================================================================
+   Vertical Tab Layout (Phase 2)
+   ==========================================================================
+   Left: vertical tab navigation with SectionTitle grouping
+   Right: content panel that swaps based on active tab
+   Uses --chat-* variables from chat-theme.css for Warm-Paper consistency.
+   ========================================================================== */
+
+.floating-settings__panel--tabs {
+  width: 640px;
+  flex-direction: row;
+}
+
+.floating-settings__tabnav {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--chat-border, var(--warm-paper-border, var(--border)));
+  padding: 8px 0;
+  overflow-y: auto;
+  background: var(--chat-bg-elevated, var(--warm-paper-bg-deep, rgba(0, 0, 0, 0.02)));
+}
+
+.floating-settings__section-title {
+  padding: 12px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--chat-text-faint, var(--warm-paper-text-muted, var(--muted)));
+  user-select: none;
+}
+
+.floating-settings__tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--chat-text-muted, var(--warm-paper-text-secondary, var(--text)));
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.floating-settings__tab:hover {
+  background: var(--chat-accent-subtle, rgba(83, 125, 150, 0.06));
+}
+
+.floating-settings__tab--active {
+  background: var(--chat-accent-subtle, rgba(83, 125, 150, 0.08));
+  color: var(--chat-accent, var(--warm-paper-accent, var(--accent)));
+  font-weight: 600;
+}
+
+.floating-settings__tab--active .floating-settings__tab-icon {
+  color: var(--chat-accent, var(--warm-paper-accent, var(--accent)));
+}
+
+.floating-settings__tab-icon {
+  flex-shrink: 0;
+  color: var(--chat-text-faint, var(--warm-paper-text-muted, var(--muted)));
+  transition: color 150ms ease;
+}
+
+.floating-settings__tab-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.floating-settings__tab:focus-visible {
+  outline: 2px solid var(--chat-accent, var(--warm-paper-accent, var(--accent)));
+  outline-offset: -2px;
+}
+
+.floating-settings__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.floating-settings__content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--chat-border, var(--warm-paper-border, var(--border)));
+  flex-shrink: 0;
+}
+
+.floating-settings__content-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chat-text, var(--warm-paper-text, var(--text)));
+}
+
+.floating-settings__content-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.floating-settings__nav-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Responsive: narrow tabnav on small screens */
+@media (max-width: 768px) {
+  .floating-settings__panel--tabs {
+    width: 100vw;
+    max-width: 480px;
+  }
+
+  .floating-settings__tabnav {
+    width: 140px;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-settings__panel--tabs {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 32px);
+  }
+
+  .floating-settings__tabnav {
+    width: 120px;
+  }
+
+  .floating-settings__tab {
+    padding: 8px 12px;
+  }
+}

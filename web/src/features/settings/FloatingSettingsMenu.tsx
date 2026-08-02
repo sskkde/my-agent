@@ -1,17 +1,44 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import SettingsContent from './SettingsContent'
+import { useNavigate } from 'react-router-dom'
+import NavMenuContent from './NavMenuContent'
+import GeneralTab from './GeneralTab'
+import AppearanceTab from './AppearanceTab'
+import ProviderTab from './ProviderTab'
+import AgentTab from './AgentTab'
 import { useAuth } from '../../context/AuthContext'
+import { ICONS } from '../../navigation/icons'
+import { NAV_FUNCTION_GROUPS } from '../../navigation/nav-groups-v2'
+import { navigationToRoute } from '../../router/route-mapping'
+import type { TabId } from '../../navigation/navigation-config'
 import './floating-settings.css'
+
+type SettingsPanelTab = string
+
+interface SettingsTabDef {
+  id: string
+  label: string
+  iconKey: string
+}
+
+const SETTINGS_TABS: SettingsTabDef[] = [
+  { id: 'settings-general', label: '通用', iconKey: 'settings' },
+  { id: 'settings-appearance', label: '外观', iconKey: 'info' },
+  { id: 'settings-provider', label: 'Provider', iconKey: 'server' },
+  { id: 'settings-agent', label: '代理', iconKey: 'activity' },
+]
+
+const DEFAULT_TAB: SettingsPanelTab = `nav-${NAV_FUNCTION_GROUPS[0]?.id ?? 'monitor'}`
 
 const FloatingSettingsMenu: React.FC = () => {
   const { logout } = useAuth()
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<SettingsPanelTab>(DEFAULT_TAB)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
   const close = useCallback(() => {
     setIsOpen(false)
-    // Return focus to trigger after close
     requestAnimationFrame(() => {
       triggerRef.current?.focus()
     })
@@ -21,7 +48,14 @@ const FloatingSettingsMenu: React.FC = () => {
     setIsOpen((prev) => !prev)
   }, [])
 
-  // Close on Escape
+  const handleNavigate = useCallback(
+    (tabId: TabId) => {
+      navigate(navigationToRoute(tabId))
+      close()
+    },
+    [navigate, close],
+  )
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -36,7 +70,6 @@ const FloatingSettingsMenu: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, close])
 
-  // Close on outside click
   useEffect(() => {
     if (!isOpen) return
 
@@ -57,6 +90,46 @@ const FloatingSettingsMenu: React.FC = () => {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [isOpen, close])
+
+  const activeGroup = NAV_FUNCTION_GROUPS.find((g) => `nav-${g.id}` === activeTab)
+  const activeSettingsTab = SETTINGS_TABS.find((t) => t.id === activeTab)
+  const contentTitle = activeGroup?.label ?? activeSettingsTab?.label ?? '设置'
+
+  const renderContent = () => {
+    if (activeGroup) {
+      return <NavMenuContent group={activeGroup} onNavigate={handleNavigate} />
+    }
+    switch (activeTab) {
+      case 'settings-general':
+        return <GeneralTab />
+      case 'settings-appearance':
+        return <AppearanceTab />
+      case 'settings-provider':
+        return <ProviderTab />
+      case 'settings-agent':
+        return <AgentTab />
+      default:
+        return <GeneralTab />
+    }
+  }
+
+  const renderTabButton = (tabId: string, label: string, iconKey: string, testIdPrefix: string) => {
+    const Icon = ICONS[iconKey]
+    const isActive = activeTab === tabId
+    return (
+      <button
+        key={tabId}
+        className={`floating-settings__tab ${isActive ? 'floating-settings__tab--active' : ''}`}
+        onClick={() => setActiveTab(tabId)}
+        aria-selected={isActive}
+        role="tab"
+        data-testid={`${testIdPrefix}-${tabId}`}
+      >
+        {Icon && <Icon width={16} height={16} className="floating-settings__tab-icon" />}
+        <span className="floating-settings__tab-label">{label}</span>
+      </button>
+    )
+  }
 
   return (
     <div className="floating-settings">
@@ -80,25 +153,39 @@ const FloatingSettingsMenu: React.FC = () => {
         <div
           ref={panelRef}
           id="floating-settings-panel"
-          className="floating-settings__panel"
+          className="floating-settings__panel floating-settings__panel--tabs"
           role="dialog"
           aria-label="设置"
           data-testid="floating-settings-panel"
         >
-          <div className="floating-settings__panel-header">
-            <span className="floating-settings__panel-title">设置</span>
-            <button
-              className="floating-settings__close"
-              onClick={close}
-              aria-label="关闭设置"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true" width="14" height="14">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="floating-settings__panel-body">
-            <SettingsContent embedMode />
+          <nav className="floating-settings__tabnav" aria-label="设置导航">
+            <div className="floating-settings__section-title">导航</div>
+            {NAV_FUNCTION_GROUPS.map((group) =>
+              renderTabButton(`nav-${group.id}`, group.label, group.iconKey, 'settings-tab'),
+            )}
+
+            <div className="floating-settings__section-title">设置</div>
+            {SETTINGS_TABS.map((tab) =>
+              renderTabButton(tab.id, tab.label, tab.iconKey, 'settings-tab'),
+            )}
+          </nav>
+
+          <div className="floating-settings__content">
+            <div className="floating-settings__content-header">
+              <span className="floating-settings__content-title">{contentTitle}</span>
+              <button
+                className="floating-settings__close"
+                onClick={close}
+                aria-label="关闭设置"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true" width="14" height="14">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="floating-settings__content-body">{renderContent()}</div>
+
             {logout && (
               <div className="floating-settings__logout-row">
                 <button
