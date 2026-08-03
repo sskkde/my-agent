@@ -88,6 +88,9 @@ import type {
   BrowserInputRequest,
   BrowserInputResponse,
   BrowserStreamEvent,
+  ChildSessionListResponse,
+  ChildSessionResumeResponse,
+  ChildTaskCancelResponse,
 } from './types'
 
 const API_BASE = '/api/v1'
@@ -400,6 +403,57 @@ export async function getSessionTimeline(
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/timeline${query}`, { credentials: 'include' })
   const result = await parseResponse<{ items: ConsoleTimelineEvent[]; total: number; hasMore: boolean }>(response)
   return { events: result.items, total: result.total, hasMore: result.hasMore }
+}
+
+export async function getChildSessions(
+  sessionId: string,
+  limit?: number,
+  offset?: number,
+  status?: 'active' | 'archived' | 'closed',
+): Promise<ChildSessionListResponse> {
+  const params = new URLSearchParams()
+  if (limit !== undefined) params.append('limit', String(limit))
+  if (offset !== undefined) params.append('offset', String(offset))
+  if (status) params.append('status', status)
+  const query = params.toString() ? `?${params.toString()}` : ''
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/children${query}`, {
+    credentials: 'include',
+  })
+  return parseResponse<ChildSessionListResponse>(response)
+}
+
+export const listChildSessions = getChildSessions
+
+export async function resumeChildSession(
+  parentSessionId: string,
+  childSessionId: string,
+): Promise<ChildSessionResumeResponse> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/sessions/${parentSessionId}/children/${childSessionId}/resume`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    },
+  )
+  return parseResponse<ChildSessionResumeResponse>(response)
+}
+
+export async function cancelChildSession(
+  parentSessionId: string,
+  childSessionId: string,
+): Promise<ChildTaskCancelResponse> {
+  const response = await fetchWithTimeout(
+    `${API_BASE}/sessions/${parentSessionId}/children/${childSessionId}/cancel`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    },
+  )
+  return parseResponse<ChildTaskCancelResponse>(response)
 }
 
 export async function getInstances(): Promise<InstancesResponse> {

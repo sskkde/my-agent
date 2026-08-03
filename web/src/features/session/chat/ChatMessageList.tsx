@@ -4,10 +4,13 @@ import ChatWelcome from './ChatWelcome'
 import ChatMessage from './ChatMessage'
 import ReasoningBlock from './ReasoningBlock'
 import ToolCallCard from '../../../components/ToolCallCard'
+import BackgroundTaskCard from '../../../components/BackgroundTaskCard'
+import { filterParentTimelineEvents, getChildTaskProfileLabel } from '../session-utils'
 import { mergeToolEvents } from './mergeToolEvents'
 
 export interface ChatMessageListProps {
   events: ConsoleTimelineEvent[]
+  parentSessionId?: string
   loading: boolean
   error?: string
   onPromptSelect: (prompt: string) => void
@@ -31,6 +34,7 @@ const isPlaceholder = (event: ConsoleTimelineEvent): boolean =>
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
   events,
+  parentSessionId,
   loading,
   error,
   onPromptSelect,
@@ -43,7 +47,10 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   const isLoadingMoreRef = useRef(false)
   const prevScrollHeightRef = useRef(0)
 
-  const streamItems = useMemo(() => mergeToolEvents(events), [events])
+  const streamItems = useMemo(() => {
+    if (!parentSessionId) return mergeToolEvents(events)
+    return mergeToolEvents(filterParentTimelineEvents(events, parentSessionId))
+  }, [events, parentSessionId])
 
   const textMessageEvents = useMemo(
     () =>
@@ -92,6 +99,22 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
         ) : (
           <div className="chat-messages">
             {streamItems.map((item) => {
+              if (item.kind === 'task') {
+                return (
+                  <div key={item.key} className="chat-task-event" data-testid="chat-task-event">
+                    <BackgroundTaskCard
+                      taskId={item.taskId}
+                      label={getChildTaskProfileLabel(item.agentProfile)}
+                      status={item.status}
+                      progress={item.progress}
+                      message={item.safeMessage}
+                      agentProfile={item.agentProfile}
+                      launchMode={item.launchMode}
+                    />
+                  </div>
+                )
+              }
+
               if (item.kind === 'tool') {
                 return (
                   <div key={item.key} className="chat-tool-event" data-testid="chat-tool-event">

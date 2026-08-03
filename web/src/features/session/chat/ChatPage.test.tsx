@@ -979,6 +979,91 @@ describe('ChatPage reasoning visibility (T9)', () => {
     })
   })
 
+  it('renders parent lifecycle events as one task card and excludes child text/reasoning from chat messages', async () => {
+    let onEvent: ((event: ConsoleTimelineEvent, source?: 'live' | 'historical') => void) | undefined
+    vi.mocked(client.subscribeSessionTimeline).mockImplementation(
+      (_sessionId, eventCb, _onError, _onStatus, _onToken, onOpen) => {
+        onEvent = eventCb
+        onOpen?.()
+        return () => {}
+      },
+    )
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ChatPage initialSessionId="session-1" />
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(client.subscribeSessionTimeline).toHaveBeenCalled())
+
+    const lifecycle = (eventId: string, eventType: ConsoleTimelineEvent['eventType'], metadata: Record<string, unknown>, content: string) => ({
+      eventId,
+      eventType,
+      sessionId: 'session-1',
+      timestamp: '2024-01-01T00:00:03Z',
+      content,
+      metadata,
+      actor: 'subagent',
+    } satisfies ConsoleTimelineEvent)
+
+    act(() => {
+      onEvent?.(
+        lifecycle('child-started', 'run_started', {
+          taskId: 'child-live',
+          childSessionId: 'child-live',
+          runId: 'run-live',
+          agentProfile: 'planner',
+          launchMode: 'foreground',
+          status: 'running',
+        }, 'CHILD_REASONING_SHOULD_NOT_APPEAR'),
+      )
+    })
+    const taskCard = await screen.findByTestId('bg-task-card')
+    expect(taskCard).toHaveAttribute('data-task-id', 'child-live')
+
+    act(() => {
+      onEvent?.(
+        lifecycle('child-progress', 'run_progress', {
+          taskId: 'child-live',
+          childSessionId: 'child-live',
+          runId: 'run-live',
+          agentProfile: 'planner',
+          launchMode: 'foreground',
+          status: 'running',
+          progress: 55,
+        }, 'CHILD_TEXT_SHOULD_NOT_APPEAR'),
+      )
+    })
+    await waitFor(() => expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '55'))
+    expect(screen.getByTestId('bg-task-card')).toBe(taskCard)
+
+    act(() => {
+      onEvent?.(
+        lifecycle('child-completed', 'run_completed', {
+          taskId: 'child-live',
+          childSessionId: 'child-live',
+          runId: 'run-live',
+          agentProfile: 'planner',
+          launchMode: 'foreground',
+          status: 'completed',
+          progress: 100,
+          safeMessage: '子任务已完成',
+        }, 'CHILD_FINAL_TEXT_SHOULD_NOT_APPEAR'),
+      )
+    })
+    await waitFor(() => expect(screen.getByText('子任务已完成')).toBeInTheDocument())
+    expect(screen.getByTestId('bg-task-card')).toBe(taskCard)
+
+    expect(screen.getAllByTestId('bg-task-card')).toHaveLength(1)
+    expect(screen.queryByText('CHILD_REASONING_SHOULD_NOT_APPEAR')).not.toBeInTheDocument()
+    expect(screen.queryByText('CHILD_TEXT_SHOULD_NOT_APPEAR')).not.toBeInTheDocument()
+    expect(screen.queryByText('CHILD_FINAL_TEXT_SHOULD_NOT_APPEAR')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('chat-reasoning-block')).not.toBeInTheDocument()
+  })
+
   it('hides thinking_summary events when reasoningVisible is false', async () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ reasoningVisible: false }))
     vi.mocked(client.getSessionTimeline).mockResolvedValue({ events: [], total: 0 })

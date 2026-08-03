@@ -643,4 +643,137 @@ describe('mergeToolEvents', () => {
       expect(items[1].event.content).toBe('[PROCESSING_ERROR] something went wrong')
     }
   })
+
+  it('keeps one stable lifecycle task item while stages converge, without child text or reasoning', () => {
+    const started = makeEvent({
+      eventId: 'child-task:child-1:started',
+      eventType: 'run_started',
+      content: 'child reasoning must not be shown',
+      metadata: {
+        taskId: 'child-1',
+        childSessionId: 'child-1',
+        runId: 'run-1',
+        agentProfile: 'document_processor',
+        launchMode: 'foreground',
+        status: 'running',
+      },
+    })
+    const progress = makeEvent({
+      eventId: 'child-task:run-1:progress',
+      eventType: 'run_progress',
+      content: 'child intermediate text must not be shown',
+      metadata: {
+        taskId: 'child-1',
+        childSessionId: 'child-1',
+        runId: 'run-1',
+        agentProfile: 'document_processor',
+        launchMode: 'foreground',
+        status: 'running',
+        progress: 45,
+      },
+    })
+    const completed = makeEvent({
+      eventId: 'child-task:run-1:completed',
+      eventType: 'run_completed',
+      content: 'safe result summary',
+      metadata: {
+        taskId: 'child-1',
+        childSessionId: 'child-1',
+        runId: 'run-1',
+        agentProfile: 'document_processor',
+        launchMode: 'foreground',
+        status: 'completed',
+        progress: 100,
+        safeMessage: 'safe result summary',
+      },
+    })
+
+    const items = mergeToolEvents([started, progress, completed])
+    const tasks = items.filter((item) => item.kind === 'task')
+
+    expect(tasks).toHaveLength(1)
+    expect(tasks[0]).toMatchObject({
+      kind: 'task',
+      key: 'task-child-1',
+      taskId: 'child-1',
+      status: 'completed',
+      progress: 100,
+      safeMessage: 'safe result summary',
+    })
+    expect(items.some((item) => item.kind === 'message' && item.event.content?.includes('child'))).toBe(false)
+  })
+
+  it('deduplicates reconnect snapshots and resolves out-of-order lifecycle events to one terminal card', () => {
+    const completed = makeEvent({
+      eventId: 'child-task:run-2:completed',
+      eventType: 'run_completed',
+      timestamp: '2026-07-15T12:00:03.000Z',
+      metadata: {
+        taskId: 'child-2',
+        childSessionId: 'child-2',
+        runId: 'run-2',
+        agentProfile: 'planner',
+        launchMode: 'background',
+        status: 'completed',
+        progress: 100,
+      },
+    })
+    const failedLateDuplicate = makeEvent({
+      eventId: 'child-task:run-2:failed',
+      eventType: 'run_failed',
+      timestamp: '2026-07-15T12:00:01.000Z',
+      metadata: {
+        taskId: 'child-2',
+        childSessionId: 'child-2',
+        runId: 'run-2',
+        agentProfile: 'planner',
+        launchMode: 'background',
+        status: 'failed',
+        safeMessage: 'should not replace terminal success',
+      },
+    })
+    const snapshotDuplicate = { ...completed }
+
+    const items = mergeToolEvents([completed, failedLateDuplicate, snapshotDuplicate])
+    const tasks = items.filter((item) => item.kind === 'task')
+
+    expect(tasks).toHaveLength(1)
+    expect(tasks[0]).toMatchObject({
+      key: 'task-child-2',
+      status: 'completed',
+      progress: 100,
+    })
+    expect(tasks[0]).not.toHaveProperty('safeMessage', 'should not replace terminal success')
+  })
+
+  it('uses safe fallback messages when terminal lifecycle metadata omits safeMessage', () => {
+    const failed = makeEvent({
+      eventId: 'child-task:run-4:failed',
+      eventType: 'run_failed',
+      metadata: {
+        taskId: 'child-4',
+        childSessionId: 'child-4',
+        runId: 'run-4',
+        agentProfile: 'planner',
+        launchMode: 'foreground',
+        status: 'failed',
+      },
+    })
+    const cancelled = makeEvent({
+      eventId: 'child-task:run-5:cancelled',
+      eventType: 'run_cancelled',
+      metadata: {
+        taskId: 'child-5',
+        childSessionId: 'child-5',
+        runId: 'run-5',
+        agentProfile: 'planner',
+        launchMode: 'foreground',
+        status: 'cancelled',
+      },
+    })
+
+    const tasks = mergeToolEvents([failed, cancelled]).filter((item) => item.kind === 'task')
+
+    expect(tasks.map((task) => task.safeMessage)).toEqual(['子任务执行失败，请稍后重试', '任务已取消'])
+  })
 })

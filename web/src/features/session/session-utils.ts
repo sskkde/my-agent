@@ -8,7 +8,7 @@
  * - Date formatting
  */
 
-import type { ConsoleTimelineEvent } from '../../api/types'
+import type { ChildTaskStatus, ConsoleTimelineEvent, ConsoleTimelineEventType } from '../../api/types'
 import { LOCAL_USER_MESSAGE_PREFIX, DATE_FORMAT_LOCALE, DATE_FORMAT_OPTIONS } from './session-constants'
 
 // ============================================================================
@@ -44,6 +44,125 @@ export interface StreamingDraft {
   /** Kernel attempt / turn id this draft belongs to. */
   attemptId: string
 }
+
+const CHILD_TASK_LIFECYCLE_EVENT_TYPES = new Set<ConsoleTimelineEventType>([
+  'run_started',
+  'run_progress',
+  'run_completed',
+  'run_failed',
+  'run_cancelled',
+])
+
+const CHILD_TASK_STATUS_VALUES: ReadonlySet<string> = new Set([
+  'queued',
+  'running',
+  'completed',
+  'failed',
+  'cancelled',
+])
+
+const isChildTaskStatus = (value: unknown): value is ChildTaskStatus =>
+  typeof value === 'string' && CHILD_TASK_STATUS_VALUES.has(value)
+
+const CHILD_TASK_STATUS_BY_EVENT: Partial<Record<ConsoleTimelineEventType, ChildTaskStatus>> = {
+  run_started: 'running',
+  run_progress: 'running',
+  run_completed: 'completed',
+  run_failed: 'failed',
+  run_cancelled: 'cancelled',
+}
+
+const TERMINAL_CHILD_TASK_STATUSES = new Set<ChildTaskStatus>(['completed', 'failed', 'cancelled'])
+
+export const isChildTaskLifecycleEvent = (event: ConsoleTimelineEvent): boolean =>
+  CHILD_TASK_LIFECYCLE_EVENT_TYPES.has(event.eventType) &&
+  (typeof event.metadata?.taskId === 'string' || typeof event.metadata?.childSessionId === 'string')
+
+export const getChildTaskId = (event: ConsoleTimelineEvent): string | undefined => {
+  if (!isChildTaskLifecycleEvent(event)) return undefined
+  const taskId = event.metadata?.taskId
+  if (typeof taskId === 'string' && taskId.trim()) return taskId
+  const childSessionId = event.metadata?.childSessionId
+  return typeof childSessionId === 'string' && childSessionId.trim() ? childSessionId : undefined
+}
+
+export const getChildTaskCardKey = (event: ConsoleTimelineEvent): string | undefined => {
+  const taskId = getChildTaskId(event)
+  return taskId ? `task-${taskId}` : undefined
+}
+
+const childTaskProfileLabels: Record<string, string> = {
+  document_processor: '文档处理',
+  planner: '规划器',
+  search_processor: '搜索代理',
+}
+
+export const getChildTaskProfileLabel = (profile: string | undefined): string =>
+  profile ? (childTaskProfileLabels[profile] ?? profile) : '子任务'
+
+export const getChildTaskLifecycleStatus = (event: ConsoleTimelineEvent): ChildTaskStatus => {
+  const metadataStatus = event.metadata?.status
+  if (isChildTaskStatus(metadataStatus)) return metadataStatus
+  return CHILD_TASK_STATUS_BY_EVENT[event.eventType] ?? 'running'
+}
+
+const lifecycleTimestamp = (event: ConsoleTimelineEvent): number => {
+  const timestamp = Date.parse(event.timestamp)
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const lifecycleStatusTieRank: Record<ChildTaskStatus, number> = {
+  queued: 0,
+  running: 1,
+  cancelled: 2,
+  failed: 3,
+  completed: 4,
+}
+
+const shouldUseIncomingLifecycleEvent = (
+  existing: ConsoleTimelineEvent,
+  incoming: ConsoleTimelineEvent,
+): boolean => {
+  const existingStatus = getChildTaskLifecycleStatus(existing)
+  const incomingStatus = getChildTaskLifecycleStatus(incoming)
+  const existingTerminal = TERMINAL_CHILD_TASK_STATUSES.has(existingStatus)
+  const incomingTerminal = TERMINAL_CHILD_TASK_STATUSES.has(incomingStatus)
+
+  if (existingTerminal !== incomingTerminal) return incomingTerminal
+
+  if (existingTerminal && incomingTerminal) {
+    const existingRank = lifecycleStatusTieRank[existingStatus]
+    const incomingRank = lifecycleStatusTieRank[incomingStatus]
+    if (existingRank !== incomingRank) return incomingRank > existingRank
+  }
+
+  const existingTime = lifecycleTimestamp(existing)
+  const incomingTime = lifecycleTimestamp(incoming)
+  if (existingTerminal && incomingTerminal && existingTime !== incomingTime) {
+    return incomingTime > existingTime
+  }
+  if (!existingTerminal && !incomingTerminal && existingTime !== incomingTime) {
+    return incomingTime > existingTime
+  }
+
+  const existingProgress = typeof existing.metadata?.progress === 'number' ? existing.metadata.progress : -1
+  const incomingProgress = typeof incoming.metadata?.progress === 'number' ? incoming.metadata.progress : -1
+  if (!existingTerminal && incomingProgress !== existingProgress) return incomingProgress > existingProgress
+
+  const existingRank = lifecycleStatusTieRank[existingStatus]
+  const incomingRank = lifecycleStatusTieRank[incomingStatus]
+  if (existingRank !== incomingRank) return incomingRank > existingRank
+  return incoming.eventId.localeCompare(existing.eventId) > 0
+}
+
+const mergeLifecycleEvent = (existing: ConsoleTimelineEvent, incoming: ConsoleTimelineEvent): ConsoleTimelineEvent => {
+  if (existing.eventId === incoming.eventId) return incoming
+  const selected = shouldUseIncomingLifecycleEvent(existing, incoming) ? incoming : existing
+  return selected
+}
+
+export const getTimelineEventKey = (event: ConsoleTimelineEvent): string =>
+  getChildTaskCardKey(event) ?? event.eventId
 
 // ============================================================================
 // Local Message Event Creation
@@ -447,8 +566,18 @@ export function upsertTimelineEvent(prev: ConsoleTimelineEvent[], event: Console
   const byId = prev.findIndex((e) => e.eventId === event.eventId)
   if (byId >= 0) {
     const next = [...prev]
-    next[byId] = event
+    next[byId] = isChildTaskLifecycleEvent(next[byId]) ? mergeLifecycleEvent(next[byId], event) : event
     return next
+  }
+
+  if (isChildTaskLifecycleEvent(event)) {
+    const taskKey = getChildTaskCardKey(event)
+    const taskIndex = taskKey ? prev.findIndex((candidate) => getChildTaskCardKey(candidate) === taskKey) : -1
+    if (taskIndex >= 0) {
+      const next = [...prev]
+      next[taskIndex] = mergeLifecycleEvent(next[taskIndex], event)
+      return next
+    }
   }
 
   if (event.eventType === 'tool_call') {
@@ -499,6 +628,14 @@ export function mergeTimelineEvents(
   return next
 }
 
+export function filterParentTimelineEvents(events: ConsoleTimelineEvent[], parentSessionId: string): ConsoleTimelineEvent[] {
+  return events.filter((event) => {
+    if (event.sessionId !== parentSessionId) return false
+    if (isChildTaskLifecycleEvent(event)) return true
+    return event.metadata?.childSessionId === undefined
+  })
+}
+
 /**
  * Sort comparator for live chat: keep tool cards between sealed pre-tool drafts
  * and unsealed post-tool drafts even when timestamps are close/equal.
@@ -518,8 +655,9 @@ export function compareTimelineEventsForChat(a: ConsoleTimelineEvent, b: Console
     }
     if (e.eventType === 'tool_call') return 4
     if (e.eventType === 'tool_result') return 5
-    if (e.eventType === 'assistant_message') return 7
-    return 8
+    if (isChildTaskLifecycleEvent(e)) return 7
+    if (e.eventType === 'assistant_message') return 8
+    return 9
   }
 
   const ra = rank(a)

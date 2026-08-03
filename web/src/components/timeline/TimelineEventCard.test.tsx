@@ -323,6 +323,87 @@ const a = 1
       expect(content.innerHTML).toContain('**Failed**')
       expect(content.innerHTML).not.toContain('<strong>')
     })
+
+    it('updates the same child task card across lifecycle stages without remounting', () => {
+      const started = createEvent({
+        eventId: 'child-task:run-1:started',
+        eventType: 'run_started',
+        actor: 'subagent',
+        metadata: {
+          taskId: 'child-1',
+          childSessionId: 'child-1',
+          runId: 'run-1',
+          agentProfile: 'document_processor',
+          launchMode: 'foreground',
+          status: 'running',
+        },
+      })
+      const { rerender } = render(<TimelineEventCard event={started} />)
+      const card = screen.getByTestId('bg-task-card')
+      expect(card).toHaveAttribute('data-task-id', 'child-1')
+      expect(screen.getByText('文档处理')).toBeInTheDocument()
+      expect(screen.getByText('前台任务')).toBeInTheDocument()
+
+      const progress = createEvent({
+        ...started,
+        eventId: 'child-task:run-1:progress',
+        eventType: 'run_progress',
+        content: 'progress update',
+        metadata: { ...started.metadata, status: 'running', progress: 40 },
+      })
+      rerender(<TimelineEventCard event={progress} />)
+      expect(screen.getByTestId('bg-task-card')).toBe(card)
+      expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '40')
+
+      const completed = createEvent({
+        ...progress,
+        eventId: 'child-task:run-1:completed',
+        eventType: 'run_completed',
+        content: 'completed safely',
+        metadata: { ...progress.metadata, status: 'completed', progress: 100, safeMessage: 'completed safely' },
+      })
+      rerender(<TimelineEventCard event={completed} />)
+      expect(screen.getByTestId('bg-task-card')).toBe(card)
+      expect(screen.getByText('已完成')).toBeInTheDocument()
+      expect(screen.getByText('completed safely')).toBeInTheDocument()
+    })
+
+    it('renders only safe failure/cancellation messages and never raw error details', () => {
+      const failed = createEvent({
+        eventId: 'child-task:run-3:failed',
+        eventType: 'run_failed',
+        content: 'raw provider response and stack should not render',
+        metadata: {
+          taskId: 'child-3',
+          childSessionId: 'child-3',
+          runId: 'run-3',
+          agentProfile: 'planner',
+          launchMode: 'background',
+          status: 'failed',
+          safeMessage: '子任务执行失败，请稍后重试',
+        },
+      })
+
+      const { rerender } = render(<TimelineEventCard event={failed} />)
+      expect(screen.getByText('子任务执行失败，请稍后重试')).toBeInTheDocument()
+      expect(screen.queryByText('raw provider response and stack should not render')).not.toBeInTheDocument()
+      expect(screen.getByText('后台任务')).toBeInTheDocument()
+
+      rerender(
+        <TimelineEventCard
+          event={{
+            ...failed,
+            eventId: 'child-task:run-3:cancelled',
+            eventType: 'run_cancelled',
+            content: 'another raw error',
+            metadata: { ...failed.metadata, status: 'cancelled', safeMessage: '任务已取消' },
+          }}
+        />,
+      )
+      expect(screen.getByText('任务已取消')).toBeInTheDocument()
+      expect(screen.getByText('已取消')).toBeInTheDocument()
+      expect(screen.queryByText('another raw error')).not.toBeInTheDocument()
+    })
   })
 
   describe('Edge cases', () => {

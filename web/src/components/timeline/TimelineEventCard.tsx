@@ -7,6 +7,11 @@ import { ApprovalCard } from '../ApprovalCard'
 import { BackgroundTaskCard } from '../BackgroundTaskCard'
 import { MessageContent, type MessageRole, type MessageMode } from '../message/MessageContent'
 import { formatMessageContent } from './formatMessageContent'
+import {
+  getChildTaskLifecycleStatus,
+  getChildTaskProfileLabel,
+  isChildTaskLifecycleEvent,
+} from '../../features/session/session-utils'
 
 export interface TimelineEventCardProps {
   event: ConsoleTimelineEvent
@@ -175,9 +180,28 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
   const durationMs = typeof event.metadata?.durationMs === 'number' ? event.metadata.durationMs : undefined
 
   const taskId = typeof event.metadata?.taskId === 'string' ? event.metadata.taskId : undefined
-  const taskLabel = typeof event.metadata?.label === 'string' ? event.metadata.label : undefined
+  const childSessionId = typeof event.metadata?.childSessionId === 'string' ? event.metadata.childSessionId : undefined
+  const taskIdFromChildSession = taskId ?? childSessionId
+  const agentProfile = typeof event.metadata?.agentProfile === 'string' ? event.metadata.agentProfile : undefined
+  const taskLabel =
+    (typeof event.metadata?.label === 'string' ? event.metadata.label : undefined) ?? getChildTaskProfileLabel(agentProfile)
+  const launchMode =
+    event.metadata?.launchMode === 'background'
+      ? 'background'
+      : event.metadata?.launchMode === 'foreground'
+        ? 'foreground'
+        : undefined
   const progress = typeof event.metadata?.progress === 'number' ? event.metadata.progress : undefined
-  const taskMessage = typeof event.metadata?.message === 'string' ? event.metadata.message : undefined
+  const safeMessage = typeof event.metadata?.safeMessage === 'string' ? event.metadata.safeMessage : undefined
+  const metadataMessage = typeof event.metadata?.message === 'string' ? event.metadata.message : undefined
+  const taskMessage = isChildTaskLifecycleEvent(event)
+    ? safeMessage ??
+      (event.eventType === 'run_failed'
+        ? '子任务执行失败，请稍后重试'
+        : event.eventType === 'run_cancelled'
+          ? '任务已取消'
+          : undefined)
+    : metadataMessage
 
   const label = isStreamingDraft ? 'Assistant (streaming)' : eventTypeLabels[event.eventType]
   const timestamp = formatTimestamp(event.timestamp)
@@ -306,21 +330,26 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({ event }) =
       case 'run_completed':
       case 'run_failed':
       case 'run_cancelled':
-        if (taskId && taskLabel) {
-          const runStatusMap: Record<string, 'running' | 'completed' | 'failed' | 'cancelled'> = {
+        if (taskIdFromChildSession && taskLabel) {
+          const runStatusMap: Record<string, 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'> = {
             run_started: 'running',
             run_progress: 'running',
             run_completed: 'completed',
             run_failed: 'failed',
             run_cancelled: 'cancelled',
           }
+          const status = isChildTaskLifecycleEvent(event)
+            ? getChildTaskLifecycleStatus(event)
+            : runStatusMap[event.eventType]
           return (
             <BackgroundTaskCard
-              taskId={taskId}
+              taskId={taskIdFromChildSession}
               label={taskLabel}
-              status={runStatusMap[event.eventType]}
+              status={status}
               progress={progress}
               message={taskMessage}
+              agentProfile={agentProfile}
+              launchMode={launchMode}
             />
           )
         }

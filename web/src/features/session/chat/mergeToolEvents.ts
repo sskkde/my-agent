@@ -1,4 +1,10 @@
-import type { ConsoleTimelineEvent } from '../../../api/types'
+import type { ChildTaskStatus, ConsoleTimelineEvent } from '../../../api/types'
+import {
+  getChildTaskCardKey,
+  getChildTaskId,
+  getChildTaskLifecycleStatus,
+  isChildTaskLifecycleEvent,
+} from '../session-utils'
 import {
   extractDurationMs,
   extractParameters,
@@ -29,7 +35,21 @@ export type ChatStreamToolItem = {
   durationMs?: number
 }
 
-export type ChatStreamItem = ChatStreamMessageItem | ChatStreamToolItem
+export type ChatStreamTaskItem = {
+  kind: 'task'
+  key: string
+  taskId: string
+  childSessionId?: string
+  runId?: string
+  agentProfile?: string
+  launchMode?: 'foreground' | 'background'
+  status: ChildTaskStatus
+  progress?: number
+  safeMessage?: string
+  event: ConsoleTimelineEvent
+}
+
+export type ChatStreamItem = ChatStreamMessageItem | ChatStreamToolItem | ChatStreamTaskItem
 
 type IndexedEvent = {
   index: number
@@ -110,10 +130,21 @@ const canPairByConstraints = (call: ConsoleTimelineEvent, result: ConsoleTimelin
  */
 export function mergeToolEvents(events: readonly ConsoleTimelineEvent[]): ChatStreamItem[] {
   const messageIndexes = new Map<number, ConsoleTimelineEvent>()
+  const taskIndexes = new Map<string, { index: number; event: ConsoleTimelineEvent }>()
   const calls: IndexedEvent[] = []
   const results: IndexedEvent[] = []
 
   events.forEach((event, index) => {
+    if (isChildTaskLifecycleEvent(event)) {
+      const taskKey = getChildTaskCardKey(event)
+      if (taskKey) {
+        const existing = taskIndexes.get(taskKey)
+        if (!existing || shouldPreferTaskEvent(existing.event, event)) {
+          taskIndexes.set(taskKey, { index: existing?.index ?? index, event })
+        }
+      }
+      return
+    }
     if (
       event.eventType === 'user_message' ||
       event.eventType === 'assistant_message' ||
@@ -248,6 +279,26 @@ export function mergeToolEvents(events: readonly ConsoleTimelineEvent[]): ChatSt
     })
   }
 
+  for (const [key, task] of taskIndexes) {
+    const metadata = task.event.metadata
+    placed.push({
+      sortIndex: task.index,
+      item: {
+        kind: 'task',
+        key,
+        taskId: getChildTaskId(task.event) ?? key.slice('task-'.length),
+        childSessionId: typeof metadata?.childSessionId === 'string' ? metadata.childSessionId : undefined,
+        runId: typeof metadata?.runId === 'string' ? metadata.runId : undefined,
+        agentProfile: typeof metadata?.agentProfile === 'string' ? metadata.agentProfile : undefined,
+        launchMode: metadata?.launchMode === 'background' ? 'background' : metadata?.launchMode === 'foreground' ? 'foreground' : undefined,
+        status: getChildTaskLifecycleStatus(task.event),
+        progress: typeof metadata?.progress === 'number' ? metadata.progress : undefined,
+        safeMessage: getSafeTaskMessage(task.event),
+        event: task.event,
+      },
+    })
+  }
+
   for (const pair of pairs) {
     const sortIndex = Math.min(
       pair.call?.index ?? Number.POSITIVE_INFINITY,
@@ -258,4 +309,47 @@ export function mergeToolEvents(events: readonly ConsoleTimelineEvent[]): ChatSt
 
   placed.sort((a, b) => a.sortIndex - b.sortIndex)
   return placed.map((entry) => entry.item)
+}
+
+const terminalStatuses = new Set<ChildTaskStatus>(['completed', 'failed', 'cancelled'])
+const taskStatusRank: Record<ChildTaskStatus, number> = {
+  queued: 0,
+  running: 1,
+  cancelled: 2,
+  failed: 3,
+  completed: 4,
+}
+
+const getSafeTaskMessage = (event: ConsoleTimelineEvent): string | undefined => {
+  const safeMessage = event.metadata?.safeMessage
+  if (typeof safeMessage === 'string' && safeMessage.trim()) return safeMessage
+  const status = getChildTaskLifecycleStatus(event)
+  if (status === 'failed') return '子任务执行失败，请稍后重试'
+  if (status === 'cancelled') return '任务已取消'
+  return undefined
+}
+
+const shouldPreferTaskEvent = (existing: ConsoleTimelineEvent, incoming: ConsoleTimelineEvent): boolean => {
+  const existingStatus = getChildTaskLifecycleStatus(existing)
+  const incomingStatus = getChildTaskLifecycleStatus(incoming)
+  const existingTerminal = terminalStatuses.has(existingStatus)
+  const incomingTerminal = terminalStatuses.has(incomingStatus)
+  if (existingTerminal !== incomingTerminal) return incomingTerminal
+
+  if (existingTerminal && incomingTerminal && taskStatusRank[existingStatus] !== taskStatusRank[incomingStatus]) {
+    return taskStatusRank[incomingStatus] > taskStatusRank[existingStatus]
+  }
+
+  const existingTime = Date.parse(existing.timestamp)
+  const incomingTime = Date.parse(incoming.timestamp)
+  if (existingTerminal && incomingTerminal && existingTime !== incomingTime) return incomingTime > existingTime
+  if (!existingTerminal && !incomingTerminal) {
+    const existingProgress = typeof existing.metadata?.progress === 'number' ? existing.metadata.progress : -1
+    const incomingProgress = typeof incoming.metadata?.progress === 'number' ? incoming.metadata.progress : -1
+    if (incomingProgress !== existingProgress) return incomingProgress > existingProgress
+  }
+  if (taskStatusRank[existingStatus] !== taskStatusRank[incomingStatus]) {
+    return taskStatusRank[incomingStatus] > taskStatusRank[existingStatus]
+  }
+  return incoming.eventId.localeCompare(existing.eventId) > 0
 }

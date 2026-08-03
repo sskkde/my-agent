@@ -24,6 +24,7 @@ import {
   appendStreamingToken,
   shouldClearDraftOnServerEvent,
   clearDraftsForTerminalEvent,
+  filterParentTimelineEvents,
   type AssistantPlaceholder,
   type StreamingDraft,
 } from '../session-utils'
@@ -405,7 +406,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         const timelineResponse = await api.getSessionTimeline(sessionId, TIMELINE_PAGE_SIZE)
         if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
           setEvents((prev) => {
-            const merged = mergeTimelineEvents(prev, timelineResponse.events)
+            const merged = mergeTimelineEvents(prev, filterParentTimelineEvents(timelineResponse.events, sessionId))
             if (merged === prev) return prev
             const sorted = [...merged]
             sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -428,7 +429,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       const response = await api.getSessionTimeline(sessionId, TIMELINE_PAGE_SIZE, timelineOffset)
       if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
         setEvents((prev) => {
-          const merged = mergeTimelineEvents(response.events, prev)
+          const merged = mergeTimelineEvents(filterParentTimelineEvents(response.events, sessionId), prev)
           const sorted = [...merged]
           sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
           return sorted
@@ -508,6 +509,8 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     mountedRef,
     selectedSessionIdRef,
     onEvent: (event: ConsoleTimelineEvent, source: 'live' | 'historical' = 'live') => {
+      const parentSessionId = selectedSessionIdRef.current
+      if (!parentSessionId || filterParentTimelineEvents([event], parentSessionId).length === 0) return
       setEvents((prev) => upsertTimelineEvent(prev, event))
       if (['user_message', 'assistant_message', 'error'].includes(event.eventType)) {
         scheduleSessionRefresh()
@@ -640,7 +643,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         })
         const timelineResponse = await api.getSessionTimeline(selectedSessionId, TIMELINE_PAGE_SIZE)
         if (cancelled || selectedSessionIdRef.current !== selectedSessionId) return
-        const reversed = [...timelineResponse.events].reverse()
+        const initialEvents = filterParentTimelineEvents(timelineResponse.events, selectedSessionId)
+        const dedupedInitialEvents = mergeTimelineEvents([], initialEvents)
+        const reversed = [...dedupedInitialEvents].reverse()
         setEvents(reversed)
         setHasMoreTimeline(timelineResponse.hasMore)
         setTimelineOffset(timelineResponse.events.length)
@@ -671,9 +676,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
 
   const mergedEvents = useMemo<ConsoleTimelineEvent[]>(() => {
     const reasoningVisible = loadPreferences().reasoningVisible
+    const parentEvents = selectedSessionId ? filterParentTimelineEvents(events, selectedSessionId) : []
     const visibleEvents = reasoningVisible
-      ? events
-      : events.filter((event) => event.eventType !== 'thinking_summary')
+      ? parentEvents
+      : parentEvents.filter((event) => event.eventType !== 'thinking_summary')
 
     const sessionLocalMessageEvents = selectedSessionId ? localMessageEvents.get(selectedSessionId) || [] : []
 
@@ -809,6 +815,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
       >
         <ChatMessageList
           events={mergedEvents}
+          parentSessionId={selectedSessionId ?? undefined}
           loading={timelineLoading || sending}
           error={timelineError || sendError || undefined}
           onPromptSelect={setDraft}

@@ -7826,6 +7826,22 @@ body {
   color: var(--text-strong);
 }
 
+.bg-task-card__profile,
+.bg-task-card__launch-mode {
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--warm-paper-radius-sm, 2px);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.bg-task-card__launch-mode {
+  color: var(--accent);
+  border-color: var(--accent-subtle);
+  background: var(--accent-subtle);
+}
+
 .bg-task-card__progress-wrapper {
   display: flex;
   align-items: center;

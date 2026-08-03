@@ -30,6 +30,15 @@ export interface SessionInfo {
   lastActivityAt: string
   activePlannerRunIds: string[]
   activeBackgroundRunIds: string[]
+  selectedModel?: string
+  selectedProviderId?: string
+  reasoningDepth?: ReasoningDepth
+  sessionKind?: 'foreground' | 'subagent'
+  parentSessionId?: string
+  taskId?: string
+  agentProfile?: string
+  launchMode?: ChildTaskLaunchMode
+  subagentDepth?: number
 }
 
 export interface SessionResponse {
@@ -203,6 +212,60 @@ export interface ConsoleTimelineEvent {
   actor?: string
 }
 
+export type ChildTaskLaunchMode = 'foreground' | 'background'
+export type ChildTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+export interface ChildTaskLifecycleMetadata {
+  taskId: string
+  childSessionId: string
+  runId: string
+  agentProfile: string
+  launchMode: ChildTaskLaunchMode
+  status: ChildTaskStatus
+  progress?: number
+  safeMessage?: string
+}
+
+export type ChildTaskLifecycleEventType =
+  | 'run_started'
+  | 'run_progress'
+  | 'run_completed'
+  | 'run_failed'
+  | 'run_cancelled'
+
+export type ChildTaskLifecycleEvent = Omit<ConsoleTimelineEvent, 'eventType' | 'metadata'> & {
+  eventType: ChildTaskLifecycleEventType
+  metadata: ChildTaskLifecycleMetadata
+}
+
+export interface ChildSessionInfo extends ConsoleSessionInfo {
+  sessionKind: 'subagent'
+  parentSessionId: string
+  taskId: string
+  agentProfile: string
+  launchMode: ChildTaskLaunchMode
+  subagentDepth: number
+}
+
+export interface ChildSessionListResponse {
+  items: ChildSessionInfo[]
+  total: number
+  limit: number
+  offset: number
+  hasMore: boolean
+}
+
+export interface ChildSessionResumeResponse {
+  session: ChildSessionInfo
+  timeline: ConsoleTimelineEvent[]
+}
+
+export interface ChildTaskCancelResponse {
+  status: 'cancelled'
+  runId: string
+  coordinatorStatus: string
+}
+
 // =============================================================================
 // Live Streaming and Processing Status Types
 // =============================================================================
@@ -300,6 +363,13 @@ export interface ConsoleSessionInfo {
   updatedAt: string
   selectedModel?: string
   selectedProviderId?: string
+  reasoningDepth?: ReasoningDepth
+  sessionKind?: 'foreground' | 'subagent'
+  parentSessionId?: string
+  taskId?: string
+  agentProfile?: string
+  launchMode?: ChildTaskLaunchMode
+  subagentDepth?: number
 }
 
 export interface PaginationParams {

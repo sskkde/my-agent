@@ -3,6 +3,7 @@ import './Timeline.css'
 import type { ConsoleTimelineEvent } from '../../api/types'
 import { TimelineEventCard } from './TimelineEventCard'
 import { TimelineWelcomeState } from './TimelineWelcomeState'
+import { getTimelineEventKey, mergeTimelineEvents } from '../../features/session/session-utils'
 
 export interface TimelineListProps {
   events: ConsoleTimelineEvent[]
@@ -13,6 +14,7 @@ export interface TimelineListProps {
 
 export const TimelineList: React.FC<TimelineListProps> = ({ events, loading, error, onPromptSelect }) => {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const mergedEvents = mergeTimelineEvents([], events)
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -34,7 +36,7 @@ export const TimelineList: React.FC<TimelineListProps> = ({ events, loading, err
     )
   }
 
-  if (events.length === 0) {
+  if (mergedEvents.length === 0) {
     return (
       <div className="timeline-list timeline-list--empty" data-testid="timeline-empty-state">
         <TimelineWelcomeState onPromptSelect={onPromptSelect} />
@@ -44,8 +46,8 @@ export const TimelineList: React.FC<TimelineListProps> = ({ events, loading, err
 
   return (
     <div className="timeline-list">
-      {events.map((event) => (
-        <TimelineEventCard key={event.eventId} event={event} />
+      {mergedEvents.map((event) => (
+        <TimelineEventCard key={getTimelineEventKey(event)} event={event} />
       ))}
       <div ref={scrollRef} />
     </div>
