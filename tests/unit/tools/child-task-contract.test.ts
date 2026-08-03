@@ -153,21 +153,24 @@ describe('child-task contract: public tool identity', () => {
     })
   })
 
-  it('keeps catalog entries unchanged in the public API catalog', () => {
+  it('keeps catalog identity fields and evolves descriptions additively in the public API catalog', () => {
     const catalog = getToolCatalog()
     const launch = catalog.find((t) => t.name === 'foreground_launch_subagent')
     const search = catalog.find((t) => t.name === 'search_subagent')
 
+    // Identity fields stay byte-identical (Todo 17: descriptions gain
+    // child-session wording additively, names/categories/sensitivity never change).
     expect(launch).toEqual({
       name: 'foreground_launch_subagent',
-      description: 'Launch a background subagent to perform a task',
+      description:
+        'Launch a subagent to perform a task in a dedicated child session. The parent waits for a bounded result (foreground) or is notified on completion (background); the task can be resumed later by its taskId.',
       category: 'internal',
       sensitivity: 'medium',
     })
     expect(search).toEqual({
       name: 'search_subagent',
       description:
-        'Search the web for information. Returns structured evidence with extracted facts and source URLs. Uses a synchronous search service.',
+        'Search the web for information. Returns structured evidence with extracted facts and source URLs. Runs inside a resumable child session; the parent receives only the bounded final evidence.',
       category: 'search',
       sensitivity: 'medium',
     })

@@ -660,6 +660,103 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/sessions/{sessionId}/children:
+    get:
+      tags: [Sessions]
+      summary: List child sessions
+      description: Lists internal subagent child sessions of an accessible parent session (uniform 404 when the parent is missing or foreign)
+      operationId: listChildSessions
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Optional status filter (active/archived/closed)
+      responses:
+        "200":
+          description: Child sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/sessions/{sessionId}/children/{childSessionId}/resume:
+    post:
+      tags: [Sessions]
+      summary: Resume child task
+      description: Touches the child session activity and returns its recent timeline (uniform 404 for missing/foreign parent or child)
+      operationId: resumeChildSession
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+        - name: childSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Child session resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResumeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/sessions/{sessionId}/children/{childSessionId}/cancel:
+    post:
+      tags: [Sessions]
+      summary: Cancel child task
+      description: Cancels the live child kernel run of a child session (uniform 404 for missing/foreign parent or child)
+      operationId: cancelChildSession
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: "#/components/parameters/sessionId"
+        - name: childSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Child task cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/sessions/{sessionId}/timeline:
     get:
       tags: [Sessions]
@@ -3348,6 +3445,25 @@ components:
           type: string
         selectedProviderId:
           type: string
+        sessionKind:
+          type: string
+          enum: [foreground, subagent]
+          description: Internal subagent child sessions are excluded from the default session list
+        parentSessionId:
+          type: string
+          description: Parent session of a subagent child session
+        taskId:
+          type: string
+          description: Resumable task id (identity rule: taskId equals the child session id)
+        agentProfile:
+          type: string
+          description: Subagent profile that owns the child session
+        launchMode:
+          type: string
+          enum: [foreground, background]
+        subagentDepth:
+          type: integer
+          description: Nested child depth (0 for foreground sessions)
 
     SessionResponse:
       allOf:
@@ -3389,6 +3505,20 @@ components:
           type: string
         selectedProviderId:
           type: string
+        sessionKind:
+          type: string
+          enum: [foreground, subagent]
+        parentSessionId:
+          type: string
+        taskId:
+          type: string
+        agentProfile:
+          type: string
+        launchMode:
+          type: string
+          enum: [foreground, background]
+        subagentDepth:
+          type: integer
 
     SessionListResponse:
       allOf:

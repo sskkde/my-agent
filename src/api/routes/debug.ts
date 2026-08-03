@@ -19,6 +19,7 @@ interface ReplayResponse {
   transcriptCount: number
   runRefs: string[]
   approvalRefs: string[]
+  childTaskRefs: string[]
   lastEventId: string | null
   redactedPreviews: RedactedPreview[]
 }
@@ -105,6 +106,7 @@ export function registerDebugRoutes(server: FastifyInstance, context: ApiContext
 
       const runRefs = new Set<string>()
       const approvalRefs = new Set<string>()
+      const childTaskRefs = new Set<string>()
 
       for (const event of events) {
         if (event.relatedRefs?.runId) {
@@ -125,6 +127,10 @@ export function registerDebugRoutes(server: FastifyInstance, context: ApiContext
         if (event.relatedRefs?.approvalId) {
           approvalRefs.add(event.relatedRefs.approvalId)
         }
+        const payload = event.payload as { taskId?: unknown } | undefined
+        if (event.relatedRefs?.subagentRunId && typeof payload?.taskId === 'string') {
+          childTaskRefs.add(payload.taskId)
+        }
       }
 
       for (const transcript of transcripts) {
@@ -144,6 +150,7 @@ export function registerDebugRoutes(server: FastifyInstance, context: ApiContext
         transcriptCount,
         runRefs: Array.from(runRefs),
         approvalRefs: Array.from(approvalRefs),
+        childTaskRefs: Array.from(childTaskRefs),
         lastEventId: lastEvent?.eventId ?? null,
         redactedPreviews,
       }

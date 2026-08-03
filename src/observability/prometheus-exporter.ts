@@ -29,6 +29,8 @@ const METRIC_HELP: Record<string, string> = {
   connector_requests_total: 'Total connector requests',
   memory_usage_bytes: 'Current memory usage in bytes',
   budget_usage_percent: 'Current budget usage percentage',
+  subagent_runs_total:
+    'Total subagent run attempts (fresh launches and resumes), with child-session correlation labels',
 }
 
 const HISTOGRAM_BUCKETS = [0.1, 0.25, 0.5, 1, 2.5, 5, 10]

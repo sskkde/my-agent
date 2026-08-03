@@ -61,9 +61,12 @@ function isToolExecutionResult(value: unknown): value is ToolExecutionResult {
  * Per-tool dispatch timeout overrides (milliseconds).
  * Tools not listed here use the dispatcher default (30s).
  * search_subagent performs two serial LLM calls + web search, so it needs more time.
+ * foreground_launch_subagent waits on a bounded child execution (60s default
+ * budget) — without this entry the dispatcher 30s race would cut off the wait.
  */
-const PER_TOOL_TIMEOUT_MS: Record<string, number> = {
+export const PER_TOOL_TIMEOUT_MS: Record<string, number> = {
   search_subagent: 90_000,
+  foreground_launch_subagent: 90_000,
 }
 
 export class AgentKernel {

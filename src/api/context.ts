@@ -14,6 +14,8 @@ import { createBackgroundRunStore, type BackgroundRunStore } from '../storage/ba
 import { createKernelRunStore, type KernelRunStore } from '../storage/kernel-run-store.js'
 import { createTraceStore } from '../observability/trace-store.js'
 import type { TraceStore } from '../observability/types.js'
+import { createMetricStore } from '../observability/metric-store.js'
+import { buildSubagentRunMetric } from '../observability/subagent-metrics.js'
 import { createSessionStore, type SessionStore } from '../storage/session-store.js'
 import { createUserStore, type UserStore } from '../storage/user-store.js'
 import { createAuthTokenStore, type AuthTokenStore } from '../storage/auth-token-store.js'
@@ -88,6 +90,11 @@ import type { SubagentRuntime } from '../subagents/types.js'
 import { createSubagentRunStore, type SubagentRunStore } from '../storage/subagent-run-store.js'
 import { createSubagentTranscriptStore, type SubagentTranscriptStore } from '../storage/subagent-transcript-store.js'
 import {
+  createChildSessionTaskRuntime,
+  type ChildSessionTaskRuntime,
+} from '../subagents/child-session-task-runtime.js'
+import { createSearchPhaseRecorder, createSearchChildSessionRunner } from '../search/search-child-runner.js'
+import {
   createSubagentProviderPreferenceStore,
   type SubagentProviderPreferenceStore,
 } from '../storage/subagent-provider-preference-store.js'
@@ -133,6 +140,7 @@ import {
   DefaultSearchQueryPlanner,
   DefaultSearchResultNormalizer,
 } from '../foreground/tools/index.js'
+import { DEFAULT_FOREGROUND_CHILD_WAIT_MS } from '../foreground/tools/subagent-launch-tool.js'
 import { assertSearchScope } from '../search/search-subagent-types.js'
 import { createAgentProfileRegistry, registerSystemProfiles } from '../taxonomy/agent-profile-registry.js'
 import type { ForegroundToolRuntimeDeps } from '../foreground/tools/foreground-tool-runtime.js'
@@ -204,6 +212,8 @@ export interface ApiContext {
   triggerRuntime: EventTriggerRuntime
   subagentRuntime: SubagentRuntime
   subagentRegistry: SubagentRegistry
+  /** Unified child-session task runtime (Todo 7/17): launch/resume/execute/cancel/get. */
+  childSessionTaskRuntime: ChildSessionTaskRuntime
   subagentRunStore: SubagentRunStore
   subagentTranscriptStore: SubagentTranscriptStore
   subagentProviderPreferenceStore: SubagentProviderPreferenceStore
@@ -734,6 +744,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const fallbackFamily = resolvedSearchLlm
     ? resolveProviderFamily(resolvedSearchLlm.providerType, resolvedSearchLlm.model)
     : 'openai_compatible'
+  // Search child wiring order (Todo 16/17): recorder FIRST, then the two-phase
+  // executor with the recorder as phaseObserver, then the specialized runner.
+  const searchPhaseRecorder = createSearchPhaseRecorder(subagentTranscriptStore)
   const searchSubagent = createSearchSubagent({
     llmAdapter,
     webSearchExecutor: async (params) => {
@@ -753,6 +766,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       resolveSearchLlm({ agentConfigStore, providerConfigStore })?.model ??
       resolvedSearchLlm?.model ??
       '',
+    phaseObserver: searchPhaseRecorder.observe,
+  })
+  const searchChildRunner = createSearchChildSessionRunner({
+    searchSubagent,
+    recorder: searchPhaseRecorder,
   })
 
   const searchSubagentDeps = {
@@ -764,16 +782,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 
   const agentProfileRegistry = createAgentProfileRegistry()
   registerSystemProfiles(agentProfileRegistry)
-
-  const foregroundToolRuntimeDeps: ForegroundToolRuntimeDeps = {
-    runtimeDispatcher,
-    plannerRuntime,
-    plannerRunStore,
-    subagentRunStore,
-    approvalStore,
-    profileRegistry: agentProfileRegistry,
-  }
-  registerAllForegroundTools(toolRegistry, { searchSubagentDeps, runtimeDeps: foregroundToolRuntimeDeps })
 
   // Create foreground agent with tool registry for schema projection
   const foregroundAgent =
@@ -966,6 +974,77 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 	    envelopeRegistry,
 	  })
 
+  // Unified child-session task runtime (Todo 7/17): generic kernel adapter for
+  // most profiles, specialized search runner for the search profile. Stores,
+  // events and policies are wired here; lifecycle events persist to EventStore
+  // and broadcast best-effort on the parent timeline.
+  const childTaskRuntime = createChildSessionTaskRuntime({
+    sessionStore,
+    runStore: subagentRunStore,
+    transcriptStore: subagentTranscriptStore,
+    kernelAdapter: subagentKernelAdapter,
+    registry: subagentRegistry,
+    toolRegistry,
+    envelopeRegistry,
+    defaultMaxIterations: 10,
+    defaultTimeoutMs: 60000,
+    eventStore,
+    lifecycleBroadcaster: timelineBroadcaster,
+    searchRunner: searchChildRunner,
+  })
+
+  const metricStore = createMetricStore(connection)
+  const childSessionTaskRuntime: ChildSessionTaskRuntime = {
+    launchTask: (input) => {
+      const result = childTaskRuntime.launchTask(input)
+      try {
+        metricStore.recordMetric(
+          buildSubagentRunMetric({
+            agentType: input.taskSpec.agentType ?? 'subagent',
+            agentProfile: input.taskSpec.profileId,
+            status: 'launched',
+            launchMode: input.taskSpec.launchMode,
+            parentSessionId: input.taskSpec.parentSessionId,
+            taskId: result.taskId,
+            childSessionId: result.childSessionId,
+          }),
+        )
+      } catch {
+        // Best-effort observability — a metric failure must never fail a launch.
+      }
+      return result
+    },
+    executeRun: (subagentRunId, signal) => childTaskRuntime.executeRun(subagentRunId, signal),
+    cancelRun: (subagentRunId) => childTaskRuntime.cancelRun(subagentRunId),
+    runTask: (input, signal) => childTaskRuntime.runTask(input, signal),
+    getRun: (subagentRunId) => childTaskRuntime.getRun(subagentRunId),
+    getChildSession: (taskId, tenantId) => childTaskRuntime.getChildSession(taskId, tenantId),
+  }
+
+  const foregroundToolRuntimeDeps: ForegroundToolRuntimeDeps = {
+    runtimeDispatcher,
+    plannerRuntime,
+    plannerRunStore,
+    subagentRunStore,
+    approvalStore,
+    profileRegistry: agentProfileRegistry,
+    childSessionTaskRuntime,
+    toolResultStore,
+    childTaskRemainingTimeoutMs: DEFAULT_FOREGROUND_CHILD_WAIT_MS,
+    backgroundRuntime,
+    sessionStore,
+  }
+  registerAllForegroundTools(toolRegistry, {
+    searchSubagentDeps: {
+      ...searchSubagentDeps,
+      childSessionTaskRuntime,
+      sessionStore,
+      subagentRunStore,
+      childTaskRemainingTimeoutMs: DEFAULT_FOREGROUND_CHILD_WAIT_MS,
+    },
+    runtimeDeps: foregroundToolRuntimeDeps,
+  })
+
   const subagentRuntime = createSubagentRuntime({
     kernelAdapter: subagentKernelAdapter,
     contextManager: subagentContextManager,
@@ -1102,6 +1181,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     triggerRuntime,
     subagentRuntime,
     subagentRegistry,
+    childSessionTaskRuntime,
     subagentRunStore,
     subagentTranscriptStore,
     subagentProviderPreferenceStore,

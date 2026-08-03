@@ -303,6 +303,22 @@ agent_platform_budget_usage_percent > 80
 | `operation` | 操作名称  |
 | `error`     | 错误信息  |
 
+### 子代理运行计数指标
+
+`subagent_runs_total`（counter）记录每次子代理运行尝试（新建启动与 taskId 恢复各计一次，一一对应 `subagent_runs` 表的一行）。该指标为**增量新增**：不重命名任何既有指标，仅在原有 `agent_type` / `status` 标签之上增加子会话关联维度。
+
+**标签**:
+
+| 标签                 | 说明                                                       |
+| -------------------- | ---------------------------------------------------------- |
+| `agent_type`         | 子代理类型（兼容既有维度）                                 |
+| `status`             | 运行状态（launched，兼容既有维度）                         |
+| `agent_profile`      | 子代理 profile（如 `search_processor`）                    |
+| `launch_mode`        | `foreground` / `background`                                |
+| `parent_session_id`  | 发起任务的父会话                                           |
+| `task_id`            | 任务 ID（恒等于子会话 ID）                                 |
+| `child_session_id`   | 子会话 ID                                                  |
+
 ## 推荐 Grafana 仪表盘
 
 ### 仪表盘概览
