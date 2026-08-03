@@ -10,7 +10,13 @@
  */
 
 import type { ToolDefinition, ToolHandler, ToolExecutionContext, ToolExecutionResult } from '../../tools/types.js'
-import { STATUS_QUERY_TOOL_ID, handleStatusQuery, type StatusQueryData } from './status-query-tool.js'
+import {
+  STATUS_QUERY_TOOL_ID,
+  handleStatusQuery,
+  type StatusQueryData,
+  type StatusQueryInput,
+  type TaskStatusDetail,
+} from './status-query-tool.js'
 import {
   SPAWN_PLANNER_TOOL_ID,
   handleSpawnPlanner,
@@ -28,6 +34,8 @@ import {
   handleLaunchSubagent,
   type LaunchSubagentInput,
   type LaunchSubagentData,
+  type ForegroundChildTaskData,
+  type BackgroundChildTaskData,
 } from './subagent-launch-tool.js'
 import {
   CANCEL_MODIFY_TOOL_ID,
@@ -73,12 +81,16 @@ export {
 // Re-export tool types
 export type {
   StatusQueryData,
+  StatusQueryInput,
+  TaskStatusDetail,
   SpawnPlannerInput,
   SpawnPlannerData,
   ResumePlannerInput,
   ResumePlannerData,
   LaunchSubagentInput,
   LaunchSubagentData,
+  ForegroundChildTaskData,
+  BackgroundChildTaskData,
   CancelModifyInput,
   CancelModifyData,
   CancelPlannerInput,
@@ -192,20 +204,40 @@ export function createForegroundStatusQueryToolDefinition(runtimeDeps?: Foregrou
   return {
     name: STATUS_QUERY_TOOL_ID,
     description:
-      'Query the status of active work including planner runs, background subagents, and pending approvals. Returns current status for all active tasks.',
+      'Query the status of active work including planner runs, background subagents, and pending approvals. Optionally resolve the status of ONE specific subagent task by taskId, childSessionId, runtimeActionId or subagentRunId. Returns current status for all active tasks.',
     category: 'read',
     sensitivity: 'low',
     requiresPermission: false,
     schema: {
       type: 'object',
-      properties: {},
+      properties: {
+        taskId: {
+          type: 'string',
+          description: 'Optional child-session task ID whose newest run attempt status should be returned.',
+        },
+        childSessionId: {
+          type: 'string',
+          description: 'Optional child session ID whose newest run attempt status should be returned.',
+        },
+        runtimeActionId: {
+          type: 'string',
+          description: 'Optional legacy subagent run id (or runtime action id) whose status should be returned.',
+        },
+        subagentRunId: {
+          type: 'string',
+          description: 'Optional subagent run id whose status should be returned.',
+        },
+        userMessage: {
+          type: 'string',
+          description: 'Optional custom message to display alongside the status summary.',
+        },
+      },
       required: [],
     },
     handler: runtimeDeps
       ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
           const identity = resolveTurnIdentity(context)
           if ('error' in identity) return identity.error
-          const userMessage = (params as { userMessage?: string } | undefined)?.userMessage
           const result = await handleStatusQuery(
             {
               plannerRunStore: runtimeDeps.plannerRunStore,
@@ -215,7 +247,7 @@ export function createForegroundStatusQueryToolDefinition(runtimeDeps?: Foregrou
               sessionId: identity.sessionId,
               turnId: identity.turnId,
             },
-            userMessage,
+            params as StatusQueryInput | undefined,
           )
           return mapForegroundToolResult(result)
         }
@@ -402,6 +434,9 @@ export function createForegroundLaunchSubagentToolDefinition(runtimeDeps?: Foreg
               ...(runtimeDeps.childTaskRemainingTimeoutMs !== undefined
                 ? { childTaskRemainingTimeoutMs: runtimeDeps.childTaskRemainingTimeoutMs }
                 : {}),
+              ...(runtimeDeps.backgroundRuntime ? { backgroundRuntime: runtimeDeps.backgroundRuntime } : {}),
+              ...(runtimeDeps.sessionStore ? { sessionStore: runtimeDeps.sessionStore } : {}),
+              ...(runtimeDeps.subagentRunStore ? { subagentRunStore: runtimeDeps.subagentRunStore } : {}),
             },
             params as LaunchSubagentInput,
           )
@@ -439,7 +474,15 @@ export function createForegroundCancelOrModifyTaskToolDefinition(
         },
         runtimeActionId: {
           type: 'string',
-          description: 'ID of the subagent runtime action to cancel/modify',
+          description: 'ID of the subagent runtime action (or subagent run) to cancel/modify',
+        },
+        taskId: {
+          type: 'string',
+          description: 'Optional child-session task ID to cancel (resolves the newest run attempt of that child).',
+        },
+        childSessionId: {
+          type: 'string',
+          description: 'Optional child session ID to cancel (equivalent to taskId).',
         },
         reason: {
           type: 'string',
@@ -465,6 +508,9 @@ export function createForegroundCancelOrModifyTaskToolDefinition(
               userId: identity.userId,
               sessionId: identity.sessionId,
               turnId: identity.turnId,
+              ...(runtimeDeps.childSessionTaskRuntime
+                ? { childSessionTaskRuntime: runtimeDeps.childSessionTaskRuntime }
+                : {}),
             },
             params as CancelModifyInput,
           )

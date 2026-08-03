@@ -38,6 +38,8 @@ export interface SubagentRunQuery {
   backgroundRunId?: string
   childSessionId?: string
   taskId?: string
+  /** Parent turn/run lineage — used to count launches within one parent turn. */
+  parentRunId?: string
   limit?: number
   offset?: number
 }
@@ -291,6 +293,11 @@ class SubagentRunStoreImpl implements SubagentRunStore {
     if (filters.taskId !== undefined) {
       conditions.push('task_id = ?')
       params.push(filters.taskId)
+    }
+
+    if (filters.parentRunId !== undefined) {
+      conditions.push('parent_run_id = ?')
+      params.push(filters.parentRunId)
     }
 
     let sql = 'SELECT * FROM subagent_runs'

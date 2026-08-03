@@ -12,10 +12,12 @@ import type { PlannerRuntime } from '../../planner/planner-runtime.js'
 import type { PlannerRunStore } from '../../storage/planner-run-store.js'
 import type { SubagentRunStore } from '../../storage/subagent-run-store.js'
 import type { ApprovalStore } from '../../storage/approval-store.js'
+import type { SessionStore } from '../../storage/session-store.js'
 import type { AgentProfileRegistry } from '../../taxonomy/agent-profile-registry.js'
 import type { ForegroundToolResult } from './foreground-tool-result.js'
 import type { ToolExecutionContext, ToolExecutionResult } from '../../tools/types.js'
 import type { ChildSessionTaskRuntime } from '../../subagents/child-session-task-runtime.js'
+import type { BackgroundRuntime } from '../../subagents/background-runtime.js'
 import type { ToolResultStore } from '../../storage/tool-result-store.js'
 
 // ---------------------------------------------------------------------------
@@ -49,6 +51,13 @@ export interface ForegroundToolRuntimeDeps {
    * composition root from the parent turn's remaining timeout budget.
    */
   childTaskRemainingTimeoutMs?: number
+  /**
+   * Todo 9 background machinery for `foreground_launch_subagent` launches with
+   * `background=true`: enqueue + return immediately; the worker completes later.
+   */
+  backgroundRuntime?: BackgroundRuntime
+  /** Parent session store used to resolve child depth for policy enforcement. */
+  sessionStore?: SessionStore
 }
 
 // ---------------------------------------------------------------------------

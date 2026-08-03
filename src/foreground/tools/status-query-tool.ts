@@ -4,7 +4,7 @@
  */
 
 import type { PlannerRunStore } from '../../storage/planner-run-store.js'
-import type { SubagentRunStore } from '../../storage/subagent-run-store.js'
+import type { SubagentRunStore, SubagentRunRecord } from '../../storage/subagent-run-store.js'
 import type { ApprovalStore } from '../../storage/approval-store.js'
 import { PLANNER_STATES, BACKGROUND_SUBAGENT_STATES, APPROVAL_STATES } from '../../shared/states.js'
 import { createSuccessResult, createErrorResult } from './foreground-tool-result.js'
@@ -20,6 +20,43 @@ export interface StatusQueryData {
   activeSubagentRuns: number
   pendingApprovals: number
   statusText: string
+  /**
+   * Targeted task lookup (only when the input carries a taskId/childSessionId/
+   * runtimeActionId/subagentRunId): the resolved subagent run attempt, or
+   * `null` when no run resolves for the supplied id.
+   */
+  taskStatus?: TaskStatusDetail | null
+}
+
+/**
+ * Detail of a single subagent run attempt resolved by a targeted status query.
+ */
+export interface TaskStatusDetail {
+  subagentRunId: string
+  taskId?: string
+  childSessionId?: string
+  backgroundRunId?: string
+  status: string
+  agentType: string
+  agentProfile?: string
+  isChildTask: boolean
+  createdAt: string
+  completedAt?: string
+  error?: { code: string; message: string }
+}
+
+/**
+ * Optional targeted-status input. At most one target id is honoured per call:
+ * `taskId` or `childSessionId` (both resolve to the newest attempt for that
+ * child session) take precedence over the legacy `runtimeActionId` /
+ * `subagentRunId` (which resolve by exact run id).
+ */
+export interface StatusQueryInput {
+  taskId?: string
+  childSessionId?: string
+  runtimeActionId?: string
+  subagentRunId?: string
+  userMessage?: string
 }
 
 /**
@@ -57,13 +94,19 @@ const PENDING_APPROVAL_STATES: ReadonlySet<string> = new Set([APPROVAL_STATES.PE
  * adapter was registered for that target.  The status query is a simple
  * read-only aggregation that can be satisfied directly from the three
  * stores already available in ForegroundToolRuntimeDeps.
+ *
+ * A targeted lookup (`taskId`/`childSessionId`/`runtimeActionId`/
+ * `subagentRunId`) additionally resolves the matching subagent run attempt —
+ * both the new child-task ids and the legacy ids stay supported. A string
+ * input is treated as a legacy user message.
  */
 export async function handleStatusQuery(
   deps: StatusQueryDeps,
-  userMessage?: string,
+  input?: StatusQueryInput | string,
 ): Promise<ForegroundToolResult<StatusQueryData>> {
   try {
     const { plannerRunStore, subagentRunStore, approvalStore, userId } = deps
+    const query: StatusQueryInput = typeof input === 'string' ? { userMessage: input } : (input ?? {})
 
     const plannerRuns = plannerRunStore.findByUser(userId)
     const activePlannerRuns = plannerRuns.filter((r) => ACTIVE_PLANNER_STATES.has(r.status)).length
@@ -79,20 +122,24 @@ export async function handleStatusQuery(
     if (activeSubagentRuns > 0) parts.push(`${activeSubagentRuns} active subagent run(s)`)
     if (pendingApprovals > 0) parts.push(`${pendingApprovals} pending approval(s)`)
 
-    const statusText =
-      parts.length > 0
-        ? `Active work: ${parts.join(', ')}.`
-        : 'No active work. All clear.'
+    let statusText = parts.length > 0 ? `Active work: ${parts.join(', ')}.` : 'No active work. All clear.'
+    const taskStatus = resolveTaskStatus(subagentRunStore, userId, query)
+    if (query.taskId || query.childSessionId || query.runtimeActionId || query.subagentRunId) {
+      const targetId = query.taskId ?? query.childSessionId ?? query.runtimeActionId ?? query.subagentRunId!
+      statusText = taskStatus
+        ? `Task ${targetId} (${taskStatus.status}) — ${taskStatus.agentType}`
+        : `No task found for ${targetId}`
+    }
 
-    return createSuccessResult<StatusQueryData>(
-      {
-        activePlannerRuns,
-        activeSubagentRuns,
-        pendingApprovals,
-        statusText,
-      },
-      userMessage || statusText,
-    )
+    const data: StatusQueryData = {
+      activePlannerRuns,
+      activeSubagentRuns,
+      pendingApprovals,
+      statusText,
+      ...(query.taskId || query.childSessionId || query.runtimeActionId || query.subagentRunId ? { taskStatus } : {}),
+    }
+
+    return createSuccessResult<StatusQueryData>(data, query.userMessage || statusText)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return createErrorResult<StatusQueryData>(
@@ -102,4 +149,43 @@ export async function handleStatusQuery(
       'Status check failed due to an error.',
     )
   }
+}
+
+function resolveTaskStatus(
+  subagentRunStore: SubagentRunStore,
+  userId: string,
+  query: StatusQueryInput,
+): TaskStatusDetail | null | undefined {
+  if (!query.taskId && !query.childSessionId && !query.runtimeActionId && !query.subagentRunId) {
+    return undefined
+  }
+
+  let run: SubagentRunRecord | undefined
+  if (query.taskId) {
+    run = subagentRunStore.query({ taskId: query.taskId, userId })[0]
+  } else if (query.childSessionId) {
+    run = subagentRunStore.query({ childSessionId: query.childSessionId, userId })[0]
+  } else {
+    const targetId = query.runtimeActionId ?? query.subagentRunId!
+    run = subagentRunStore.getById(targetId) ?? undefined
+  }
+
+  if (!run) return null
+
+  const detail: TaskStatusDetail = {
+    subagentRunId: run.subagentRunId,
+    taskId: run.taskId,
+    childSessionId: run.childSessionId,
+    backgroundRunId: run.backgroundRunId,
+    status: run.status,
+    agentType: run.agentType,
+    agentProfile: run.agentProfile,
+    isChildTask: !!(run.childSessionId || run.taskId),
+    createdAt: run.createdAt,
+    completedAt: run.completedAt,
+  }
+  if (run.errorCode) {
+    detail.error = { code: run.errorCode, message: run.errorMessage ?? '' }
+  }
+  return detail
 }
