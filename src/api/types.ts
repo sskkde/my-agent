@@ -59,6 +59,18 @@ export interface SessionInfo {
   selectedModel?: string
   selectedProviderId?: string
   reasoningDepth?: ReasoningDepth
+  /** Session kind: 'foreground' for user sessions, 'subagent' for internal child sessions */
+  sessionKind?: 'foreground' | 'subagent'
+  /** Parent session id for subagent child sessions */
+  parentSessionId?: string
+  /** Task id for subagent child sessions (identity rule: taskId === child sessionId) */
+  taskId?: string
+  /** Agent profile that runs this child session */
+  agentProfile?: string
+  /** Launch mode: 'foreground' (waited on) or 'background' (notified later) */
+  launchMode?: 'foreground' | 'background'
+  /** Subagent nesting depth: 0 = foreground, >= 1 = child */
+  subagentDepth?: number
 }
 
 export interface SessionResponse {
@@ -328,6 +340,18 @@ export interface ConsoleSessionInfo {
   selectedModel?: string
   selectedProviderId?: string
   reasoningDepth?: ReasoningDepth
+  /** Session kind: 'foreground' for user sessions, 'subagent' for internal child sessions */
+  sessionKind?: 'foreground' | 'subagent'
+  /** Parent session id for subagent child sessions */
+  parentSessionId?: string
+  /** Task id for subagent child sessions (identity rule: taskId === child sessionId) */
+  taskId?: string
+  /** Agent profile that runs this child session */
+  agentProfile?: string
+  /** Launch mode: 'foreground' (waited on) or 'background' (notified later) */
+  launchMode?: 'foreground' | 'background'
+  /** Subagent nesting depth: 0 = foreground, >= 1 = child */
+  subagentDepth?: number
 }
 
 export interface PaginationParams {

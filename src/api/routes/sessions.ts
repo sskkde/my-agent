@@ -21,11 +21,7 @@ import type { Stores } from '../../gateway/types.js'
 import type { SessionStore, Session } from '../../storage/session-store.js'
 import type { ProviderConfigStore } from '../../storage/provider-config-store.js'
 import { isDomesticProvider } from '../../llm/catalog/domestic-providers.js'
-import {
-  DEFAULT_REASONING_DEPTH,
-  isReasoningDepth,
-  type ReasoningDepth,
-} from '../../llm/reasoning-depth.js'
+import { DEFAULT_REASONING_DEPTH, isReasoningDepth, type ReasoningDepth } from '../../llm/reasoning-depth.js'
 import type { ConsoleTimelineService, TimelineOptions } from '../console-timeline.js'
 import { createConsoleTimelineService } from '../console-timeline.js'
 import type { TimelineBroadcaster, TimelineConnection } from '../timeline-broadcaster.js'
@@ -39,6 +35,11 @@ interface CreateSessionBody {
 
 interface SendMessageParams {
   sessionId: string
+}
+
+interface ChildSessionParams {
+  sessionId: string
+  childSessionId: string
 }
 
 interface ListSessionsQuery {
@@ -88,7 +89,47 @@ function sessionToConsoleSessionInfo(session: Session): ConsoleSessionInfo {
     selectedModel: session.selectedModel,
     selectedProviderId: session.selectedProviderId,
     reasoningDepth: session.reasoningDepth ?? DEFAULT_REASONING_DEPTH,
+    sessionKind: session.sessionKind,
+    parentSessionId: session.parentSessionId,
+    taskId: session.taskId,
+    agentProfile: session.agentProfile,
+    launchMode: session.launchMode,
+    subagentDepth: session.subagentDepth,
   }
+}
+
+function resolveTenantId(context: ApiContext): string {
+  return context.resolveTenantId?.() ?? 'org_default'
+}
+
+/**
+ * Parent-scoped child discovery guard. Returns the child session only when
+ * the parent exists, is owned by the requester, and the child is a direct
+ * descendant of that parent owned by the same user. Every failure mode
+ * returns null so routes can reply with a single 404 — no existence leak.
+ */
+function findAccessibleChild(
+  sessionStore: SessionStore | undefined,
+  parentSessionId: string,
+  childSessionId: string,
+  userId: string | undefined,
+  tenantId: string,
+): Session | null {
+  if (!sessionStore) {
+    return null
+  }
+  const parent = sessionStore.getById(parentSessionId, tenantId)
+  if (!parent || (userId !== undefined && parent.userId !== userId)) {
+    return null
+  }
+  const child = sessionStore.getChildSessionById(childSessionId, tenantId)
+  if (!child || child.parentSessionId !== parentSessionId || child.userId !== parent.userId) {
+    return null
+  }
+  if (userId !== undefined && child.userId !== userId) {
+    return null
+  }
+  return child
 }
 
 function generateSessionId(): string {
@@ -130,17 +171,21 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
       const userId = request.user?.userId ?? 'local-user'
       const sessionId = generateSessionId()
+      const tenantId = resolveTenantId(context)
 
       const now = new Date().toISOString()
 
       if (sessionStore) {
-        sessionStore.create({
-          sessionId,
-          userId,
-          title: generateDefaultTitle(),
-          status: 'active',
-          messageCount: 0,
-        })
+        sessionStore.create(
+          {
+            sessionId,
+            userId,
+            title: generateDefaultTitle(),
+            status: 'active',
+            messageCount: 0,
+          },
+          tenantId,
+        )
       }
 
       const sessionInfo = {
@@ -193,15 +238,16 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       let total = 0
 
       const userId = request.user?.userId ?? 'local-user'
+      const tenantId = resolveTenantId(context)
 
       if (sessionStore) {
         if (cursorParam) {
-          sessions = sessionStore.list({ userId, status, limit: limit + 1 })
+          sessions = sessionStore.list({ userId, status, limit: limit + 1 }, tenantId)
         } else {
           const offset = parseOffset(request.query.offset)
-          sessions = sessionStore.list({ userId, status, limit, offset })
+          sessions = sessionStore.list({ userId, status, limit, offset }, tenantId)
         }
-        total = sessionStore.getCount({ userId, status })
+        total = sessionStore.getCount({ userId, status }, tenantId)
       }
 
       const items = sessions.map(sessionToConsoleSessionInfo)
@@ -239,8 +285,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply
       }
       const { sessionId } = request.params
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -273,7 +320,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
               }>,
           },
         }
-        const tenantId = context.resolveTenantId?.() ?? 'org_default'
+        const tenantId = resolveTenantId(context)
         const hydratedState = context.gateway.assembleHydratedState(userId, sessionId, stores, tenantId)
 
         const sessionInfo = {
@@ -287,6 +334,12 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           selectedModel: persistedSession.selectedModel,
           selectedProviderId: persistedSession.selectedProviderId,
           reasoningDepth: persistedSession.reasoningDepth ?? DEFAULT_REASONING_DEPTH,
+          sessionKind: persistedSession.sessionKind,
+          parentSessionId: persistedSession.parentSessionId,
+          taskId: persistedSession.taskId,
+          agentProfile: persistedSession.agentProfile,
+          launchMode: persistedSession.launchMode,
+          subagentDepth: persistedSession.subagentDepth,
         }
 
         const response: SessionResponse = { session: sessionInfo }
@@ -303,9 +356,66 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         selectedModel: persistedSession?.selectedModel,
         selectedProviderId: persistedSession?.selectedProviderId,
         reasoningDepth: persistedSession?.reasoningDepth ?? DEFAULT_REASONING_DEPTH,
+        sessionKind: persistedSession?.sessionKind,
+        parentSessionId: persistedSession?.parentSessionId,
+        taskId: persistedSession?.taskId,
+        agentProfile: persistedSession?.agentProfile,
+        launchMode: persistedSession?.launchMode,
+        subagentDepth: persistedSession?.subagentDepth,
       }
 
       const response: SessionResponse = { session: sessionInfo }
+      return reply.code(200).send(success(response, request.requestId))
+    },
+  )
+
+  server.get<{ Params: { sessionId: string }; Querystring: ListSessionsQuery }>(
+    '/api/v1/sessions/:sessionId/children',
+    async (
+      request: FastifyRequest<{ Params: { sessionId: string }; Querystring: ListSessionsQuery }>,
+      reply: FastifyReply,
+    ) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply
+      }
+      const { sessionId } = request.params
+      const tenantId = resolveTenantId(context)
+      const userId = request.user?.userId
+
+      const parent = sessionStore?.getById(sessionId, tenantId)
+      if (!parent || (userId !== undefined && parent.userId !== userId)) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
+      }
+
+      const status = request.query.status
+      if (status && !['active', 'archived', 'closed'].includes(status)) {
+        return reply
+          .code(400)
+          .send(
+            envelopeError(
+              'INVALID_STATUS_FILTER',
+              'Invalid status filter. Must be one of: active, archived, closed',
+              request.requestId,
+            ),
+          )
+      }
+
+      const limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT)
+      const offset = parseOffset(request.query.offset)
+
+      const children = sessionStore
+        ?.listChildren(sessionId, { status, limit, offset }, tenantId)
+        .filter((child) => child.userId === parent.userId)
+
+      const items = (children ?? []).map(sessionToConsoleSessionInfo)
+      const totalChildren = sessionStore ? sessionStore.countChildLaunches(sessionId, undefined, tenantId) : 0
+      const response: PaginatedResponse<ConsoleSessionInfo> = {
+        items,
+        total: status ? items.length : totalChildren,
+        limit,
+        offset,
+        hasMore: status ? false : offset + items.length < totalChildren,
+      }
       return reply.code(200).send(success(response, request.requestId))
     },
   )
@@ -317,8 +427,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply
       }
       const { sessionId } = request.params
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -365,13 +476,26 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
       const { sessionId } = request.params
       const { text, attachmentIds, sourceChannel } = request.body
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
       if (!canAccessSession(request, persistedSession)) {
         return sendSessionAccessDenied(request, reply)
+      }
+
+      if (persistedSession.sessionKind === 'subagent') {
+        return reply
+          .code(403)
+          .send(
+            envelopeError(
+              'CHILD_SESSION_INTERNAL_ONLY',
+              'Child sessions are internal; direct message submission is not permitted',
+              request.requestId,
+            ),
+          )
       }
 
       if (!('gateway' in context)) {
@@ -415,47 +539,32 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           if (!file) {
             return reply
               .code(404)
-              .send(
-                envelopeError(
-                  'ATTACHMENT_NOT_FOUND',
-                  `Attachment not found: ${attachmentId}`,
-                  request.requestId,
-                ),
-              )
+              .send(envelopeError('ATTACHMENT_NOT_FOUND', `Attachment not found: ${attachmentId}`, request.requestId))
           }
           if (file.userId !== userId) {
             return reply
               .code(403)
               .send(
-                envelopeError(
-                  'ATTACHMENT_FORBIDDEN',
-                  `Attachment not accessible: ${attachmentId}`,
-                  request.requestId,
-                ),
+                envelopeError('ATTACHMENT_FORBIDDEN', `Attachment not accessible: ${attachmentId}`, request.requestId),
               )
           }
           if (file.status === 'deleted') {
             return reply
               .code(400)
               .send(
-                envelopeError(
-                  'ATTACHMENT_DELETED',
-                  `Attachment has been deleted: ${attachmentId}`,
-                  request.requestId,
-                ),
+                envelopeError('ATTACHMENT_DELETED', `Attachment has been deleted: ${attachmentId}`, request.requestId),
               )
           }
         }
       }
 
       // Validate source channel: must be a registered channel, default to 'webui'
-      const validatedChannel =
-        sourceChannel && context.channelRegistry.has(sourceChannel) ? sourceChannel : 'webui'
+      const validatedChannel = sourceChannel && context.channelRegistry.has(sourceChannel) ? sourceChannel : 'webui'
 
       const envelope = context.gateway.receiveUserMessage(userId, sessionId, text, validatedChannel, attachmentIds)
       const processorInput = convertInboundEnvelopeToProcessorInput(envelope)
 
-      sessionStore?.updateActivity(sessionId, new Date().toISOString())
+      sessionStore?.updateActivity(sessionId, new Date().toISOString(), tenantId)
 
       // Process message asynchronously and route outbound via Gateway
       void (async () => {
@@ -482,10 +591,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           if (sessionStore && 'stores' in context) {
             const transcripts = context.stores.transcriptStore.findBySession(sessionId)
             const completedAt = new Date().toISOString()
-            sessionStore.updateMetadata(sessionId, {
-              messageCount: transcripts.length,
-              lastActivityAt: completedAt,
-            })
+            sessionStore.updateMetadata(
+              sessionId,
+              {
+                messageCount: transcripts.length,
+                lastActivityAt: completedAt,
+              },
+              tenantId,
+            )
           }
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown processing error'
@@ -512,10 +625,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
             if (sessionStore && 'stores' in context) {
               const transcripts = context.stores.transcriptStore.findBySession(sessionId)
               const errorTime = new Date().toISOString()
-              sessionStore.updateMetadata(sessionId, {
-                messageCount: transcripts.length,
-                lastActivityAt: errorTime,
-              })
+              sessionStore.updateMetadata(
+                sessionId,
+                {
+                  messageCount: transcripts.length,
+                  lastActivityAt: errorTime,
+                },
+                tenantId,
+              )
             }
 
             context.stores.eventStore.append({
@@ -565,8 +682,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply
       }
       const { sessionId } = request.params
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -575,7 +693,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
 
       const now = new Date().toISOString()
-      sessionStore?.updateActivity(sessionId, now)
+      sessionStore?.updateActivity(sessionId, now, tenantId)
 
       let recentTimeline: ConsoleTimelineEvent[] = []
       if (consoleTimelineService) {
@@ -595,6 +713,41 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
     },
   )
 
+  server.post<{ Params: ChildSessionParams }>(
+    '/api/v1/sessions/:sessionId/children/:childSessionId/resume',
+    async (request: FastifyRequest<{ Params: ChildSessionParams }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.read)) {
+        return reply
+      }
+      const { sessionId, childSessionId } = request.params
+      const tenantId = resolveTenantId(context)
+
+      const child = findAccessibleChild(sessionStore, sessionId, childSessionId, request.user?.userId, tenantId)
+      if (!child) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
+      }
+
+      const now = new Date().toISOString()
+      sessionStore?.updateActivity(childSessionId, now, tenantId)
+
+      let recentTimeline: ConsoleTimelineEvent[] = []
+      if (consoleTimelineService) {
+        const timelineResult = consoleTimelineService.getTimeline(childSessionId, { limit: 10, offset: 0 })
+        recentTimeline = timelineResult.events
+      }
+
+      const response = {
+        session: sessionToConsoleSessionInfo({
+          ...child,
+          lastActivityAt: now,
+        }),
+        timeline: recentTimeline,
+      }
+
+      return reply.code(200).send(success(response, request.requestId))
+    },
+  )
+
   server.patch<{ Params: { sessionId: string }; Body: PatchSessionBody }>(
     '/api/v1/sessions/:sessionId',
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: PatchSessionBody }>, reply: FastifyReply) => {
@@ -603,8 +756,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
       const { sessionId } = request.params
       const { title, status } = request.body || {}
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -631,13 +785,17 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
 
       if (status) {
-        sessionStore?.updateStatus(sessionId, status)
+        sessionStore?.updateStatus(sessionId, status, tenantId)
+        if (status === 'archived') {
+          // Soft-archive the whole descendant tree (recursive CTE, UPDATE-only)
+          sessionStore?.archiveDescendants(sessionId, tenantId)
+        }
       }
       if (title) {
-        sessionStore?.updateTitle(sessionId, title.trim())
+        sessionStore?.updateTitle(sessionId, title.trim(), tenantId)
       }
 
-      const updatedSession = sessionStore?.getById(sessionId)
+      const updatedSession = sessionStore?.getById(sessionId, tenantId)
       if (!updatedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -663,8 +821,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const limit = parseLimit(request.query.limit, DEFAULT_LIMIT, MAX_LIMIT)
       const offset = parseOffset(request.query.offset)
       const eventTypesParam = request.query.eventTypes
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -717,8 +876,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const { sessionId } = request.params
       const { after } = request.query
       const lastEventId = request.headers['last-event-id'] as string | undefined
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -823,13 +983,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
       const { sessionId } = request.params
       const { providerId, model } = request.body
+      const tenantId = resolveTenantId(context)
 
       const userId = request.user?.userId
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       }
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -875,14 +1036,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         }
       }
 
-      const modelSetSuccess = sessionStore?.setModel(sessionId, model.trim(), providerId)
+      const modelSetSuccess = sessionStore?.setModel(sessionId, model.trim(), providerId, tenantId)
       if (!modelSetSuccess) {
         return reply
           .code(500)
           .send(envelopeError('INTERNAL_ERROR', 'Failed to set model for session', request.requestId))
       }
 
-      const updatedSession = sessionStore?.getById(sessionId)
+      const updatedSession = sessionStore?.getById(sessionId, tenantId)
       if (!updatedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found after update', request.requestId))
       }
@@ -902,8 +1063,9 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         return reply
       }
       const { sessionId } = request.params
+      const tenantId = resolveTenantId(context)
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -920,21 +1082,82 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       const kernelRunStore = context.stores.kernelRunStore
       const sessionRuns = kernelRunStore.getBySession(sessionId)
-      const terminalStatuses = ['completed', 'failed', 'cancelled', 'archived', 'expired', 'timeout', 'denied', 'rejected']
+      const terminalStatuses = [
+        'completed',
+        'failed',
+        'cancelled',
+        'archived',
+        'expired',
+        'timeout',
+        'denied',
+        'rejected',
+      ]
       const activeRun = sessionRuns.find((r) => !terminalStatuses.includes(r.status))
 
       if (!activeRun) {
-        return reply.code(404).send(envelopeError('NOT_FOUND', 'No active run found for this session', request.requestId))
+        return reply
+          .code(404)
+          .send(envelopeError('NOT_FOUND', 'No active run found for this session', request.requestId))
       }
 
       const result = await cancellationCoordinator.cancelKernelRun(activeRun.runId)
 
-      return reply.code(200).send(
-        success(
-          { status: 'cancelled', runId: activeRun.runId, coordinatorStatus: result.status },
-          request.requestId,
-        ),
-      )
+      return reply
+        .code(200)
+        .send(
+          success({ status: 'cancelled', runId: activeRun.runId, coordinatorStatus: result.status }, request.requestId),
+        )
+    },
+  )
+
+  server.post<{ Params: ChildSessionParams }>(
+    '/api/v1/sessions/:sessionId/children/:childSessionId/cancel',
+    async (request: FastifyRequest<{ Params: ChildSessionParams }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.sessions, Action.execute)) {
+        return reply
+      }
+      const { sessionId, childSessionId } = request.params
+      const tenantId = resolveTenantId(context)
+
+      const child = findAccessibleChild(sessionStore, sessionId, childSessionId, request.user?.userId, tenantId)
+      if (!child) {
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
+      }
+
+      const cancellationCoordinator = 'cancellationCoordinator' in context ? context.cancellationCoordinator : undefined
+      if (!cancellationCoordinator) {
+        return reply
+          .code(500)
+          .send(envelopeError('INTERNAL_ERROR', 'Cancellation coordinator not available', request.requestId))
+      }
+
+      const kernelRunStore = context.stores.kernelRunStore
+      const sessionRuns = kernelRunStore.getBySession(childSessionId)
+      const terminalStatuses = [
+        'completed',
+        'failed',
+        'cancelled',
+        'archived',
+        'expired',
+        'timeout',
+        'denied',
+        'rejected',
+      ]
+      const activeRun = sessionRuns.find((r) => !terminalStatuses.includes(r.status))
+
+      if (!activeRun) {
+        return reply
+          .code(404)
+          .send(envelopeError('NOT_FOUND', 'No active run found for this session', request.requestId))
+      }
+
+      const result = await cancellationCoordinator.cancelKernelRun(activeRun.runId)
+
+      return reply
+        .code(200)
+        .send(
+          success({ status: 'cancelled', runId: activeRun.runId, coordinatorStatus: result.status }, request.requestId),
+        )
     },
   )
 
@@ -961,13 +1184,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       }
       const { sessionId } = request.params
       const { reasoningDepth } = request.body
+      const tenantId = resolveTenantId(context)
 
       const userId = request.user?.userId
       if (!userId) {
         return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       }
 
-      const persistedSession = sessionStore?.getById(sessionId)
+      const persistedSession = sessionStore?.getById(sessionId, tenantId)
       if (!persistedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found', request.requestId))
       }
@@ -988,14 +1212,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
           )
       }
 
-      const ok = sessionStore?.setReasoningDepth(sessionId, reasoningDepth as ReasoningDepth)
+      const ok = sessionStore?.setReasoningDepth(sessionId, reasoningDepth as ReasoningDepth, tenantId)
       if (!ok) {
         return reply
           .code(500)
           .send(envelopeError('INTERNAL_ERROR', 'Failed to set reasoning depth for session', request.requestId))
       }
 
-      const updatedSession = sessionStore?.getById(sessionId)
+      const updatedSession = sessionStore?.getById(sessionId, tenantId)
       if (!updatedSession) {
         return reply.code(404).send(envelopeError('NOT_FOUND', 'Session not found after update', request.requestId))
       }
