@@ -88,6 +88,8 @@ export interface SearchSubagentMetadata {
   evidenceSufficiency?: EvidenceSufficiency
   searchCallCount?: number
   agentProfile?: string
+  /** Optional child-session task ID when the search ran inside a resumable child session (additive). */
+  taskId?: string
 }
 
 /**

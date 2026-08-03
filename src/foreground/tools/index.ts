@@ -159,6 +159,11 @@ export function createSearchSubagentToolDefinition(
           type: 'boolean',
           description: 'Whether fresh/recent results are required',
         },
+        taskId: {
+          type: 'string',
+          description:
+            'Optional child-session task ID. When provided, the search resumes the existing search child session instead of creating a fresh one.',
+        },
       },
       required: ['originalQuestion'],
     },
@@ -364,6 +369,16 @@ export function createForegroundLaunchSubagentToolDefinition(runtimeDeps?: Foreg
           type: 'array',
           items: { type: 'string' },
           description: 'Suggested tools the subagent should have access to',
+        },
+        taskId: {
+          type: 'string',
+          description:
+            'Optional child-session task ID. When provided, the launch resumes the existing child session instead of creating a fresh one.',
+        },
+        background: {
+          type: 'boolean',
+          description:
+            'Optional launch mode override. When true, returns immediately with a persisted completion notification; when false (default), waits for the bounded terminal result.',
         },
       },
       required: ['objective'],
@@ -729,5 +744,11 @@ export function getDefaultProjectionForegroundToolIds(): string[] {
  * These are high-risk or side-effect tools.
  */
 export function getRequiresApprovalForegroundToolIds(): string[] {
-  return [SPAWN_PLANNER_TOOL_ID, RESUME_PLANNER_TOOL_ID, LAUNCH_SUBAGENT_TOOL_ID, CANCEL_PLANNER_TOOL_ID, CANCEL_MODIFY_TOOL_ID]
+  return [
+    SPAWN_PLANNER_TOOL_ID,
+    RESUME_PLANNER_TOOL_ID,
+    LAUNCH_SUBAGENT_TOOL_ID,
+    CANCEL_PLANNER_TOOL_ID,
+    CANCEL_MODIFY_TOOL_ID,
+  ]
 }

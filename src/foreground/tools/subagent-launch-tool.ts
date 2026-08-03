@@ -28,6 +28,18 @@ export interface LaunchSubagentInput {
   /** Capability profile identifier. Validated against AgentProfileRegistry. */
   agentProfile?: string
   suggestedTools?: string[]
+  /**
+   * Optional child-session task ID. When provided, the launch resumes the
+   * existing child session instead of creating a fresh one (additive; wired
+   * by the child-session runtime, not by this facade).
+   */
+  taskId?: string
+  /**
+   * Optional launch mode override. true = background (return immediately,
+   * persist an exactly-once completion notification); false/default =
+   * foreground (wait for the bounded terminal result).
+   */
+  background?: boolean
 }
 
 export interface LaunchSubagentData {

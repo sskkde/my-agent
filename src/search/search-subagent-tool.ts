@@ -37,6 +37,8 @@ export interface SearchSubagentToolInput {
   intent?: SearchIntent
   locale?: string
   freshnessRequired?: boolean
+  /** Optional child-session task ID. When provided, the search resumes the existing search child session (additive; wired by the child-session runner). */
+  taskId?: string
 }
 
 export interface SearchQueryPlanner {
