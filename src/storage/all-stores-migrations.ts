@@ -2854,6 +2854,28 @@ export const sessionReasoningDepthMigration: Migration = {
   `,
 }
 
+// ============================================================================
+// Child session columns (version 74)
+// ============================================================================
+export const childSessionColumnsMigration: Migration = {
+  version: 74,
+  name: 'add_child_session_columns',
+  up: `
+    ALTER TABLE sessions ADD COLUMN parent_session_id TEXT;
+    ALTER TABLE sessions ADD COLUMN task_id TEXT;
+    ALTER TABLE sessions ADD COLUMN agent_profile TEXT;
+    ALTER TABLE sessions ADD COLUMN launch_mode TEXT CHECK(launch_mode IS NULL OR launch_mode IN ('foreground', 'background'));
+    ALTER TABLE sessions ADD COLUMN subagent_depth INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE sessions ADD COLUMN session_kind TEXT NOT NULL DEFAULT 'foreground' CHECK(session_kind IN ('foreground', 'subagent'));
+    CREATE INDEX IF NOT EXISTS idx_sessions_parent_session_id ON sessions(parent_session_id) WHERE parent_session_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_sessions_task_id ON sessions(task_id) WHERE task_id IS NOT NULL
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_sessions_task_id;
+    DROP INDEX IF EXISTS idx_sessions_parent_session_id
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -3017,6 +3039,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Session reasoning depth for model thinking effort
   sessionReasoningDepthMigration, // v73
+
+  // Child session columns for internal subagent sessions
+  childSessionColumnsMigration, // v74
 ]
 
 /**
