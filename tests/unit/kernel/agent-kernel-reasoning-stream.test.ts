@@ -405,4 +405,46 @@ describe('AgentKernel reasoning stream broadcast (T4)', () => {
       }
     }
   })
+
+  it('projects reasoning as live thinking_summary timeline events (single-source streaming)', async () => {
+    const reasoningDeltas = ['Step1 ', 'Step2 ', REASONING_FIXTURE]
+    const textDeltas = ['answer']
+    const adapter = new ReasoningStreamingLLMAdapter(reasoningDeltas, textDeltas)
+
+    const config = makeBaseConfig({ llmAdapter: adapter })
+    const kernel = new AgentKernel(config)
+
+    await kernel.run(makeRunInput())
+
+    const thinkingEvents = fakeBroadcaster.getTimelineEvents().filter(
+      (entry) => entry.event.eventType === 'thinking_summary',
+    )
+
+    // One live block per reasoning delta, keyed by stable per-turn eventId
+    expect(thinkingEvents.length).toBe(3)
+    for (const entry of thinkingEvents) {
+      expect(entry.sessionId).toBe('test-session')
+      expect(entry.event.eventId).toBe('turn-test-run-thinking-live')
+      expect(entry.event.metadata?.live).toBe(true)
+      expect(entry.event.metadata?.turnId).toBe('test-run')
+    }
+    // Content accumulates reasoning so far
+    expect(thinkingEvents[0].event.content).toBe('Step1 ')
+    expect(thinkingEvents[1].event.content).toBe('Step1 Step2 ')
+    expect(thinkingEvents[2].event.content).toBe(`Step1 Step2 ${REASONING_FIXTURE}`)
+  })
+
+  it('does NOT emit live thinking_summary events when no reasoning existed', async () => {
+    const adapter = new ReasoningStreamingLLMAdapter([], [ANSWER_TEXT])
+
+    const config = makeBaseConfig({ llmAdapter: adapter })
+    const kernel = new AgentKernel(config)
+
+    await kernel.run(makeRunInput())
+
+    const thinkingEvents = fakeBroadcaster.getTimelineEvents().filter(
+      (entry) => entry.event.eventType === 'thinking_summary',
+    )
+    expect(thinkingEvents.length).toBe(0)
+  })
 })

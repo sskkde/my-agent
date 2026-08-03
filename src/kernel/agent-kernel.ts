@@ -777,6 +777,29 @@ export class AgentKernel {
       }
       broadcaster.broadcastTokenStream(sessionId, payload)
       sequence++
+      broadcastThinkingSummaryDelta()
+    }
+
+    // SAFETY: reasoning is ALSO projected as a server-owned `thinking_summary`
+    // timeline event so the UI renders a single source of truth (single-source
+    // streaming). The live block uses a stable per-turn eventId that the client
+    // upserts in place; the persisted terminal event (turn-<turnId>-thinking-<index>,
+    // console-timeline.ts) atomically replaces it when the turn finalizes.
+    const broadcastThinkingSummaryDelta = (): void => {
+      if (!broadcaster?.broadcast || !sessionId) return
+      broadcaster.broadcast(sessionId, {
+        eventId: `turn-${attemptId}-thinking-live`,
+        eventType: 'thinking_summary',
+        sessionId,
+        timestamp: new Date().toISOString(),
+        content: aggregator.reasoningContent ?? '',
+        metadata: {
+          turnId: attemptId,
+          attemptId,
+          live: true,
+        },
+        actor: 'assistant',
+      })
     }
 
     const broadcastEarlyTool = (
