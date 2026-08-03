@@ -15,6 +15,8 @@ import type { ApprovalStore } from '../../storage/approval-store.js'
 import type { AgentProfileRegistry } from '../../taxonomy/agent-profile-registry.js'
 import type { ForegroundToolResult } from './foreground-tool-result.js'
 import type { ToolExecutionContext, ToolExecutionResult } from '../../tools/types.js'
+import type { ChildSessionTaskRuntime } from '../../subagents/child-session-task-runtime.js'
+import type { ToolResultStore } from '../../storage/tool-result-store.js'
 
 // ---------------------------------------------------------------------------
 // 1. Runtime deps - long-lived services closed over by foreground tool handlers
@@ -34,6 +36,19 @@ export interface ForegroundToolRuntimeDeps {
   subagentRunStore: SubagentRunStore
   approvalStore: ApprovalStore
   profileRegistry: AgentProfileRegistry
+  /**
+   * Unified child-session runtime. When wired (Todo 8+), foreground subagent
+   * launches run child execution under this runtime and WAIT within the parent
+   * turn's remaining budget instead of the RuntimeDispatcher 30s default.
+   */
+  childSessionTaskRuntime?: ChildSessionTaskRuntime
+  /** Store for persisting large child results by reference (>32KiB). */
+  toolResultStore?: ToolResultStore
+  /**
+   * Remaining parent-turn budget (ms) for foreground child waits. Wired by the
+   * composition root from the parent turn's remaining timeout budget.
+   */
+  childTaskRemainingTimeoutMs?: number
 }
 
 // ---------------------------------------------------------------------------

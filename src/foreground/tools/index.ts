@@ -395,6 +395,13 @@ export function createForegroundLaunchSubagentToolDefinition(runtimeDeps?: Foreg
               turnId: identity.turnId,
               profileRegistry: runtimeDeps.profileRegistry,
               signal: context.signal,
+              ...(runtimeDeps.childSessionTaskRuntime
+                ? { childSessionTaskRuntime: runtimeDeps.childSessionTaskRuntime }
+                : {}),
+              ...(runtimeDeps.toolResultStore ? { toolResultStore: runtimeDeps.toolResultStore } : {}),
+              ...(runtimeDeps.childTaskRemainingTimeoutMs !== undefined
+                ? { childTaskRemainingTimeoutMs: runtimeDeps.childTaskRemainingTimeoutMs }
+                : {}),
             },
             params as LaunchSubagentInput,
           )
