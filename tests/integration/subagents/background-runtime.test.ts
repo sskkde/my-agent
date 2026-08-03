@@ -130,6 +130,13 @@ function createMockBackgroundRunStore(): MockBackgroundRunStore {
         run.updatedAt = new Date().toISOString()
       }
     }),
+    saveErrorMessage: vi.fn((id, message) => {
+      const run = runs.get(id)
+      if (run) {
+        run.errorMessage = message
+        run.updatedAt = new Date().toISOString()
+      }
+    }),
     getByUserAndStatus: vi.fn((userId, status) =>
       Array.from(runs.values()).filter((r) => r.userId === userId && r.status === status),
     ),
@@ -148,6 +155,42 @@ function createMockBackgroundRunStore(): MockBackgroundRunStore {
         if (!r.expiresAt) return false
         return new Date(r.expiresAt) < new Date()
       }),
+    ),
+    saveTaskSpec: vi.fn((id, taskSpec) => {
+      const run = runs.get(id)
+      if (run) {
+        run.taskSpec = taskSpec
+        run.updatedAt = new Date().toISOString()
+      }
+    }),
+    linkChildTask: vi.fn((id, linkage) => {
+      const run = runs.get(id)
+      if (run) {
+        run.subagentRunId = linkage.subagentRunId
+        run.taskId = linkage.taskId
+        run.childSessionId = linkage.childSessionId
+        run.updatedAt = new Date().toISOString()
+      }
+    }),
+    saveNotification: vi.fn((id, notification) => {
+      const run = runs.get(id)
+      if (run) {
+        run.notificationType = notification.type
+        run.notificationPayload = notification.payload
+        run.updatedAt = new Date().toISOString()
+      }
+    }),
+    markNotificationDelivered: vi.fn((id, deliveredAt) => {
+      const run = runs.get(id)
+      if (run) {
+        run.notificationDeliveredAt = deliveredAt
+        run.updatedAt = new Date().toISOString()
+      }
+    }),
+    getPendingNotifications: vi.fn((sessionId?: string) =>
+      Array.from(runs.values()).filter(
+        (r) => r.notificationType && !r.notificationDeliveredAt && (!sessionId || r.sessionId === sessionId),
+      ),
     ),
     reset: vi.fn(() => runs.clear()),
   } as MockBackgroundRunStore

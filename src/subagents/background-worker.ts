@@ -2,6 +2,8 @@ import type { BackgroundRuntime } from './background-runtime.js'
 import type { SubagentRuntime, SubagentTaskSpec, SubagentResult, LaunchSubagentInput } from './types.js'
 import type { BackgroundRunStore, BackgroundRun } from '../storage/background-run-store.js'
 import type { ContextBundle, InvocationSource } from '../context/types.js'
+import type { ChildSessionTaskRuntime, ChildTaskSpec } from './child-session-task-runtime.js'
+import { toChildTaskTerminalError } from '../foreground/tools/child-task-contract.js'
 
 declare function setInterval(callback: (...args: unknown[]) => void, ms: number): unknown
 declare function clearInterval(timer: unknown): void
@@ -14,7 +16,9 @@ export interface BackgroundSubagentWorker {
 
 export interface BackgroundSubagentWorkerDeps {
   backgroundRuntime: BackgroundRuntime
-  subagentRuntime: SubagentRuntime
+  subagentRuntime?: SubagentRuntime
+  /** Preferred runner: creates the child session + subagent_runs attempt with persisted linkage. */
+  childTaskRuntime?: ChildSessionTaskRuntime
   backgroundRunStore: BackgroundRunStore
   pollIntervalMs?: number
 }
@@ -27,7 +31,8 @@ const DEFAULT_POLL_INTERVAL_MS = 5_000
 
 class BackgroundSubagentWorkerImpl implements BackgroundSubagentWorkerInstance {
   private backgroundRuntime: BackgroundRuntime
-  private subagentRuntime: SubagentRuntime
+  private subagentRuntime?: SubagentRuntime
+  private childTaskRuntime?: ChildSessionTaskRuntime
   private backgroundRunStore: BackgroundRunStore
   private pollIntervalMs: number
   private pollTimer: unknown = null
@@ -38,6 +43,7 @@ class BackgroundSubagentWorkerImpl implements BackgroundSubagentWorkerInstance {
   constructor(deps: BackgroundSubagentWorkerDeps) {
     this.backgroundRuntime = deps.backgroundRuntime
     this.subagentRuntime = deps.subagentRuntime
+    this.childTaskRuntime = deps.childTaskRuntime
     this.backgroundRunStore = deps.backgroundRunStore
     this.pollIntervalMs = deps.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS
   }
@@ -107,7 +113,7 @@ class BackgroundSubagentWorkerImpl implements BackgroundSubagentWorkerInstance {
       if (!taskSpec) {
         this.backgroundRuntime.failBackgroundRun(bgRunId, {
           code: 'MISSING_TASK_SPEC',
-          message: `No task spec registered for background run ${bgRunId}`,
+          message: `No valid task spec persisted for background run ${bgRunId}; the run was not launched`,
         })
         return
       }
@@ -115,54 +121,99 @@ class BackgroundSubagentWorkerImpl implements BackgroundSubagentWorkerInstance {
       await this.backgroundRuntime.startBackgroundRun(bgRunId)
 
       const parentContext = this.buildMinimalContext(run)
-
-      const launchInput: LaunchSubagentInput = {
-        taskSpec,
-        parentContext,
-        parentRunId: bgRunId,
-        rootRunId: bgRunId,
-      }
-      const subagentRun = this.subagentRuntime.launchSubagent(launchInput)
-
-      this.persistSubagentRunId(bgRunId, subagentRun.subagentRunId)
-
-      const result: SubagentResult = await this.subagentRuntime.executeSubagent(subagentRun.subagentRunId)
-
-      if (result.status === 'completed') {
-        this.backgroundRuntime.completeBackgroundRun(bgRunId, result)
-      } else if (result.status === 'cancelled') {
-        this.backgroundRuntime.cancelBackgroundRun(bgRunId)
-      } else {
-        this.backgroundRuntime.failBackgroundRun(
-          bgRunId,
-          result.error ?? {
-            code: 'SUBAGENT_FAILED',
-            message: 'Subagent execution failed without a specific error',
-          },
-        )
-      }
+      const result = await this.executeWithRuntime(bgRunId, run, taskSpec, parentContext)
+      this.finishRun(bgRunId, result)
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.backgroundRuntime.failBackgroundRun(bgRunId, {
-        code: 'WORKER_EXECUTION_ERROR',
-        message,
-      })
+      const terminal = toChildTaskTerminalError(error, { code: 'WORKER_EXECUTION_ERROR', phase: 'run' })
+      this.backgroundRuntime.failBackgroundRun(bgRunId, { code: terminal.code, message: terminal.message })
     } finally {
       this.inFlight.delete(bgRunId)
       this.taskSpecs.delete(bgRunId)
     }
   }
 
-  private resolveTaskSpec(bgRunId: string, run: BackgroundRun): SubagentTaskSpec | undefined {
-    const registered = this.taskSpecs.get(bgRunId)
-    if (registered) return registered
+  private async executeWithRuntime(
+    bgRunId: string,
+    run: BackgroundRun,
+    taskSpec: SubagentTaskSpec,
+    parentContext: ContextBundle,
+  ): Promise<SubagentResult> {
+    if (this.childTaskRuntime) {
+      const persisted = taskSpec as ChildTaskSpec
+      const childSpec: ChildTaskSpec = {
+        ...persisted,
+        profileId: persisted.profileId ?? run.agentProfile ?? persisted.agentType ?? run.agentType,
+        parentSessionId: persisted.parentSessionId ?? run.sessionId ?? '',
+        launchMode: 'background',
+      }
+      if (!childSpec.parentSessionId) {
+        throw new Error(`No parent session id available for background run ${bgRunId}`)
+      }
 
-    if (run.checkpointData && typeof run.checkpointData === 'object') {
-      const data = run.checkpointData as Record<string, unknown>
-      if (data.taskSpec && typeof data.taskSpec === 'object') {
-        return data.taskSpec as SubagentTaskSpec
+      const launch = this.childTaskRuntime.launchTask({
+        parentContext,
+        taskSpec: childSpec,
+        depth: 1,
+        launchesInParentTurn: 0,
+        parentRunId: bgRunId,
+        rootRunId: bgRunId,
+        backgroundRunId: bgRunId,
+      })
+
+      this.backgroundRunStore.linkChildTask(bgRunId, {
+        subagentRunId: launch.subagentRunId,
+        taskId: launch.taskId,
+        childSessionId: launch.childSessionId,
+      })
+
+      return this.childTaskRuntime.executeRun(launch.subagentRunId)
+    }
+
+    if (!this.subagentRuntime) {
+      throw new Error(`No subagent runtime configured for background run ${bgRunId}`)
+    }
+
+    const launchInput: LaunchSubagentInput = {
+      taskSpec,
+      parentContext,
+      parentRunId: bgRunId,
+      rootRunId: bgRunId,
+    }
+    const subagentRun = this.subagentRuntime.launchSubagent(launchInput)
+    this.backgroundRunStore.linkChildTask(bgRunId, {
+      subagentRunId: subagentRun.subagentRunId,
+      taskId: subagentRun.subagentRunId,
+      childSessionId: subagentRun.subagentRunId,
+    })
+    return this.subagentRuntime.executeSubagent(subagentRun.subagentRunId)
+  }
+
+  private finishRun(bgRunId: string, result: SubagentResult): void {
+    if (result.status === 'completed') {
+      this.backgroundRuntime.completeBackgroundRun(bgRunId, result)
+    } else if (result.status === 'cancelled') {
+      this.backgroundRuntime.cancelBackgroundRun(bgRunId)
+    } else {
+      this.backgroundRuntime.failBackgroundRun(
+        bgRunId,
+        result.error ?? {
+          code: 'SUBAGENT_FAILED',
+          message: 'Subagent execution failed without a specific error',
+        },
+      )
+    }
+  }
+
+  private resolveTaskSpec(bgRunId: string, run: BackgroundRun): SubagentTaskSpec | undefined {
+    if (run.taskSpec && typeof run.taskSpec === 'object') {
+      const spec = run.taskSpec as Record<string, unknown>
+      if (typeof spec.objective === 'string' && spec.objective.length > 0) {
+        return spec as unknown as SubagentTaskSpec
       }
     }
+
+    const registered = this.taskSpecs.get(bgRunId)
+    if (registered) return registered
 
     return undefined
   }
@@ -197,13 +248,6 @@ class BackgroundSubagentWorkerImpl implements BackgroundSubagentWorkerInstance {
       pinnedItems,
       orderedItems: [...pinnedItems],
       tokenEstimate: 0,
-    }
-  }
-
-  private persistSubagentRunId(bgRunId: string, subagentRunId: string): void {
-    const run = this.backgroundRunStore.getById(bgRunId)
-    if (run) {
-      run.subagentRunId = subagentRunId
     }
   }
 

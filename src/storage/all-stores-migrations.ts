@@ -2897,6 +2897,27 @@ export const subagentChildLinkageMigration: Migration = {
   `,
 }
 
+// v76 — persist task spec + child/task linkage + durable exactly-once notification
+// on background_runs (worker restart recovery; notifications must not live only in memory).
+export const backgroundChildTaskPersistenceMigration: Migration = {
+  version: 76,
+  name: 'persist_background_child_tasks',
+  up: `
+    ALTER TABLE background_runs ADD COLUMN task_spec_json TEXT;
+    ALTER TABLE background_runs ADD COLUMN task_id TEXT;
+    ALTER TABLE background_runs ADD COLUMN child_session_id TEXT;
+    ALTER TABLE background_runs ADD COLUMN notification_type TEXT;
+    ALTER TABLE background_runs ADD COLUMN notification_payload_json TEXT;
+    ALTER TABLE background_runs ADD COLUMN notification_delivered_at TEXT;
+    CREATE INDEX IF NOT EXISTS idx_background_runs_pending_notification
+      ON background_runs(notification_type)
+      WHERE notification_type IS NOT NULL AND notification_delivered_at IS NULL
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_background_runs_pending_notification
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -3066,6 +3087,7 @@ export const allStoreMigrations: Migration[] = [
 
   // Subagent run/transcript child linkage and ownership columns
   subagentChildLinkageMigration, // v75
+  backgroundChildTaskPersistenceMigration, // v76
 ]
 
 /**

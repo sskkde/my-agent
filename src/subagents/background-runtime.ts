@@ -1,6 +1,12 @@
 import type { BackgroundRunStore, BackgroundRun } from '../storage/background-run-store.js'
 import type { EventStore, EventRecord, SourceModule, SensitivityLevel, RetentionClass } from '../storage/event-store.js'
 import type { SubagentTaskSpec, SubagentResult } from './types.js'
+import type { ContextItem } from '../context/types.js'
+import {
+  sanitizeChildTaskSummary,
+  toChildTaskTerminalError,
+  type ChildTaskTerminalError,
+} from '../foreground/tools/child-task-contract.js'
 
 export interface BackgroundRunInput {
   userId: string
@@ -15,6 +21,8 @@ export interface BackgroundRunInput {
   artifactRefs?: string[]
   outputContract?: string
   permissionPolicyRef?: string
+  taskId?: string
+  childSessionId?: string
 }
 
 export interface Checkpoint {
@@ -34,6 +42,26 @@ export interface NotificationRequest {
   artifactRefs?: string[]
   createdAt: string
 }
+
+export type BackgroundNotificationType = 'completed' | 'failed' | 'cancelled'
+
+/**
+ * Durable notification payload persisted at terminal state. `summary` is the
+ * sanitized, bounded model-facing text; `error` is the safe terminal error
+ * envelope (never raw stacks/secrets).
+ */
+export interface BackgroundNotificationPayload {
+  backgroundRunId: string
+  taskId?: string
+  childSessionId?: string
+  subagentRunId?: string
+  type: BackgroundNotificationType
+  summary: string
+  error?: ChildTaskTerminalError
+  createdAt: string
+}
+
+export const BACKGROUND_NOTIFICATION_EVENT_TYPE = 'BackgroundTaskNotification'
 
 export interface BackgroundRuntimeConfig {
   backgroundRunStore: BackgroundRunStore
@@ -56,12 +84,18 @@ export interface BackgroundRuntime {
   getRunningCount(): number
   getQueuedCount(): number
   getPendingNotifications(): NotificationRequest[]
+  /**
+   * Collect undelivered terminal notifications for a parent session as bounded,
+   * sanitized synthetic context items for the parent's NEXT turn, marking them
+   * delivered so later turns never repeat them. Never injected into finished
+   * historical model calls — the caller chooses where the items are surfaced.
+   */
+  collectParentTurnNotifications(input: { parentSessionId: string }): ContextItem[]
 }
 
 class BackgroundRuntimeImpl implements BackgroundRuntime {
   private config: BackgroundRuntimeConfig
   private runningRuns: Set<string> = new Set()
-  private pendingNotifications: NotificationRequest[] = []
   private checkpointTimestamps: Map<string, number> = new Map()
 
   constructor(config: BackgroundRuntimeConfig) {
@@ -87,6 +121,9 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       createdAt: now,
       updatedAt: now,
       checkpointData: { artifactRefs: input.artifactRefs },
+      taskSpec: input.taskSpec,
+      taskId: input.taskId,
+      childSessionId: input.childSessionId,
     }
 
     this.config.backgroundRunStore.create(run)
@@ -289,9 +326,9 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
   }
 
   completeBackgroundRun(bgRunId: string, result: SubagentResult): void {
-    const run = this.config.backgroundRunStore.getById(bgRunId)
-    if (!run) {
-      throw new Error(`Background run not found: ${bgRunId}`)
+    const run = this.requireRun(bgRunId)
+    if (this.isTerminal(run.status)) {
+      return
     }
 
     if (!['running', 'recovering'].includes(run.status)) {
@@ -305,18 +342,15 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
     this.runningRuns.delete(bgRunId)
     this.checkpointTimestamps.delete(bgRunId)
 
-    const checkpointData = run.checkpointData as { artifactRefs?: string[] } | undefined
-    const notification: NotificationRequest = {
-      notificationId: this.generateId('notif'),
+    this.persistTerminalNotification(bgRunId, run, 'completed', {
       backgroundRunId: bgRunId,
-      userId: run.userId,
+      taskId: run.taskId,
+      childSessionId: run.childSessionId,
+      subagentRunId: run.subagentRunId,
       type: 'completed',
-      title: `Background task completed: ${run.agentType}`,
-      message: result.response ?? 'Task completed successfully',
-      artifactRefs: checkpointData?.artifactRefs,
+      summary: sanitizeChildTaskSummary(result.response ?? 'Task completed successfully'),
       createdAt: now,
-    }
-    this.pendingNotifications.push(notification)
+    })
 
     this.emitEvent({
       eventId: this.generateId('evt'),
@@ -344,35 +378,29 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
   }
 
   failBackgroundRun(bgRunId: string, error: { code: string; message: string }): void {
-    const run = this.config.backgroundRunStore.getById(bgRunId)
-    if (!run) {
-      throw new Error(`Background run not found: ${bgRunId}`)
+    const run = this.requireRun(bgRunId)
+    if (this.isTerminal(run.status)) {
+      return
     }
 
     const now = new Date().toISOString()
     this.config.backgroundRunStore.updateStatus(bgRunId, 'failed')
-
-    const updatedRun = this.config.backgroundRunStore.getById(bgRunId)
-    if (updatedRun) {
-      updatedRun.errorMessage = error.message
-      updatedRun.updatedAt = now
-    }
+    this.config.backgroundRunStore.saveErrorMessage(bgRunId, error.message)
 
     this.runningRuns.delete(bgRunId)
     this.checkpointTimestamps.delete(bgRunId)
 
-    const checkpointData = run.checkpointData as { artifactRefs?: string[] } | undefined
-    const notification: NotificationRequest = {
-      notificationId: this.generateId('notif'),
+    const terminal = toChildTaskTerminalError(error.message, { code: error.code, phase: 'run' })
+    this.persistTerminalNotification(bgRunId, run, 'failed', {
       backgroundRunId: bgRunId,
-      userId: run.userId,
+      taskId: run.taskId,
+      childSessionId: run.childSessionId,
+      subagentRunId: run.subagentRunId,
       type: 'failed',
-      title: `Background task failed: ${run.agentType}`,
-      message: error.message,
-      artifactRefs: checkpointData?.artifactRefs,
+      summary: terminal.message,
+      error: terminal,
       createdAt: now,
-    }
-    this.pendingNotifications.push(notification)
+    })
 
     this.emitEvent({
       eventId: this.generateId('evt'),
@@ -400,9 +428,9 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
   }
 
   cancelBackgroundRun(bgRunId: string): void {
-    const run = this.config.backgroundRunStore.getById(bgRunId)
-    if (!run) {
-      throw new Error(`Background run not found: ${bgRunId}`)
+    const run = this.requireRun(bgRunId)
+    if (this.isTerminal(run.status)) {
+      return
     }
 
     if (!['queued', 'running', 'recovering'].includes(run.status)) {
@@ -415,18 +443,22 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
     this.runningRuns.delete(bgRunId)
     this.checkpointTimestamps.delete(bgRunId)
 
-    const checkpointData = run.checkpointData as { artifactRefs?: string[] } | undefined
-    const notification: NotificationRequest = {
-      notificationId: this.generateId('notif'),
-      backgroundRunId: bgRunId,
-      userId: run.userId,
-      type: 'cancelled',
-      title: `Background task cancelled: ${run.agentType}`,
+    const cancelledError: ChildTaskTerminalError = {
+      code: 'CANCELLED',
       message: 'The background task was cancelled',
-      artifactRefs: checkpointData?.artifactRefs,
-      createdAt: now,
+      recoverable: false,
+      phase: 'cancel',
     }
-    this.pendingNotifications.push(notification)
+    this.persistTerminalNotification(bgRunId, run, 'cancelled', {
+      backgroundRunId: bgRunId,
+      taskId: run.taskId,
+      childSessionId: run.childSessionId,
+      subagentRunId: run.subagentRunId,
+      type: 'cancelled',
+      summary: cancelledError.message,
+      error: cancelledError,
+      createdAt: now,
+    })
 
     this.emitEvent({
       eventId: this.generateId('evt'),
@@ -462,7 +494,47 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
   }
 
   getPendingNotifications(): NotificationRequest[] {
-    return [...this.pendingNotifications]
+    return this.config.backgroundRunStore.getPendingNotifications().map((run) => this.toNotificationRequest(run))
+  }
+
+  collectParentTurnNotifications(input: { parentSessionId: string }): ContextItem[] {
+    const now = new Date().toISOString()
+    const pending = this.config.backgroundRunStore.getPendingNotifications(input.parentSessionId)
+    const items: ContextItem[] = []
+
+    for (const run of pending) {
+      const payload = (run.notificationPayload ?? {}) as Partial<BackgroundNotificationPayload>
+      const type = run.notificationType ?? 'completed'
+      const summary = payload.summary ?? 'Background task finished'
+      const taskId = payload.taskId ?? run.taskId
+      const subagentRunId = payload.subagentRunId ?? run.subagentRunId
+
+      items.push({
+        itemId: `bg-notif-${run.backgroundRunId}`,
+        sourceType: 'system_note',
+        semanticType: 'background_run_view',
+        content: `Background task ${taskId ?? run.backgroundRunId} ${type}: ${summary}`,
+        structuredPayload: {
+          backgroundRunId: run.backgroundRunId,
+          taskId,
+          childSessionId: payload.childSessionId ?? run.childSessionId,
+          subagentRunId,
+          status: type,
+          summary,
+          error: payload.error,
+          notificationDeliveredAt: now,
+        },
+        relatedRefs: { backgroundRunId: run.backgroundRunId, subagentRunId },
+        priority: 80,
+        isPinned: true,
+        dedupeKey: `bg-notif-${run.backgroundRunId}`,
+        freshnessTs: now,
+      })
+
+      this.config.backgroundRunStore.markNotificationDelivered(run.backgroundRunId, now)
+    }
+
+    return items
   }
 
   private processExpiredRuns(): void {
@@ -510,6 +582,78 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
         // Fire-and-forget: errors during background run startup are handled
         // internally by startBackgroundRun via event emission
       })
+    }
+  }
+
+  private requireRun(bgRunId: string): BackgroundRun {
+    const run = this.config.backgroundRunStore.getById(bgRunId)
+    if (!run) {
+      throw new Error(`Background run not found: ${bgRunId}`)
+    }
+    return run
+  }
+
+  private isTerminal(status: string): boolean {
+    return status === 'completed' || status === 'failed' || status === 'cancelled'
+  }
+
+  /**
+   * Persist the terminal notification EXACTLY once, keyed by task/run. The
+   * store-level guard (`notification_type` already set) makes duplicate
+   * terminal callbacks no-ops; the event-store append carries the run-scoped
+   * idempotency key for audit. Notification is durable — never in-memory only.
+   */
+  private persistTerminalNotification(
+    bgRunId: string,
+    run: BackgroundRun,
+    type: BackgroundNotificationType,
+    payload: BackgroundNotificationPayload,
+  ): void {
+    if (run.notificationType) {
+      return
+    }
+
+    this.config.backgroundRunStore.saveNotification(bgRunId, { type, payload })
+
+    this.emitEvent({
+      eventId: `notif-${bgRunId}-${type}`,
+      eventType: BACKGROUND_NOTIFICATION_EVENT_TYPE,
+      sourceModule: 'subagent' as SourceModule,
+      userId: run.userId,
+      sessionId: run.sessionId,
+      correlationId: bgRunId,
+      causationId: bgRunId,
+      idempotencyKey: `background-notification:${bgRunId}:${type}`,
+      relatedRefs: { backgroundRunId: bgRunId, subagentRunId: run.subagentRunId },
+      payload: {
+        backgroundRunId: bgRunId,
+        taskId: run.taskId,
+        childSessionId: run.childSessionId,
+        subagentRunId: run.subagentRunId,
+        type,
+        summary: payload.summary,
+        error: payload.error,
+        delivered: false,
+      },
+      sensitivity: 'low' as SensitivityLevel,
+      retentionClass: 'standard' as RetentionClass,
+      createdAt: payload.createdAt,
+    })
+  }
+
+  private toNotificationRequest(run: BackgroundRun): NotificationRequest {
+    const payload = (run.notificationPayload ?? {}) as Partial<BackgroundNotificationPayload>
+    const type = run.notificationType ?? 'completed'
+    const checkpointData = run.checkpointData as { artifactRefs?: string[] } | undefined
+    return {
+      notificationId: `notif-${run.backgroundRunId}`,
+      backgroundRunId: run.backgroundRunId,
+      userId: run.userId,
+      type,
+      title: `Background task ${type}: ${run.agentType}`,
+      message: payload.summary ?? 'Background task finished',
+      artifactRefs: checkpointData?.artifactRefs,
+      createdAt: payload.createdAt ?? run.updatedAt ?? new Date().toISOString(),
     }
   }
 

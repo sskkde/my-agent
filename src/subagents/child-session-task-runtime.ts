@@ -151,6 +151,8 @@ export interface ChildTaskLaunchInput {
   /** Parent run lineage override (defaults to parentContext.runId). */
   parentRunId?: string
   rootRunId?: string
+  /** Background run linkage for subagent_runs.background_run_id. */
+  backgroundRunId?: string
   tenantId?: string
 }
 
@@ -397,6 +399,7 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
         taskId: childSession.taskId ?? childSession.sessionId,
         parentRunId,
         rootRunId,
+        backgroundRunId: input.backgroundRunId,
         agentType: decision.profile.agentType,
         agentProfile: profileLabel,
         status: 'queued',
