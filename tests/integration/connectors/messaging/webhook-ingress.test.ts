@@ -131,13 +131,15 @@ function createMockConnectorStore(overrides?: {
   definitions?: Map<string, ConnectorDefinition>
   instances?: Map<ConnectorStatus, ConnectorInstance[]>
 }): ConnectorStore {
-  const definitions = overrides?.definitions ??
+  const definitions =
+    overrides?.definitions ??
     new Map([
       ['def-telegram', TELEGRAM_DEFINITION],
       ['def-github', GITHUB_DEFINITION],
     ])
 
-  const instances = overrides?.instances ??
+  const instances =
+    overrides?.instances ??
     new Map<ConnectorStatus, ConnectorInstance[]>([
       ['active', [ACTIVE_TELEGRAM_INSTANCE, ACTIVE_GITHUB_INSTANCE]],
       ['inactive', [INACTIVE_TELEGRAM_INSTANCE]],
@@ -312,9 +314,7 @@ function createMockGateway(): Gateway {
   }
 }
 
-function createMockMessageProcessor(options?: {
-  result?: MessageProcessorOutput
-}): MessageProcessor {
+function createMockMessageProcessor(options?: { result?: MessageProcessorOutput }): MessageProcessor {
   return {
     process: async (): Promise<MessageProcessorOutput> =>
       options?.result ?? {
@@ -398,6 +398,24 @@ function createMockSessionStore(): SessionStore & { sessions: Session[] } {
       return true
     },
     getCount(): number {
+      return 0
+    },
+    createChildSession(): Session {
+      return sessions[0]!
+    },
+    getChildSessionById(): Session | null {
+      return null
+    },
+    getByTaskId(): Session | null {
+      return null
+    },
+    listChildren(): Session[] {
+      return []
+    },
+    countChildLaunches(): number {
+      return 0
+    },
+    archiveDescendants(): number {
       return 0
     },
   }
@@ -657,10 +675,7 @@ describe('POST /api/v1/messaging/:provider/:connectorInstanceId/webhook', () => 
 
   describe('non-text inbound message', () => {
     it('returns 200 acknowledged when adapter returns null', async () => {
-      adapterMap.set(
-        'inst-tg-1',
-        createMockAdapter({ handleResult: null }),
-      )
+      adapterMap.set('inst-tg-1', createMockAdapter({ handleResult: null }))
 
       const response = await server.inject({
         method: 'POST',
@@ -690,10 +705,7 @@ describe('POST /api/v1/messaging/:provider/:connectorInstanceId/webhook', () => 
 
   describe('invalid signature', () => {
     it('returns 401 when verifyInbound returns false', async () => {
-      adapterMap.set(
-        'inst-tg-1',
-        createMockAdapter({ verifyResult: false }),
-      )
+      adapterMap.set('inst-tg-1', createMockAdapter({ verifyResult: false }))
 
       const response = await server.inject({
         method: 'POST',

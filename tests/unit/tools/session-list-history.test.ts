@@ -62,6 +62,12 @@ function createMockSessionStore(): SessionStore {
       }
       return filtered.length
     },
+    createChildSession: () => ({}) as Session,
+    getChildSessionById: () => null,
+    getByTaskId: () => null,
+    listChildren: () => [],
+    countChildLaunches: () => 0,
+    archiveDescendants: () => 0,
   }
 }
 

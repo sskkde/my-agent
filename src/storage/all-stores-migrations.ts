@@ -2510,7 +2510,6 @@ export const fileUploadsTableMigration: Migration = {
   `,
 }
 
-
 export const agentTypeProfileSplitMigration: Migration = {
   version: 63,
   name: 'agent_type_profile_split',
@@ -2842,7 +2841,6 @@ export const mockProviderTypeMigration: Migration = {
   `,
 }
 
-
 export const sessionReasoningDepthMigration: Migration = {
   version: 73,
   name: 'add_session_reasoning_depth',
@@ -2873,6 +2871,29 @@ export const childSessionColumnsMigration: Migration = {
   down: `
     DROP INDEX IF EXISTS idx_sessions_task_id;
     DROP INDEX IF EXISTS idx_sessions_parent_session_id
+  `,
+}
+
+// ============================================================================
+// Subagent run/transcript child linkage (version 75)
+// ============================================================================
+// tenant_id already exists on both tables via the runner's auto-add after v56/v57.
+export const subagentChildLinkageMigration: Migration = {
+  version: 75,
+  name: 'add_subagent_child_linkage_columns',
+  up: `
+    ALTER TABLE subagent_runs ADD COLUMN child_session_id TEXT;
+    ALTER TABLE subagent_runs ADD COLUMN task_id TEXT;
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_child_session ON subagent_runs(child_session_id);
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_task_id ON subagent_runs(task_id);
+    ALTER TABLE subagent_transcripts ADD COLUMN session_id TEXT;
+    ALTER TABLE subagent_transcripts ADD COLUMN user_id TEXT;
+    CREATE INDEX IF NOT EXISTS idx_subagent_transcripts_session ON subagent_transcripts(session_id)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_subagent_transcripts_session;
+    DROP INDEX IF EXISTS idx_subagent_runs_task_id;
+    DROP INDEX IF EXISTS idx_subagent_runs_child_session
   `,
 }
 
@@ -3042,6 +3063,9 @@ export const allStoreMigrations: Migration[] = [
 
   // Child session columns for internal subagent sessions
   childSessionColumnsMigration, // v74
+
+  // Subagent run/transcript child linkage and ownership columns
+  subagentChildLinkageMigration, // v75
 ]
 
 /**

@@ -207,6 +207,24 @@ class MockSessionStore implements SessionStore {
   getCount() {
     return 0
   }
+  createChildSession() {
+    return {} as any
+  }
+  getChildSessionById() {
+    return null
+  }
+  getByTaskId() {
+    return null
+  }
+  listChildren() {
+    return []
+  }
+  countChildLaunches() {
+    return 0
+  }
+  archiveDescendants() {
+    return 0
+  }
 }
 
 describe('File Tools Registration', () => {

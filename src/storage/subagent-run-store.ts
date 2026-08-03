@@ -1,4 +1,5 @@
 import type { ConnectionManager } from './connection.js'
+import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 export interface SubagentRunRecord {
   subagentRunId: string
@@ -21,6 +22,11 @@ export interface SubagentRunRecord {
   startedAt?: string
   completedAt?: string
   updatedAt: string
+  tenantId?: string
+  /** Child session id that this run attempt belongs to (child session linkage) */
+  childSessionId?: string
+  /** Task id linkage (identity rule: taskId === childSessionId) */
+  taskId?: string
 }
 
 export interface SubagentRunQuery {
@@ -30,16 +36,18 @@ export interface SubagentRunQuery {
   agentType?: string
   agentProfile?: string
   backgroundRunId?: string
+  childSessionId?: string
+  taskId?: string
   limit?: number
   offset?: number
 }
 
 export interface SubagentRunStore {
-  create(run: SubagentRunRecord): void
-  getById(subagentRunId: string): SubagentRunRecord | null
-  updateStatus(subagentRunId: string, status: string): void
-  saveResult(subagentRunId: string, result: unknown): void
-  query(filters: SubagentRunQuery): SubagentRunRecord[]
+  create(run: SubagentRunRecord, tenantId?: string): void
+  getById(subagentRunId: string, tenantId?: string): SubagentRunRecord | null
+  updateStatus(subagentRunId: string, status: string, tenantId?: string): void
+  saveResult(subagentRunId: string, result: unknown, tenantId?: string): void
+  query(filters: SubagentRunQuery, tenantId?: string): SubagentRunRecord[]
 }
 
 interface SubagentRunRow {
@@ -63,6 +71,9 @@ interface SubagentRunRow {
   started_at: string | null
   completed_at: string | null
   updated_at: string
+  tenant_id: string
+  child_session_id: string | null
+  task_id: string | null
 }
 
 function rowToRecord(row: SubagentRunRow): SubagentRunRecord {
@@ -87,6 +98,9 @@ function rowToRecord(row: SubagentRunRow): SubagentRunRecord {
     startedAt: row.started_at ?? undefined,
     completedAt: row.completed_at ?? undefined,
     updatedAt: row.updated_at,
+    tenantId: row.tenant_id,
+    childSessionId: row.child_session_id ?? undefined,
+    taskId: row.task_id ?? undefined,
   }
 }
 
@@ -120,9 +134,16 @@ class SubagentRunStoreImpl implements SubagentRunStore {
         created_at TEXT NOT NULL,
         started_at TEXT,
         completed_at TEXT,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        tenant_id TEXT NOT NULL DEFAULT 'org_default',
+        child_session_id TEXT,
+        task_id TEXT
       )
     `)
+
+    this.ensureColumn('subagent_runs', 'tenant_id', "TEXT NOT NULL DEFAULT 'org_default'")
+    this.ensureColumn('subagent_runs', 'child_session_id', 'TEXT')
+    this.ensureColumn('subagent_runs', 'task_id', 'TEXT')
 
     this.connection.exec(`
       CREATE INDEX IF NOT EXISTS idx_subagent_runs_user_status
@@ -143,17 +164,34 @@ class SubagentRunStoreImpl implements SubagentRunStore {
       CREATE INDEX IF NOT EXISTS idx_subagent_runs_agent_profile
         ON subagent_runs(agent_profile)
     `)
+
+    this.connection.exec(`
+      CREATE INDEX IF NOT EXISTS idx_subagent_runs_child_session
+        ON subagent_runs(child_session_id)
+    `)
   }
 
-  create(run: SubagentRunRecord): void {
+  private ensureColumn(table: string, column: string, definition: string): void {
+    try {
+      this.connection.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (!message.includes('duplicate column name') && !message.includes('already exists')) {
+        throw err
+      }
+    }
+  }
+
+  create(run: SubagentRunRecord, tenantId: string = DEFAULT_TENANT_ID): void {
     const now = new Date().toISOString()
     this.connection.exec(
       `INSERT INTO subagent_runs (
         subagent_run_id, user_id, session_id, parent_run_id, root_run_id,
         background_run_id, agent_type, agent_profile, status, task_spec_json,
         context_bundle_json, provider_id, model, result_json,
-        error_code, error_message, created_at, started_at, completed_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        error_code, error_message, created_at, started_at, completed_at, updated_at,
+        tenant_id, child_session_id, task_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         run.subagentRunId,
         run.userId,
@@ -175,42 +213,45 @@ class SubagentRunStoreImpl implements SubagentRunStore {
         run.startedAt ?? null,
         run.completedAt ?? null,
         run.updatedAt || now,
+        run.tenantId ?? tenantId,
+        run.childSessionId ?? null,
+        run.taskId ?? null,
       ],
     )
   }
 
-  getById(subagentRunId: string): SubagentRunRecord | null {
-    const results = this.connection.query<SubagentRunRow>(`SELECT * FROM subagent_runs WHERE subagent_run_id = ?`, [
-      subagentRunId,
-    ])
+  getById(subagentRunId: string, tenantId: string = DEFAULT_TENANT_ID): SubagentRunRecord | null {
+    const results = this.connection.query<SubagentRunRow>(
+      `SELECT * FROM subagent_runs WHERE tenant_id = ? AND subagent_run_id = ?`,
+      [tenantId, subagentRunId],
+    )
 
     if (results.length === 0) {
       return null
     }
 
-    return rowToRecord(results[0])
+    return rowToRecord(results[0]!)
   }
 
-  updateStatus(subagentRunId: string, status: string): void {
-    const now = new Date().toISOString()
-    this.connection.exec(`UPDATE subagent_runs SET status = ?, updated_at = ? WHERE subagent_run_id = ?`, [
-      status,
-      now,
-      subagentRunId,
-    ])
-  }
-
-  saveResult(subagentRunId: string, result: unknown): void {
+  updateStatus(subagentRunId: string, status: string, tenantId: string = DEFAULT_TENANT_ID): void {
     const now = new Date().toISOString()
     this.connection.exec(
-      `UPDATE subagent_runs SET result_json = ?, completed_at = ?, updated_at = ? WHERE subagent_run_id = ?`,
-      [JSON.stringify(result), now, now, subagentRunId],
+      `UPDATE subagent_runs SET status = ?, updated_at = ? WHERE tenant_id = ? AND subagent_run_id = ?`,
+      [status, now, tenantId, subagentRunId],
     )
   }
 
-  query(filters: SubagentRunQuery): SubagentRunRecord[] {
-    const conditions: string[] = []
-    const params: (string | number)[] = []
+  saveResult(subagentRunId: string, result: unknown, tenantId: string = DEFAULT_TENANT_ID): void {
+    const now = new Date().toISOString()
+    this.connection.exec(
+      `UPDATE subagent_runs SET result_json = ?, completed_at = ?, updated_at = ? WHERE tenant_id = ? AND subagent_run_id = ?`,
+      [JSON.stringify(result), now, now, tenantId, subagentRunId],
+    )
+  }
+
+  query(filters: SubagentRunQuery, tenantId: string = DEFAULT_TENANT_ID): SubagentRunRecord[] {
+    const conditions: string[] = ['tenant_id = ?']
+    const params: (string | number)[] = [tenantId]
 
     if (filters.userId !== undefined) {
       conditions.push('user_id = ?')
@@ -240,6 +281,16 @@ class SubagentRunStoreImpl implements SubagentRunStore {
     if (filters.backgroundRunId !== undefined) {
       conditions.push('background_run_id = ?')
       params.push(filters.backgroundRunId)
+    }
+
+    if (filters.childSessionId !== undefined) {
+      conditions.push('child_session_id = ?')
+      params.push(filters.childSessionId)
+    }
+
+    if (filters.taskId !== undefined) {
+      conditions.push('task_id = ?')
+      params.push(filters.taskId)
     }
 
     let sql = 'SELECT * FROM subagent_runs'

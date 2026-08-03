@@ -4,6 +4,7 @@ import { createMigrationRunner, type MigrationRunner } from '../../../src/storag
 import {
   allStoreMigrations,
   childSessionColumnsMigration,
+  subagentChildLinkageMigration,
 } from '../../../src/storage/all-stores-migrations.js'
 
 const connections: ConnectionManager[] = []
@@ -53,7 +54,7 @@ describe('child session columns migration', () => {
     expect(columns).toContain('launch_mode')
     expect(columns).toContain('subagent_depth')
     expect(columns).toContain('session_kind')
-    expect(runner.getCurrentVersion()).toBe(74)
+    expect(runner.getCurrentVersion()).toBe(75)
   })
 
   it('adds parent and task indexes on sessions', () => {
@@ -65,21 +66,30 @@ describe('child session columns migration', () => {
     expect(indexes).toContain('idx_sessions_task_id')
   })
 
-  it('keeps a pre-migration foreground row valid with new defaults after applying the new migration', () => {
+  it('keeps a pre-migration foreground row valid with new defaults after applying the new migrations', () => {
     const connection = openMemoryConnection()
     const runner = createRunner(connection)
-    // Apply every migration except the new child-session one (v74).
-    runner.apply(allStoreMigrations.filter((migration) => migration.version !== 74))
+    // Apply every migration except the child-session ones (v74, v75).
+    runner.apply(allStoreMigrations.filter((migration) => migration.version !== 74 && migration.version !== 75))
 
     connection.exec(
       `INSERT INTO sessions (
         session_id, user_id, title, status, message_count, last_activity_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ['sess_pre', 'user-1', 'Foreground chat', 'active', 3, '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z', '2026-08-01T00:00:00.000Z'],
+      [
+        'sess_pre',
+        'user-1',
+        'Foreground chat',
+        'active',
+        3,
+        '2026-08-01T00:00:00.000Z',
+        '2026-08-01T00:00:00.000Z',
+        '2026-08-01T00:00:00.000Z',
+      ],
     )
 
-    // Apply the new migration to the existing DB.
-    runner.apply([childSessionColumnsMigration])
+    // Apply the child-session migrations to the existing DB.
+    runner.apply([childSessionColumnsMigration, subagentChildLinkageMigration])
 
     interface SeededRow {
       session_id: string
@@ -99,7 +109,7 @@ describe('child session columns migration', () => {
     expect(rows[0]!.launch_mode).toBeNull()
     expect(rows[0]!.subagent_depth).toBe(0)
     expect(rows[0]!.session_kind).toBe('foreground')
-    expect(runner.getCurrentVersion()).toBe(74)
+    expect(runner.getCurrentVersion()).toBe(75)
   })
 
   it('accepts internal subagent-shaped rows with parent/task linkage', () => {

@@ -17,98 +17,11 @@ import {
   deserializeEncryptedSecret,
 } from '../../../src/storage/provider-crypto.js'
 import { WORKFLOW_RUN_STATES } from '../../../src/shared/states.js'
-import { allMigrations as baseMigrations } from '../../../src/storage/schema.js'
-import type { Migration } from '../../../src/storage/migrations.js'
+import { allStoreMigrations } from '../../../src/storage/all-stores-migrations.js'
 
-const apiKeysTableMigration: Migration = {
-  version: 7,
-  name: 'create_api_keys_table',
-  up: `
-    CREATE TABLE api_keys (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      key_hash TEXT NOT NULL,
-      key_prefix TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'user', 'service')),
-      user_id TEXT,
-      created_at TEXT NOT NULL,
-      expires_at TEXT,
-      last_used_at TEXT,
-      is_active INTEGER NOT NULL DEFAULT 1,
-      tenant_id TEXT NOT NULL DEFAULT 'org_default'
-    );
-    CREATE INDEX idx_api_keys_hash ON api_keys(key_hash);
-    CREATE INDEX idx_api_keys_user ON api_keys(user_id);
-    CREATE INDEX idx_api_keys_active ON api_keys(is_active)
-  `,
-  down: `
-    DROP INDEX IF EXISTS idx_api_keys_active;
-    DROP INDEX IF EXISTS idx_api_keys_user;
-    DROP INDEX IF EXISTS idx_api_keys_hash;
-    DROP TABLE IF EXISTS api_keys
-  `,
-}
-
-const workflowRunsTableMigration: Migration = {
-  version: 8,
-  name: 'create_workflow_runs_table',
-  up: `
-    CREATE TABLE workflow_runs (
-      workflow_run_id TEXT PRIMARY KEY,
-      workflow_id TEXT NOT NULL,
-      workflow_version TEXT NOT NULL,
-      owner_user_id TEXT NOT NULL,
-      trigger_event_id TEXT,
-      status TEXT NOT NULL,
-      current_step_ids TEXT,
-      input_data TEXT,
-      output_data TEXT,
-      context_data TEXT,
-      tenant_id TEXT NOT NULL DEFAULT 'org_default',
-      started_at TEXT NOT NULL,
-      completed_at TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    CREATE INDEX idx_workflow_runs_workflow ON workflow_runs(workflow_id, started_at);
-    CREATE INDEX idx_workflow_runs_owner_status ON workflow_runs(owner_user_id, status)
-  `,
-  down: `
-    DROP INDEX IF EXISTS idx_workflow_runs_workflow;
-    DROP INDEX IF EXISTS idx_workflow_runs_owner_status;
-    DROP TABLE IF EXISTS workflow_runs
-  `,
-}
-
-const usersRoleMigration: Migration = {
-  version: 9,
-  name: 'add_users_role_column',
-  up: `
-    ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'
-  `,
-  down: `
-    ALTER TABLE users DROP COLUMN role
-  `,
-}
-
-const usersTenantMigration: Migration = {
-  version: 10,
-  name: 'add_users_tenant_column',
-  up: `
-    ALTER TABLE users ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'org_default'
-  `,
-  down: `
-    ALTER TABLE users DROP COLUMN tenant_id
-  `,
-}
-
-const allMigrations: Migration[] = [
-  ...baseMigrations,
-  apiKeysTableMigration,
-  workflowRunsTableMigration,
-  usersRoleMigration,
-  usersTenantMigration,
-]
+// GA gate runs against the real production schema (allStoreMigrations) so the
+// stores it exercises (session/api-key/workflow-run/user) see the full column set.
+const allMigrations = allStoreMigrations
 
 process.env.APP_SECRET_KEY = 'test-encryption-key-for-backup-restore-tests'
 
@@ -335,6 +248,7 @@ describe('Backup/Restore GA Gate', () => {
       const plaintextKey = 'ak_test_secret_key_12345'
       const expectedHash = createHash('sha256').update(plaintextKey).digest('hex')
 
+      userStore.create({ userId: 'u1', username: 'key-owner', passwordHash: 'hash' })
       apiKeyStore.createKey({
         id: 'key-001',
         name: 'Test API Key',

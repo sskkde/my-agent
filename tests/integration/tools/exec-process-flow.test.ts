@@ -514,5 +514,11 @@ function createMockSessionStore() {
     setModel: () => false,
     setReasoningDepth: () => false,
     getCount: () => 0,
+    createChildSession: () => ({}) as any,
+    getChildSessionById: () => null,
+    getByTaskId: () => null,
+    listChildren: () => [],
+    countChildLaunches: () => 0,
+    archiveDescendants: () => 0,
   }
 }

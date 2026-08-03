@@ -1,10 +1,6 @@
 import type { ConnectionManager } from './connection.js'
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
-import {
-  DEFAULT_REASONING_DEPTH,
-  parseReasoningDepth,
-  type ReasoningDepth,
-} from '../llm/reasoning-depth.js'
+import { DEFAULT_REASONING_DEPTH, parseReasoningDepth, type ReasoningDepth } from '../llm/reasoning-depth.js'
 
 export interface Session {
   sessionId: string
@@ -20,6 +16,18 @@ export interface Session {
   selectedProviderId?: string
   /** Model reasoning depth for this session */
   reasoningDepth?: ReasoningDepth
+  /** Session kind: 'foreground' for user sessions, 'subagent' for internal child sessions */
+  sessionKind?: 'foreground' | 'subagent'
+  /** Parent session id for subagent child sessions */
+  parentSessionId?: string
+  /** Task id for subagent child sessions (identity rule: taskId === child sessionId) */
+  taskId?: string
+  /** Agent profile that runs this child session */
+  agentProfile?: string
+  /** Launch mode: 'foreground' (waited on) or 'background' (notified later) */
+  launchMode?: 'foreground' | 'background'
+  /** Subagent nesting depth: 0 = foreground, >= 1 = child */
+  subagentDepth?: number
 }
 
 export interface CreateSessionInput {
@@ -29,10 +37,39 @@ export interface CreateSessionInput {
   status?: 'active' | 'archived' | 'closed'
   messageCount?: number
   metadata?: Record<string, unknown>
+  sessionKind?: 'foreground' | 'subagent'
+  parentSessionId?: string
+  taskId?: string
+  agentProfile?: string
+  launchMode?: 'foreground' | 'background'
+  subagentDepth?: number
+}
+
+export interface CreateChildSessionInput {
+  sessionId: string
+  userId: string
+  /** Parent session that launched this child */
+  parentSessionId: string
+  title?: string
+  status?: 'active' | 'archived' | 'closed'
+  messageCount?: number
+  metadata?: Record<string, unknown>
+  /** Defaults to sessionId per the taskId === childSessionId identity rule */
+  taskId?: string
+  agentProfile?: string
+  launchMode?: 'foreground' | 'background'
+  /** Defaults to 1 (depth of a foreground parent is 0) */
+  subagentDepth?: number
 }
 
 export interface ListSessionsOptions {
   userId?: string
+  status?: 'active' | 'archived' | 'closed'
+  limit?: number
+  offset?: number
+}
+
+export interface ListChildrenOptions {
   status?: 'active' | 'archived' | 'closed'
   limit?: number
   offset?: number
@@ -55,6 +92,12 @@ export interface SessionStore {
   setModel(sessionId: string, selectedModel: string, selectedProviderId: string, tenantId?: string): boolean
   setReasoningDepth(sessionId: string, reasoningDepth: ReasoningDepth, tenantId?: string): boolean
   getCount(options?: { userId?: string; status?: 'active' | 'archived' | 'closed' }, tenantId?: string): number
+  createChildSession(input: CreateChildSessionInput, tenantId?: string): Session
+  getChildSessionById(sessionId: string, tenantId?: string): Session | null
+  getByTaskId(taskId: string, userId?: string, tenantId?: string): Session | null
+  listChildren(parentSessionId: string, options?: ListChildrenOptions, tenantId?: string): Session[]
+  countChildLaunches(parentSessionId: string, since?: string, tenantId?: string): number
+  archiveDescendants(parentSessionId: string, tenantId?: string): number
 }
 
 interface SessionRow {
@@ -70,6 +113,12 @@ interface SessionRow {
   selected_model: string | null
   selected_provider_id: string | null
   reasoning_depth: string | null
+  parent_session_id: string | null
+  task_id: string | null
+  agent_profile: string | null
+  launch_mode: 'foreground' | 'background' | null
+  subagent_depth: number | null
+  session_kind: 'foreground' | 'subagent' | null
 }
 
 class SessionStoreImpl implements SessionStore {
@@ -91,13 +140,20 @@ class SessionStoreImpl implements SessionStore {
       createdAt: now,
       updatedAt: now,
       metadata: input.metadata,
+      sessionKind: input.sessionKind,
+      parentSessionId: input.parentSessionId,
+      taskId: input.taskId,
+      agentProfile: input.agentProfile,
+      launchMode: input.launchMode,
+      subagentDepth: input.subagentDepth,
     }
 
     const sql = `
       INSERT INTO sessions (
         session_id, user_id, title, status, message_count,
-        last_activity_at, created_at, updated_at, metadata, tenant_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        last_activity_at, created_at, updated_at, metadata, tenant_id,
+        session_kind, parent_session_id, task_id, agent_profile, launch_mode, subagent_depth
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
 
     const params = [
@@ -111,6 +167,12 @@ class SessionStoreImpl implements SessionStore {
       session.updatedAt,
       session.metadata ? JSON.stringify(session.metadata) : null,
       tenantId,
+      session.sessionKind ?? 'foreground',
+      session.parentSessionId ?? null,
+      session.taskId ?? null,
+      session.agentProfile ?? null,
+      session.launchMode ?? null,
+      session.subagentDepth ?? 0,
     ]
 
     this.connection.exec(sql, params)
@@ -137,7 +199,7 @@ class SessionStoreImpl implements SessionStore {
     if (userId && status) {
       sql = `
         SELECT * FROM sessions
-        WHERE tenant_id = ? AND user_id = ? AND status = ?
+        WHERE tenant_id = ? AND session_kind != 'subagent' AND user_id = ? AND status = ?
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
       `
@@ -145,7 +207,7 @@ class SessionStoreImpl implements SessionStore {
     } else if (userId) {
       sql = `
         SELECT * FROM sessions
-        WHERE tenant_id = ? AND user_id = ?
+        WHERE tenant_id = ? AND session_kind != 'subagent' AND user_id = ?
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
       `
@@ -153,7 +215,7 @@ class SessionStoreImpl implements SessionStore {
     } else if (status) {
       sql = `
         SELECT * FROM sessions
-        WHERE tenant_id = ? AND status = ?
+        WHERE tenant_id = ? AND session_kind != 'subagent' AND status = ?
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
       `
@@ -161,7 +223,7 @@ class SessionStoreImpl implements SessionStore {
     } else {
       sql = `
         SELECT * FROM sessions
-        WHERE tenant_id = ?
+        WHERE tenant_id = ? AND session_kind != 'subagent'
         ORDER BY last_activity_at DESC
         LIMIT ? OFFSET ?
       `
@@ -300,11 +362,7 @@ class SessionStoreImpl implements SessionStore {
     }
   }
 
-  setReasoningDepth(
-    sessionId: string,
-    reasoningDepth: ReasoningDepth,
-    tenantId: string = DEFAULT_TENANT_ID,
-  ): boolean {
+  setReasoningDepth(sessionId: string, reasoningDepth: ReasoningDepth, tenantId: string = DEFAULT_TENANT_ID): boolean {
     const sql = `
       UPDATE sessions
       SET reasoning_depth = ?, updated_at = ?
@@ -331,16 +389,17 @@ class SessionStoreImpl implements SessionStore {
     let params: unknown[]
 
     if (userId && status) {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND user_id = ? AND status = ?'
+      sql =
+        "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND session_kind != 'subagent' AND user_id = ? AND status = ?"
       params = [tenantId, userId, status]
     } else if (userId) {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND user_id = ?'
+      sql = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND session_kind != 'subagent' AND user_id = ?"
       params = [tenantId, userId]
     } else if (status) {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND status = ?'
+      sql = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND session_kind != 'subagent' AND status = ?"
       params = [tenantId, status]
     } else {
-      sql = 'SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ?'
+      sql = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND session_kind != 'subagent'"
       params = [tenantId]
     }
 
@@ -362,7 +421,121 @@ class SessionStoreImpl implements SessionStore {
       selectedModel: row.selected_model ?? undefined,
       selectedProviderId: row.selected_provider_id ?? undefined,
       reasoningDepth: parseReasoningDepth(row.reasoning_depth ?? DEFAULT_REASONING_DEPTH),
+      sessionKind: row.session_kind ?? undefined,
+      parentSessionId: row.parent_session_id ?? undefined,
+      taskId: row.task_id ?? undefined,
+      agentProfile: row.agent_profile ?? undefined,
+      launchMode: row.launch_mode ?? undefined,
+      subagentDepth: row.subagent_depth ?? undefined,
     }
+  }
+
+  createChildSession(input: CreateChildSessionInput, tenantId: string = DEFAULT_TENANT_ID): Session {
+    return this.create(
+      {
+        sessionId: input.sessionId,
+        userId: input.userId,
+        title: input.title ?? 'Subagent task',
+        status: input.status,
+        messageCount: input.messageCount,
+        metadata: input.metadata,
+        sessionKind: 'subagent',
+        parentSessionId: input.parentSessionId,
+        taskId: input.taskId ?? input.sessionId,
+        agentProfile: input.agentProfile,
+        launchMode: input.launchMode ?? 'foreground',
+        subagentDepth: input.subagentDepth ?? 1,
+      },
+      tenantId,
+    )
+  }
+
+  getChildSessionById(sessionId: string, tenantId: string = DEFAULT_TENANT_ID): Session | null {
+    const sql = "SELECT * FROM sessions WHERE tenant_id = ? AND session_id = ? AND session_kind = 'subagent'"
+    const rows = this.connection.query<SessionRow>(sql, [tenantId, sessionId])
+    return rows.length === 0 ? null : this.rowToSession(rows[0]!)
+  }
+
+  getByTaskId(taskId: string, userId?: string, tenantId: string = DEFAULT_TENANT_ID): Session | null {
+    let sql = "SELECT * FROM sessions WHERE tenant_id = ? AND task_id = ? AND session_kind = 'subagent'"
+    const params: unknown[] = [tenantId, taskId]
+    if (userId !== undefined) {
+      sql += ' AND user_id = ?'
+      params.push(userId)
+    }
+    const rows = this.connection.query<SessionRow>(sql, params)
+    return rows.length === 0 ? null : this.rowToSession(rows[0]!)
+  }
+
+  listChildren(
+    parentSessionId: string,
+    options: ListChildrenOptions = {},
+    tenantId: string = DEFAULT_TENANT_ID,
+  ): Session[] {
+    const { status, limit = 100, offset = 0 } = options
+
+    let sql = "SELECT * FROM sessions WHERE tenant_id = ? AND parent_session_id = ? AND session_kind = 'subagent'"
+    const params: unknown[] = [tenantId, parentSessionId]
+    if (status !== undefined) {
+      sql += ' AND status = ?'
+      params.push(status)
+    }
+    sql += ' ORDER BY created_at ASC LIMIT ? OFFSET ?'
+    params.push(limit, offset)
+
+    const rows = this.connection.query<SessionRow>(sql, params)
+    return rows.map((row) => this.rowToSession(row))
+  }
+
+  countChildLaunches(parentSessionId: string, since?: string, tenantId: string = DEFAULT_TENANT_ID): number {
+    let sql =
+      "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = ? AND parent_session_id = ? AND session_kind = 'subagent'"
+    const params: unknown[] = [tenantId, parentSessionId]
+    if (since !== undefined) {
+      sql += ' AND created_at >= ?'
+      params.push(since)
+    }
+    const rows = this.connection.query<{ count: number }>(sql, params)
+    return rows[0]?.count ?? 0
+  }
+
+  archiveDescendants(parentSessionId: string, tenantId: string = DEFAULT_TENANT_ID): number {
+    const descendantsSql = `
+      WITH RECURSIVE descendants AS (
+        SELECT session_id FROM sessions WHERE tenant_id = ? AND parent_session_id = ?
+        UNION ALL
+        SELECT s.session_id FROM sessions s
+        JOIN descendants d ON s.parent_session_id = d.session_id
+        WHERE s.tenant_id = ?
+      )
+      SELECT COUNT(*) as count FROM descendants WHERE session_id IN (
+        SELECT session_id FROM sessions WHERE tenant_id = ? AND status != 'archived'
+      )
+    `
+    const archiveSql = `
+      WITH RECURSIVE descendants AS (
+        SELECT session_id FROM sessions WHERE tenant_id = ? AND parent_session_id = ?
+        UNION ALL
+        SELECT s.session_id FROM sessions s
+        JOIN descendants d ON s.parent_session_id = d.session_id
+        WHERE s.tenant_id = ?
+      )
+      UPDATE sessions
+      SET status = 'archived', updated_at = ?
+      WHERE tenant_id = ? AND status != 'archived' AND session_id IN (SELECT session_id FROM descendants)
+    `
+
+    return this.connection.transaction(() => {
+      const rows = this.connection.query<{ count: number }>(descendantsSql, [
+        tenantId,
+        parentSessionId,
+        tenantId,
+        tenantId,
+      ])
+      const now = new Date().toISOString()
+      this.connection.exec(archiveSql, [tenantId, parentSessionId, tenantId, now, tenantId])
+      return rows[0]?.count ?? 0
+    })()
   }
 }
 

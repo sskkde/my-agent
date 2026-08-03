@@ -24,7 +24,9 @@ import type {
   SessionStore,
   Session,
   CreateSessionInput,
+  CreateChildSessionInput,
   ListSessionsOptions,
+  ListChildrenOptions,
   UpdateMetadataInput,
 } from '../../../src/storage/session-store.js'
 import type { PermissionContext } from '../../../src/permissions/types.js'
@@ -478,6 +480,62 @@ class MockSessionStore implements SessionStore {
       result = result.filter((s) => s.status === options.status)
     }
     return result.length
+  }
+
+  createChildSession(input: CreateChildSessionInput): Session {
+    return this.create({
+      sessionId: input.sessionId,
+      userId: input.userId,
+      title: input.title ?? 'Subagent task',
+      status: input.status,
+      messageCount: input.messageCount,
+      metadata: input.metadata,
+      sessionKind: 'subagent',
+      parentSessionId: input.parentSessionId,
+      taskId: input.taskId ?? input.sessionId,
+      agentProfile: input.agentProfile,
+      launchMode: input.launchMode ?? 'foreground',
+      subagentDepth: input.subagentDepth ?? 1,
+    })
+  }
+
+  getChildSessionById(sessionId: string): Session | null {
+    const session = this.sessions.get(sessionId)
+    return session?.sessionKind === 'subagent' ? session : null
+  }
+
+  getByTaskId(taskId: string, userId?: string): Session | null {
+    const found = Array.from(this.sessions.values()).find((s) => s.taskId === taskId)
+    if (found && userId !== undefined && found.userId !== userId) {
+      return null
+    }
+    return found ?? null
+  }
+
+  listChildren(parentSessionId: string, options?: ListChildrenOptions): Session[] {
+    let result = Array.from(this.sessions.values()).filter(
+      (s) => s.parentSessionId === parentSessionId && s.sessionKind === 'subagent',
+    )
+    if (options?.status) {
+      result = result.filter((s) => s.status === options.status)
+    }
+    return result
+  }
+
+  countChildLaunches(parentSessionId: string): number {
+    return Array.from(this.sessions.values()).filter(
+      (s) => s.parentSessionId === parentSessionId && s.sessionKind === 'subagent',
+    ).length
+  }
+
+  archiveDescendants(parentSessionId: string): number {
+    const children = Array.from(this.sessions.values()).filter(
+      (s) => s.parentSessionId === parentSessionId && s.sessionKind === 'subagent',
+    )
+    for (const child of children) {
+      child.status = 'archived'
+    }
+    return children.length
   }
 }
 
