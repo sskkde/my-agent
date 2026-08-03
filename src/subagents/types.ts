@@ -26,10 +26,18 @@ export interface SubagentResult {
   error?: {
     code: string
     message: string
+    /** Whether the parent may retry the child task (set by specialized runners). */
+    recoverable?: boolean
   }
   iterationsUsed: number
   startedAt?: string
   completedAt?: string
+  /**
+   * Raw structured payload from a specialized runner (the Todo 16 search runner
+   * carries the two-phase `SearchSubagentSuccessResult` for the parent tool's
+   * post-processing). Persisted with the run result; never model-facing.
+   */
+  structuredResult?: unknown
 }
 
 export interface SubagentContext {

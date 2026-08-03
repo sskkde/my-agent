@@ -43,6 +43,8 @@ import {
   evaluateChildLaunch,
   resolveChildProfile,
   buildChildToolProjection,
+  buildSearchChildProjection,
+  SEARCH_CHILD_PROFILE_ID,
   assertChildTaskIdMatchesSession,
   type ChildLaunchDecision,
 } from './child-task-policy.js'
@@ -50,6 +52,7 @@ import type { ToolPlaneProjection } from '../kernel/model-input/model-input-type
 import type { ToolRegistry } from '../tools/types.js'
 import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 import type { KernelRunResult } from '../kernel/types.js'
+import type { SearchChildRunner } from '../search/search-child-runner.js'
 
 // ---------------------------------------------------------------------------
 // Typed runtime errors (rejection before execution)
@@ -309,6 +312,13 @@ export interface ChildSessionTaskRuntimeDeps {
   eventStore?: EventStore
   /** Optional best-effort live broadcast to the parent session stream. */
   lifecycleBroadcaster?: ChildTaskLifecycleBroadcaster
+  /**
+   * Specialized search runner (Todo 16). When wired AND the run's profile is
+   * the search profile, executeRun delegates to this runner instead of the
+   * generic kernel adapter — preserving the two-phase search contract while
+   * still creating/resuming the search child session.
+   */
+  searchRunner?: SearchChildRunner
 }
 
 export interface ChildSessionTaskRuntime {
@@ -604,19 +614,30 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
     )
 
     // Profile-specific runner: resolve the profile definition + envelope-intersected
-    // tool projection, then delegate to the kernel adapter.
+    // tool projection, then delegate to the profile runner. Search children run
+    // through the specialized search runner (Todo 16) with the hard-pinned
+    // `web_search`-only projection; everything else uses the generic kernel loop.
     const definition = resolveChildProfile(
       run.taskSpec.profileId ?? childSession.agentProfile ?? run.taskSpec.agentType,
       this.deps.registry,
     )
-    const toolProjection = buildChildToolProjection({
-      definition,
-      taskSpec: run.taskSpec,
-      toolRegistry: this.deps.toolRegistry,
-      envelopeRegistry: this.deps.envelopeRegistry,
-      depth: childSession.subagentDepth ?? 1,
-      allowNestedLaunch: run.taskSpec.allowNestedLaunch,
-    })
+    const isSearchChild =
+      this.deps.searchRunner !== undefined &&
+      (run.taskSpec.profileId === SEARCH_CHILD_PROFILE_ID || run.taskSpec.agentType === SEARCH_CHILD_PROFILE_ID)
+
+    const toolProjection = isSearchChild
+      ? buildSearchChildProjection({
+          toolRegistry: this.deps.toolRegistry,
+          envelopeRegistry: this.deps.envelopeRegistry,
+        })
+      : buildChildToolProjection({
+          definition,
+          taskSpec: run.taskSpec,
+          toolRegistry: this.deps.toolRegistry,
+          envelopeRegistry: this.deps.envelopeRegistry,
+          depth: childSession.subagentDepth ?? 1,
+          allowNestedLaunch: run.taskSpec.allowNestedLaunch,
+        })
 
     // Explicit context: objective + refs + workdir + platform prompt. On resume
     // this includes ONLY the prior child transcript (never the parent's).
@@ -634,22 +655,35 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
     const timeoutMs = run.taskSpec.timeoutMs ?? this.deps.defaultTimeoutMs ?? 60000
 
     try {
-      const kernelResult = await this.deps.kernelAdapter.execute({
-        contextBundle,
-        maxIterations,
-        timeoutMs,
-        onCancel: () => run.isCancelled,
-        taskSpec: run.taskSpec,
-        definition,
-        signal: this.buildRunSignal(subagentRunId, signal),
-      })
+      let result: SubagentResult
+      if (isSearchChild) {
+        result = await this.deps.searchRunner!({
+          subagentRunId: run.subagentRunId,
+          childSessionId: run.childSessionId,
+          userId: run.userId,
+          tenantId: run.tenantId,
+          query: run.taskSpec.objective,
+          timeoutMs,
+          signal: this.buildRunSignal(subagentRunId, signal),
+        })
+      } else {
+        const kernelResult = await this.deps.kernelAdapter.execute({
+          contextBundle,
+          maxIterations,
+          timeoutMs,
+          onCancel: () => run.isCancelled,
+          taskSpec: run.taskSpec,
+          definition,
+          signal: this.buildRunSignal(subagentRunId, signal),
+        })
+        result = this.mapKernelResultToSubagentResult(kernelResult)
+      }
 
       // Idempotent terminal write: a concurrent cancel wins over late completion.
       if (run.isCancelled) {
         return run.result ?? this.createCancelledResult()
       }
 
-      const result = this.mapKernelResultToSubagentResult(kernelResult)
       run.result = result
       run.status = result.status
       run.completedAt = new Date().toISOString()
@@ -1141,4 +1175,70 @@ function generateSubagentRunId(): string {
 
 export function createChildSessionTaskRuntime(deps: ChildSessionTaskRuntimeDeps): ChildSessionTaskRuntime {
   return new ChildSessionTaskRuntimeImpl(deps)
+}
+
+// ---------------------------------------------------------------------------
+// Budget-bounded wait (shared by foreground waits / the search child tool)
+// ---------------------------------------------------------------------------
+
+export type ChildWaitOutcome =
+  | { outcome: 'completed'; result: SubagentResult }
+  | { outcome: 'timeout' }
+  | { outcome: 'aborted' }
+
+/**
+ * Wait for a child attempt with a hard budget. On budget expiry OR external
+ * abort, `cancelRun` fires so the live child run is aborted (no orphan) and a
+ * late terminal can never overwrite the cancelled run.
+ */
+export function waitForChildExecution(
+  runtime: ChildSessionTaskRuntime,
+  subagentRunId: string,
+  budgetMs: number,
+  signal?: AbortSignal,
+): Promise<ChildWaitOutcome> {
+  return new Promise((resolve) => {
+    let settled = false
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+    const settle = (outcome: ChildWaitOutcome): void => {
+      if (settled) return
+      settled = true
+      if (timeoutId !== undefined) clearTimeout(timeoutId)
+      signal?.removeEventListener('abort', onAbort)
+      resolve(outcome)
+    }
+
+    const cancel = (): void => {
+      try {
+        runtime.cancelRun(subagentRunId)
+      } catch {
+        // cancelRun is idempotent; an unknown run simply has nothing to cancel.
+      }
+    }
+
+    const onAbort = (): void => {
+      cancel()
+      settle({ outcome: 'aborted' })
+    }
+
+    if (signal?.aborted) {
+      onAbort()
+      return
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+
+    timeoutId = setTimeout(
+      () => {
+        cancel()
+        settle({ outcome: 'timeout' })
+      },
+      Math.max(0, budgetMs),
+    )
+
+    void runtime.executeRun(subagentRunId, signal).then(
+      (result) => settle({ outcome: 'completed', result }),
+      () => settle({ outcome: 'timeout' }),
+    )
+  })
 }

@@ -62,6 +62,26 @@ export interface SearchSubagentConfig {
 
   /** Optional main model name (for reference only, not used) */
   mainLlmModel?: string
+
+  /**
+   * Optional phase observer for observability (e.g. the Todo 16 search child
+   * runner records the phases on the child timeline). Fires at the three
+   * two-phase milestones; never alters the execution flow or result.
+   */
+  phaseObserver?: (observation: SearchPhaseObservation) => void
+}
+
+/**
+ * Observable milestone of the two-phase search execution. Consumed by the
+ * specialized search child runner to persist a child-timeline phase record.
+ * `phase1` is observed only after a usable search query was determined;
+ * `backend_search` fires right after the direct search backend execution;
+ * `phase2` fires once the structured_json answer build succeeded.
+ */
+export interface SearchPhaseObservation {
+  phase: 'phase1' | 'backend_search' | 'phase2'
+  query?: string
+  querySource?: 'llm_tool_call' | 'input_fallback'
 }
 
 /**
@@ -181,10 +201,8 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
     const startTime = Date.now()
     const searchLlmProviderId =
       typeof config.searchLlmProviderId === 'function' ? config.searchLlmProviderId() : config.searchLlmProviderId
-    const searchLlmModel =
-      typeof config.searchLlmModel === 'function' ? config.searchLlmModel() : config.searchLlmModel
-    const providerFamily =
-      typeof config.providerFamily === 'function' ? config.providerFamily() : config.providerFamily
+    const searchLlmModel = typeof config.searchLlmModel === 'function' ? config.searchLlmModel() : config.searchLlmModel
+    const providerFamily = typeof config.providerFamily === 'function' ? config.providerFamily() : config.providerFamily
 
     if (llmAdapter.getProviderCapabilities) {
       const capabilities = llmAdapter.getProviderCapabilities()
@@ -330,7 +348,11 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
 
     void querySource
 
+    config.phaseObserver?.({ phase: 'phase1', query: searchQuery, querySource })
+
     const toolResult = await webSearchExecutor({ query: searchQuery })
+
+    config.phaseObserver?.({ phase: 'backend_search' })
 
     // ─── Phase 2: Answer Generation (structured_json mode) ────────────────────────
     const toolResultContext = buildToolResultContext(toolResult, searchQuery)
@@ -366,6 +388,8 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
         },
       }
     }
+
+    config.phaseObserver?.({ phase: 'phase2' })
 
     const segmentAMatched = phase2Built.segmentHashes.segmentA === cachedSegmentAHash
 

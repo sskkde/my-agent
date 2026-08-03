@@ -69,6 +69,13 @@ export const ORCHESTRATION_LAUNCH_TOOL_IDS: ReadonlySet<string> = new Set([
  */
 export const SEARCH_CHILD_TOOL_IDS: readonly string[] = ['web_search']
 
+/**
+ * Subagent profile id that routes a child run to the specialized search
+ * runner (Todo 16) instead of the generic kernel loop. Matches the built-in
+ * `search_processor` agentType in `builtin-definitions.ts`.
+ */
+export const SEARCH_CHILD_PROFILE_ID = 'search_processor'
+
 // ---------------------------------------------------------------------------
 // Error codes (exported as constants for runtime callers)
 // ---------------------------------------------------------------------------
@@ -269,7 +276,9 @@ export function buildChildToolProjection(input: {
 
   const requestedIds = taskSpec.tools ?? []
   let effectiveIds =
-    requestedIds.length > 0 ? definition.allowedToolIds.filter((id) => requestedIds.includes(id)) : definition.allowedToolIds
+    requestedIds.length > 0
+      ? definition.allowedToolIds.filter((id) => requestedIds.includes(id))
+      : definition.allowedToolIds
 
   // Hard intersection with the AgentType `subagent` envelope. The envelope is
   // the outer boundary — no profile, requested tool list or label can expand

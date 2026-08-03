@@ -1,4 +1,9 @@
-import type { SearchSubagent, SearchSubagentInput, SearchSubagentResult } from './search-subagent.js'
+import type {
+  SearchSubagent,
+  SearchSubagentInput,
+  SearchSubagentResult,
+  SearchSubagentSuccessResult,
+} from './search-subagent.js'
 import type { WebSearchResultItem } from './types.js'
 import type {
   SearchQueryPlan,
@@ -27,10 +32,22 @@ import {
   createErrorResult,
   type ForegroundToolResult,
 } from '../foreground/tools/foreground-tool-result.js'
+import { toChildTaskTerminalError } from '../foreground/tools/child-task-contract.js'
+import type { ContextBundle } from '../context/types.js'
+import type { ChildSessionTaskRuntime } from '../subagents/child-session-task-runtime.js'
+import { waitForChildExecution } from '../subagents/child-session-task-runtime.js'
+import { ChildTaskRuntimeError } from '../subagents/child-session-task-runtime.js'
+import { ChildTaskPolicyError } from '../subagents/child-task-policy.js'
+import { SEARCH_CHILD_PROFILE_ID } from '../subagents/child-task-policy.js'
+import type { SubagentRunStore } from '../storage/subagent-run-store.js'
+import type { SessionStore } from '../storage/session-store.js'
 
 export const SEARCH_SUBAGENT_TOOL_ID = 'search_subagent' as const
 export const SEARCH_RESULT_RANKING_VERSION = 'relevance-source-quality-v1' as const
 export { cleanSnippets, deduplicateResults, extractFacts, scoreSearchResult }
+
+/** Default foreground budget for the search child wait when the parent turn does not supply one. */
+export const DEFAULT_SEARCH_CHILD_WAIT_MS = 60000
 
 export interface SearchSubagentToolInput {
   originalQuestion: string
@@ -54,11 +71,32 @@ export interface SearchSubagentToolDeps {
   queryPlanner: SearchQueryPlanner
   resultNormalizer: SearchResultNormalizer
   scopeGuard: typeof assertSearchScope
+  /**
+   * Unified child-session runtime. When wired (Todo 16), search runs inside a
+   * resumable search child session; otherwise the legacy synchronous path runs
+   * byte-identically.
+   */
+  childSessionTaskRuntime?: ChildSessionTaskRuntime
+  /** Parent session store used to resolve child depth for policy enforcement. */
+  sessionStore?: SessionStore
+  /** Store used to count child launches already made in this parent turn. */
+  subagentRunStore?: SubagentRunStore
+  /** Remaining parent-turn budget (ms) for the search child wait. */
+  childTaskRemainingTimeoutMs?: number
+}
+
+/** Per-call tool identity for the child-session path. */
+export interface SearchSubagentToolCallContext {
+  userId: string
+  sessionId: string
+  turnId: string
+  signal?: AbortSignal
 }
 
 export async function handleSearchSubagentTool(
   deps: SearchSubagentToolDeps,
   input: SearchSubagentToolInput,
+  ctx?: SearchSubagentToolCallContext,
 ): Promise<ForegroundToolResult<SearchSubagentToolResult>> {
   const startTime = Date.now()
 
@@ -78,6 +116,14 @@ export async function handleSearchSubagentTool(
         'Search failed: empty query',
       )
     }
+
+    // Unified child-session path (Todo 16): run the search inside a resumable
+    // search child session. The parent still receives the byte-compatible
+    // SearchSubagentToolResult through this same public tool.
+    if (deps.childSessionTaskRuntime && deps.sessionStore && deps.subagentRunStore && ctx?.sessionId) {
+      return await runSearchChildSession(deps, input, plan, effectiveQuery, ctx, startTime)
+    }
+
     const searchInput: SearchSubagentInput = {
       query: effectiveQuery,
       userId: 'tool-invocation',
@@ -94,38 +140,7 @@ export async function handleSearchSubagentTool(
       )
     }
 
-    const deduplicated = deduplicateResults(searchResult.toolResult.results)
-    const cleaned = cleanSnippets(deduplicated)
-    const sorted = rankSearchResults(cleaned, plan)
-    const cropped = selectSearchResults(sorted)
-    const extractedFacts = deps.resultNormalizer.extractFacts(cropped)
-    const warnings = checkFreshnessWarning(plan, cropped)
-    const metadata = buildSearchMetadata(Date.now() - startTime, cropped, extractedFacts, warnings, plan)
-
-    return createSuccessResult<SearchSubagentToolResult>(
-      {
-        originalQuestion: plan.originalQuestion,
-        searchQuery: effectiveQuery,
-        intent: plan.intent,
-        freshness: plan.requiresFreshness,
-        locale: plan.locale,
-        results: cropped,
-        extractedFacts,
-        warnings,
-        metadata,
-        queryPlan: plan,
-      },
-      `Found ${cropped.length} results for "${plan.searchQuery}"`,
-      {
-        toolCallSummaries: [
-          {
-            toolCallId: `search-${Date.now()}`,
-            toolName: SEARCH_SUBAGENT_TOOL_ID,
-            status: 'completed',
-          },
-        ],
-      },
-    )
+    return buildSearchToolResult(deps, plan, effectiveQuery, searchResult, Date.now() - startTime)
   } catch (error) {
     if (error instanceof Error && error.name === 'SearchSubagentScopeError') {
       return createErrorResult<SearchSubagentToolResult>(
@@ -152,6 +167,163 @@ export async function handleSearchSubagentTool(
       },
     )
   }
+}
+
+// ---------------------------------------------------------------------------
+// Child-session search path (Todo 16)
+// ---------------------------------------------------------------------------
+
+async function runSearchChildSession(
+  deps: SearchSubagentToolDeps,
+  input: SearchSubagentToolInput,
+  plan: SearchQueryPlan,
+  effectiveQuery: string,
+  ctx: SearchSubagentToolCallContext,
+  startTime: number,
+): Promise<ForegroundToolResult<SearchSubagentToolResult>> {
+  const runtime = deps.childSessionTaskRuntime!
+  const sessionStore = deps.sessionStore!
+  const runStore = deps.subagentRunStore!
+  const remainingMs = deps.childTaskRemainingTimeoutMs ?? DEFAULT_SEARCH_CHILD_WAIT_MS
+
+  const parentContext: ContextBundle = {
+    bundleId: `bundle-${ctx.turnId}`,
+    runId: ctx.turnId,
+    agentId: 'foreground',
+    agentType: 'main',
+    userId: ctx.userId,
+    invocationSource: 'gateway_intent',
+    pinnedItems: [],
+    orderedItems: [],
+    tokenEstimate: 0,
+  }
+
+  const depth = (sessionStore.getById(ctx.sessionId)?.subagentDepth ?? 0) + 1
+  const launches = runStore.query({ userId: ctx.userId, parentRunId: ctx.turnId }).length
+
+  let launch
+  try {
+    launch = runtime.launchTask({
+      parentContext,
+      taskSpec: {
+        objective: effectiveQuery,
+        profileId: SEARCH_CHILD_PROFILE_ID,
+        tools: ['web_search'],
+        parentSessionId: ctx.sessionId,
+        parentTurnId: ctx.turnId,
+        launchMode: 'foreground',
+        timeoutMs: remainingMs,
+        prompt:
+          'You are a search assistant. Search the web for the given question and synthesize a concise answer. Only the web_search tool is available.',
+      },
+      depth,
+      launchesInParentTurn: launches,
+      requestedTools: ['web_search'],
+      parentRunId: ctx.turnId,
+      rootRunId: ctx.turnId,
+      ...(input.taskId ? { taskId: input.taskId } : {}),
+    })
+  } catch (error) {
+    const terminal = toChildTaskTerminalError(error, {
+      code:
+        error instanceof ChildTaskPolicyError || error instanceof ChildTaskRuntimeError
+          ? error.code
+          : 'CHILD_TASK_LAUNCH_FAILED',
+      recoverable: true,
+      phase: 'launch',
+    })
+    return createErrorResult<SearchSubagentToolResult>(
+      terminal.code,
+      terminal.message,
+      terminal.recoverable,
+      `Search failed: ${terminal.message}`,
+    )
+  }
+
+  const wait = await waitForChildExecution(runtime, launch.subagentRunId, remainingMs, ctx.signal)
+
+  if (wait.outcome === 'timeout') {
+    return createErrorResult<SearchSubagentToolResult>(
+      'SEARCH_TIMEOUT',
+      `Search task ${launch.taskId} exceeded the remaining budget (${remainingMs}ms)`,
+      true,
+      'Search timed out.',
+    )
+  }
+
+  if (wait.outcome === 'aborted' || wait.result.status === 'cancelled') {
+    return createErrorResult<SearchSubagentToolResult>(
+      'CANCELLED',
+      'Search task was cancelled',
+      true,
+      'Search cancelled.',
+    )
+  }
+
+  const result = wait.result
+  if (result.status !== 'completed' || !result.structuredResult) {
+    const code = result.error?.code ?? 'SEARCH_SUBAGENT_ERROR'
+    const message = result.error?.message ?? 'Search task failed'
+    const recoverable = result.error?.recoverable ?? result.status === 'failed'
+    return createErrorResult<SearchSubagentToolResult>(code, message, recoverable, `Search failed: ${message}`)
+  }
+
+  return buildSearchToolResult(
+    deps,
+    plan,
+    effectiveQuery,
+    result.structuredResult as SearchSubagentSuccessResult,
+    Date.now() - startTime,
+    launch.taskId,
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Shared post-processing (byte-identical evidence for BOTH the legacy and the
+// child-session path)
+// ---------------------------------------------------------------------------
+
+function buildSearchToolResult(
+  deps: SearchSubagentToolDeps,
+  plan: SearchQueryPlan,
+  effectiveQuery: string,
+  searchResult: SearchSubagentSuccessResult,
+  durationMs: number,
+  taskId?: string,
+): ForegroundToolResult<SearchSubagentToolResult> {
+  const deduplicated = deduplicateResults(searchResult.toolResult.results)
+  const cleaned = cleanSnippets(deduplicated)
+  const sorted = rankSearchResults(cleaned, plan)
+  const cropped = selectSearchResults(sorted)
+  const extractedFacts = deps.resultNormalizer.extractFacts(cropped)
+  const warnings = checkFreshnessWarning(plan, cropped)
+  const metadata = buildSearchMetadata(durationMs, cropped, extractedFacts, warnings, plan)
+  if (taskId !== undefined) metadata.taskId = taskId
+
+  return createSuccessResult<SearchSubagentToolResult>(
+    {
+      originalQuestion: plan.originalQuestion,
+      searchQuery: effectiveQuery,
+      intent: plan.intent,
+      freshness: plan.requiresFreshness,
+      locale: plan.locale,
+      results: cropped,
+      extractedFacts,
+      warnings,
+      metadata,
+      queryPlan: plan,
+    },
+    `Found ${cropped.length} results for "${plan.searchQuery}"`,
+    {
+      toolCallSummaries: [
+        {
+          toolCallId: `search-${Date.now()}`,
+          toolName: SEARCH_SUBAGENT_TOOL_ID,
+          status: 'completed',
+        },
+      ],
+    },
+  )
 }
 
 function buildSearchMetadata(

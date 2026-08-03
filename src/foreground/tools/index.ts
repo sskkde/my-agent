@@ -179,8 +179,16 @@ export function createSearchSubagentToolDefinition(
       },
       required: ['originalQuestion'],
     },
-    handler: async (params: unknown): Promise<ToolExecutionResult> => {
-      const result = await handleSearchSubagentTool(deps, params as SearchSubagentToolInput)
+    handler: async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+      const ctx = context.sessionId
+        ? {
+            userId: context.userId,
+            sessionId: context.sessionId,
+            turnId: context.kernelRunId ?? context.toolCallId,
+            ...(context.signal ? { signal: context.signal } : {}),
+          }
+        : undefined
+      const result = await handleSearchSubagentTool(deps, params as SearchSubagentToolInput, ctx)
       return {
         success: result.success,
         data: result.data,
