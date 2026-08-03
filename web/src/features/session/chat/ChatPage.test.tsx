@@ -906,14 +906,16 @@ describe('ChatPage reasoning visibility (T9)', () => {
     expect(screen.getByTestId('chat-reasoning-block')).toBeInTheDocument()
   })
 
-  it('does not merge reasoning channel tokens into assistant draft content', async () => {
+  it('renders server-driven thinking_summary live events and keeps reasoning out of assistant draft content', async () => {
     localStorage.setItem(PREFS_KEY, JSON.stringify({ reasoningVisible: true }))
     vi.mocked(client.getSessionTimeline).mockResolvedValue({ events: [], total: 0 })
     let onToken: ((token: TokenStreamPayload) => void) | undefined
+    let onEvent: ((event: ConsoleTimelineEvent) => void) | undefined
 
     vi.mocked(client.subscribeSessionTimeline).mockImplementation(
-      (_sessionId, _eventCb, _onError, _onStatus, tokenCb, onOpen) => {
+      (sessionId, eventCb, _onError, _onStatus, tokenCb, onOpen) => {
         onToken = tokenCb
+        onEvent = (event) => eventCb(event, 'live')
         onOpen?.()
         return () => {}
       },
@@ -941,13 +943,14 @@ describe('ChatPage reasoning visibility (T9)', () => {
     })
 
     act(() => {
-      onToken?.({
+      onEvent?.({
+        eventId: 'turn-run-1-thinking-live',
+        eventType: 'thinking_summary',
         sessionId: 'session-1',
-        attemptId: 'run-1',
-        sequence: 2,
-        delta: REASONING_FIXTURE_12345,
-        channel: 'reasoning',
         timestamp: '2024-01-01T00:00:02Z',
+        content: REASONING_FIXTURE_12345,
+        metadata: { turnId: 'run-1', attemptId: 'run-1', live: true },
+        actor: 'assistant',
       })
     })
 
@@ -976,12 +979,16 @@ describe('ChatPage reasoning visibility (T9)', () => {
     })
   })
 
-  it('treats missing channel as assistant and ignores reasoning channel when reasoningVisible is false', async () => {
+  it('hides thinking_summary events when reasoningVisible is false', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ reasoningVisible: false }))
+    vi.mocked(client.getSessionTimeline).mockResolvedValue({ events: [], total: 0 })
     let onToken: ((token: TokenStreamPayload) => void) | undefined
+    let onEvent: ((event: ConsoleTimelineEvent) => void) | undefined
 
     vi.mocked(client.subscribeSessionTimeline).mockImplementation(
-      (_sessionId, _eventCb, _onError, _onStatus, tokenCb, onOpen) => {
+      (sessionId, eventCb, _onError, _onStatus, tokenCb, onOpen) => {
         onToken = tokenCb
+        onEvent = (event) => eventCb(event, 'live')
         onOpen?.()
         return () => {}
       },
@@ -1008,13 +1015,14 @@ describe('ChatPage reasoning visibility (T9)', () => {
     })
 
     act(() => {
-      onToken?.({
+      onEvent?.({
+        eventId: 'turn-run-1-thinking-live',
+        eventType: 'thinking_summary',
         sessionId: 'session-1',
-        attemptId: 'run-1',
-        sequence: 2,
-        delta: REASONING_FIXTURE_12345,
-        channel: 'reasoning',
         timestamp: '2024-01-01T00:00:02Z',
+        content: REASONING_FIXTURE_12345,
+        metadata: { turnId: 'run-1', attemptId: 'run-1', live: true },
+        actor: 'assistant',
       })
     })
 

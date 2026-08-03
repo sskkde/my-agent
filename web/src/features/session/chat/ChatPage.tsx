@@ -22,7 +22,6 @@ import {
   compareTimelineEventsForChat,
   sealStreamingDraftsForTool,
   appendStreamingToken,
-  appendStreamingReasoningToken,
   shouldClearDraftOnServerEvent,
   clearDraftsForTerminalEvent,
   type AssistantPlaceholder,
@@ -311,7 +310,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
   const [timelineOffset, setTimelineOffset] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
   const [streamingDrafts, setStreamingDrafts] = useState<Map<string, StreamingDraft>>(new Map())
-  const [streamingReasoningDrafts, setStreamingReasoningDrafts] = useState<Map<string, StreamingDraft>>(new Map())
   const [pendingAssistantPlaceholders, setPendingAssistantPlaceholders] = useState<Map<string, AssistantPlaceholder>>(new Map())
   const [prefBump, setPrefBump] = useState(0)
 
@@ -377,7 +375,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           sessionId,
         })
       })
-      setStreamingReasoningDrafts((prev) => clearStreamingDraftsByAttemptIds(prev, attemptIds))
     },
     [updatePendingAssistantPlaceholders, selectedSessionIdRef],
   )
@@ -392,13 +389,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         return next.size === prev.size ? prev : next
       })
       setStreamingDrafts((prev) => {
-        const next = new Map(prev)
-        for (const [id, draft] of next.entries()) {
-          if (draft.sessionId === sessionId) next.delete(id)
-        }
-        return next.size === prev.size ? prev : next
-      })
-      setStreamingReasoningDrafts((prev) => {
         const next = new Map(prev)
         for (const [id, draft] of next.entries()) {
           if (draft.sessionId === sessionId) next.delete(id)
@@ -552,13 +542,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
                 source,
               }),
             )
-            setStreamingReasoningDrafts((prev) =>
-              clearDraftsForTerminalEvent(prev, event, {
-                allowOldestFallback: source === 'live',
-                sessionId: selectedSessionIdRef.current,
-                source,
-              }),
-            )
           }
         }
       }
@@ -586,24 +569,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
         })
       }
 
-      const reasoningVisible = loadPreferences().reasoningVisible
-      if (token.channel === 'reasoning') {
-        if (!reasoningVisible) return
-        setStreamingReasoningDrafts((prev) =>
-          appendStreamingReasoningToken(
-            prev,
-            {
-              attemptId: token.attemptId,
-              sessionId: token.sessionId,
-              sequence: token.sequence,
-              delta: token.delta,
-            },
-            placeholderTimestamp,
-          ),
-        )
-        return
-      }
-
+      // Reasoning is server-driven via thinking_summary timeline events
+      // (single-source streaming); reasoning-channel tokens are ignored here.
+      const tokenAnchor = token.timestamp ? new Date(token.timestamp).getTime() : placeholderTimestamp
       setStreamingDrafts((prev) =>
         appendStreamingToken(
           prev,
@@ -614,7 +582,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
             delta: token.delta,
             channel: token.channel,
           },
-          placeholderTimestamp,
+          tokenAnchor,
         ),
       )
     },
@@ -766,22 +734,6 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           actor: 'assistant',
         })
       })
-
-      if (reasoningVisible) {
-        streamingReasoningDrafts.forEach((draft, draftKey) => {
-          if (draft.sessionId !== selectedSessionId) return
-          if (draft.content.length === 0) return
-          syntheticEvents.push({
-            eventId: `synthetic-reasoning-${draftKey}`,
-            eventType: 'thinking_summary',
-            sessionId: selectedSessionId,
-            timestamp: new Date(draft.timestamp).toISOString(),
-            content: draft.content,
-            metadata: { attemptId: draft.attemptId },
-            actor: 'assistant',
-          })
-        })
-      }
     }
 
     const allEvents = [...visibleEvents, ...pendingMessageEvents, ...syntheticEvents]
@@ -791,7 +743,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
     dedupedEvents.sort(compareTimelineEventsForChat)
 
     return dedupedEvents
-  }, [events, localMessageEvents, selectedSessionId, pendingAssistantPlaceholders, streamingDrafts, streamingReasoningDrafts, prefBump])
+  }, [events, localMessageEvents, selectedSessionId, pendingAssistantPlaceholders, streamingDrafts, prefBump])
 
   const currentProcessingStatus =
     processingStatus && processingStatus.sessionId === selectedSessionId ? processingStatus : null

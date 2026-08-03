@@ -41,6 +41,20 @@ type Pair = {
   result?: IndexedEvent
 }
 
+/**
+ * Stable tool card key. Early→formal tool_call replacement (upsertTimelineEvent)
+ * changes the eventId but keeps (turnId, toolCallIndex); keying on those keeps
+ * the React element stable across the replacement and status transitions.
+ */
+const stableToolKey = (event: ConsoleTimelineEvent): string | undefined => {
+  const turnId = getMetaString(event, 'turnId')
+  const toolCallIndex = event.metadata?.toolCallIndex
+  if (turnId && typeof toolCallIndex === 'number') return `tool-${turnId}-${toolCallIndex}`
+  const toolCallId = getMetaString(event, 'toolCallId')
+  if (toolCallId) return `tool-${toolCallId}`
+  return undefined
+}
+
 const projectToolItem = (pair: Pair): ChatStreamToolItem => {
   const call = pair.call?.event
   const result = pair.result?.event
@@ -61,7 +75,7 @@ const projectToolItem = (pair: Pair): ChatStreamToolItem => {
 
   return {
     kind: 'tool',
-    key: keyEvent.eventId,
+    key: stableToolKey(keyEvent) ?? keyEvent.eventId,
     call,
     result,
     toolName: extractToolName(call, result),

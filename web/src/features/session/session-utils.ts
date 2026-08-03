@@ -306,8 +306,10 @@ function listDraftEntriesForAttempt(
 
 /**
  * Append a token delta to the active (unsealed) draft segment for this attempt.
- * If the latest segment is sealed, open a new segment timestamped now so it sorts
- * after intervening tool_call events.
+ * If the latest segment is sealed, open a new segment timestamped so it sorts
+ * after intervening tool_call events. `anchorTimestamp` is the server-assigned
+ * token timestamp (ms) — anchoring client drafts to server clock keeps the
+ * timestamp-primary sort stable across client/server clock skew.
  */
 export function appendStreamingToken(
   prev: Map<string, StreamingDraft>,
@@ -318,7 +320,7 @@ export function appendStreamingToken(
     delta: string
     channel?: 'assistant' | 'reasoning'
   },
-  placeholderTimestamp?: number,
+  anchorTimestamp?: number,
 ): Map<string, StreamingDraft> {
   if (token.channel === 'reasoning') {
     return prev
@@ -348,47 +350,16 @@ export function appendStreamingToken(
   // Drop legacy bare-attempt key if present
   next.delete(token.attemptId)
   const now = Date.now()
+  const anchor = anchorTimestamp ?? now
   // Ensure post-tool segments sort after the sealed pre-tool bubble (and typical tool events).
-  const minTs = latest ? latest[1].timestamp + 2 : now
+  const minTs = latest ? latest[1].timestamp + 2 : anchor
   next.set(key, {
     sessionId: token.sessionId,
     attemptId: token.attemptId,
     content: token.delta,
     sequence: token.sequence,
-    timestamp: segment === 0 ? (placeholderTimestamp ?? now) : Math.max(now, minTs),
+    timestamp: segment === 0 ? anchor : Math.max(anchor, minTs),
     segment,
-    sealed: false,
-  })
-  return next
-}
-
-/**
- * Append a reasoning-channel token delta to a dedicated reasoning draft for this attempt.
- * Reasoning drafts are keyed by `attemptId#reasoning` and never interleave with assistant
- * draft segments.
- */
-export function appendStreamingReasoningToken(
-  prev: Map<string, StreamingDraft>,
-  token: {
-    attemptId: string
-    sessionId: string
-    sequence: number
-    delta: string
-  },
-  placeholderTimestamp?: number,
-): Map<string, StreamingDraft> {
-  const key = `${token.attemptId}#reasoning`
-  const existing = prev.get(key)
-  const timestamp = existing?.timestamp ?? placeholderTimestamp ?? Date.now()
-  const content = (existing?.content ?? '') + token.delta
-  const next = new Map(prev)
-  next.set(key, {
-    sessionId: token.sessionId,
-    attemptId: token.attemptId,
-    content,
-    sequence: token.sequence,
-    timestamp,
-    segment: 0,
     sealed: false,
   })
   return next
@@ -459,6 +430,20 @@ export function clearStreamingDraftsByAttemptIds(
  * - Formal tool_call may drop early card referenced by metadata.replacesEarlyEventId
  */
 export function upsertTimelineEvent(prev: ConsoleTimelineEvent[], event: ConsoleTimelineEvent): ConsoleTimelineEvent[] {
+  // Terminal thinking_summary (persisted, non-live) atomically replaces the live
+  // streaming block for the same turn so the UI never renders two summaries.
+  if (event.eventType === 'thinking_summary' && event.metadata?.live !== true) {
+    const turnId = event.metadata?.turnId
+    if (typeof turnId === 'string') {
+      const withoutLive = prev.filter(
+        (e) => !(e.eventType === 'thinking_summary' && e.metadata?.live === true && e.metadata?.turnId === turnId),
+      )
+      if (withoutLive.length !== prev.length) {
+        prev = withoutLive
+      }
+    }
+  }
+
   const byId = prev.findIndex((e) => e.eventId === event.eventId)
   if (byId >= 0) {
     const next = [...prev]
@@ -526,14 +511,15 @@ export function compareTimelineEventsForChat(a: ConsoleTimelineEvent, b: Console
   const rank = (e: ConsoleTimelineEvent): number => {
     if (e.eventType === 'user_message') return 0
     if (e.metadata?.assistantPlaceholder === true) return 1
+    if (e.eventType === 'thinking_summary') return 2
     if (e.metadata?.streamingDraft === true) {
       // Sealed pre-tool draft before tools; open draft after tools.
-      return e.metadata?.sealed === true ? 2 : 5
+      return e.metadata?.sealed === true ? 3 : 6
     }
-    if (e.eventType === 'tool_call') return 3
-    if (e.eventType === 'tool_result') return 4
-    if (e.eventType === 'assistant_message') return 6
-    return 7
+    if (e.eventType === 'tool_call') return 4
+    if (e.eventType === 'tool_result') return 5
+    if (e.eventType === 'assistant_message') return 7
+    return 8
   }
 
   const ra = rank(a)

@@ -14,8 +14,8 @@ import {
   hasAssistantOrErrorReplyAfter,
   formatDate,
   appendStreamingToken,
-  appendStreamingReasoningToken,
   clearStreamingDraftsByAttemptIds,
+  upsertTimelineEvent,
   shouldClearDraftOnServerEvent,
   clearDraftsForTerminalEvent,
 } from './session-utils'
@@ -504,51 +504,11 @@ describe('appendStreamingToken', () => {
   })
 })
 
-describe('appendStreamingReasoningToken', () => {
-  it('accumulates reasoning deltas under attemptId#reasoning', () => {
-    let drafts = new Map()
-    drafts = appendStreamingReasoningToken(
-      drafts,
-      { attemptId: 'run-1', sessionId: 'ses-1', sequence: 1, delta: 'step 1 ' },
-      Date.now(),
-    )
-    drafts = appendStreamingReasoningToken(
-      drafts,
-      { attemptId: 'run-1', sessionId: 'ses-1', sequence: 2, delta: 'step 2' },
-      Date.now(),
-    )
-
-    expect(drafts.size).toBe(1)
-    const draft = drafts.get('run-1#reasoning')
-    expect(draft).toBeDefined()
-    expect(draft?.content).toBe('step 1 step 2')
-    expect(draft?.attemptId).toBe('run-1')
-    expect(draft?.sessionId).toBe('ses-1')
-    expect(draft?.sealed).toBe(false)
-  })
-
-  it('keeps separate drafts per attempt', () => {
-    let drafts = new Map()
-    drafts = appendStreamingReasoningToken(
-      drafts,
-      { attemptId: 'run-1', sessionId: 'ses-1', sequence: 1, delta: 'a' },
-      Date.now(),
-    )
-    drafts = appendStreamingReasoningToken(
-      drafts,
-      { attemptId: 'run-2', sessionId: 'ses-1', sequence: 1, delta: 'b' },
-      Date.now(),
-    )
-
-    expect(drafts.get('run-1#reasoning')?.content).toBe('a')
-    expect(drafts.get('run-2#reasoning')?.content).toBe('b')
-  })
-})
-
 describe('clearStreamingDraftsByAttemptIds', () => {
-  it('clears reasoning drafts keyed by attemptId#reasoning', () => {
-    let drafts = appendStreamingReasoningToken(
-      new Map(),
+  it('clears assistant drafts keyed by attemptId#segment', () => {
+    let drafts = new Map()
+    drafts = appendStreamingToken(
+      drafts,
       { attemptId: 'run-1', sessionId: 'ses-1', sequence: 1, delta: REASONING_FIXTURE_12345 },
       Date.now(),
     )
@@ -796,5 +756,62 @@ describe('T7 regression: streaming draft + tool timeout error → draft cleared 
     expect(next).toBe(drafts)
     expect(next.has('run-live-now#0')).toBe(true)
     expect(next.size).toBe(1)
+  })
+})
+
+describe('upsertTimelineEvent single-source thinking_summary', () => {
+  const liveReasoning = (turnId: string, content: string): ConsoleTimelineEvent => ({
+    eventId: `turn-${turnId}-thinking-live`,
+    eventType: 'thinking_summary',
+    sessionId: 'ses-1',
+    timestamp: new Date().toISOString(),
+    content,
+    metadata: { turnId, attemptId: turnId, live: true },
+    actor: 'assistant',
+  })
+
+  const terminalReasoning = (turnId: string, content: string): ConsoleTimelineEvent => ({
+    eventId: `turn-${turnId}-thinking-0`,
+    eventType: 'thinking_summary',
+    sessionId: 'ses-1',
+    timestamp: new Date().toISOString(),
+    content,
+    metadata: { turnId, attemptId: turnId },
+    actor: 'assistant',
+  })
+
+  it('upserts live thinking_summary in place by stable eventId', () => {
+    const first = upsertTimelineEvent([], liveReasoning('run-1', 'step '))
+    expect(first).toHaveLength(1)
+
+    const second = upsertTimelineEvent(first, liveReasoning('run-1', 'step two'))
+    expect(second).toHaveLength(1)
+    expect(second[0].content).toBe('step two')
+  })
+
+  it('terminal thinking_summary atomically replaces the live block for the same turn', () => {
+    const withLive = upsertTimelineEvent([], liveReasoning('run-1', 'streaming reasoning'))
+
+    const afterTerminal = upsertTimelineEvent(withLive, terminalReasoning('run-1', 'final reasoning'))
+    expect(afterTerminal).toHaveLength(1)
+    expect(afterTerminal[0].eventId).toBe('turn-run-1-thinking-0')
+    expect(afterTerminal[0].content).toBe('final reasoning')
+    expect(afterTerminal[0].metadata?.live).not.toBe(true)
+  })
+
+  it('keeps live blocks of other turns untouched', () => {
+    const withOther = upsertTimelineEvent([], liveReasoning('run-2', 'other reasoning'))
+
+    const afterTerminal = upsertTimelineEvent(withOther, terminalReasoning('run-1', 'final reasoning'))
+    expect(afterTerminal).toHaveLength(2)
+    expect(afterTerminal.some((e) => e.eventId === 'turn-run-2-thinking-live')).toBe(true)
+    expect(afterTerminal.some((e) => e.eventId === 'turn-run-1-thinking-0')).toBe(true)
+  })
+
+  it('upserts live block again after terminal replacement (new turn streaming)', () => {
+    const afterTerminal = upsertTimelineEvent([], terminalReasoning('run-1', 'final reasoning'))
+
+    const againLive = upsertTimelineEvent(afterTerminal, liveReasoning('run-1', 'new reasoning'))
+    expect(againLive).toHaveLength(2)
   })
 })

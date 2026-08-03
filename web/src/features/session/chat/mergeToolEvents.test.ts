@@ -222,7 +222,7 @@ describe('mergeToolEvents', () => {
     expect(tools[0].parameters).toEqual({ q: 'health' })
   })
 
-  it('places merged tool at earlier constituent index and uses earliest eventId as key', () => {
+  it('places merged tool at earlier constituent index and keys by stable tool identity', () => {
     const earlyResult = makeEvent({
       eventId: 'early-result',
       eventType: 'tool_result',
@@ -244,7 +244,7 @@ describe('mergeToolEvents', () => {
     const items = mergeToolEvents([earlyResult, lateCall, after])
 
     expect(items[0].kind).toBe('tool')
-    expect(items[0].key).toBe('early-result')
+    expect(items[0].key).toBe('tool-tc-stable')
     expect(items[1].kind).toBe('message')
   })
 
@@ -566,7 +566,7 @@ describe('mergeToolEvents', () => {
     expect(items).toHaveLength(4)
     expect(items.map((item) => item.kind)).toEqual(['message', 'tool', 'message', 'message'])
     expect(items[0].key).toBe('u')
-    expect(items[1].key).toBe('call-1')
+    expect(items[1].key).toBe('tool-tc-1')
     expect(items[2].key).toBe('th')
     expect(items[3].key).toBe('asst')
     if (items[2].kind === 'message') {
