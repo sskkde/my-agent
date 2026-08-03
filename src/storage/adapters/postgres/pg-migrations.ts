@@ -2239,6 +2239,141 @@ export const addTenantIdPgMigration: PgMigration = {
   down: ``,
 }
 
+export const subagentRunsTablePgMigration: PgMigration = {
+  version: 54,
+  name: 'create_subagent_runs_table',
+  // Mirrors SQLite v56 subagentRunsTableMigration + v63 agent_profile (drift note: version numbers differ by design — parity is capability-based)
+  up: `
+    CREATE TABLE IF NOT EXISTS subagent_runs (
+      subagent_run_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_id TEXT,
+      parent_run_id TEXT,
+      root_run_id TEXT,
+      background_run_id TEXT,
+      agent_type TEXT NOT NULL,
+      agent_profile TEXT,
+      status TEXT NOT NULL,
+      task_spec_json TEXT NOT NULL,
+      context_bundle_json TEXT,
+      provider_id TEXT,
+      model TEXT,
+      result_json TEXT,
+      error_code TEXT,
+      error_message TEXT,
+      created_at TEXT NOT NULL,
+      started_at TEXT,
+      completed_at TEXT,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_user_status ON subagent_runs(user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_session_status ON subagent_runs(session_id, status);
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_background ON subagent_runs(background_run_id);
+    CREATE INDEX IF NOT EXISTS idx_subagent_runs_agent_profile ON subagent_runs(agent_profile)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_subagent_runs_agent_profile;
+    DROP INDEX IF EXISTS idx_subagent_runs_background;
+    DROP INDEX IF EXISTS idx_subagent_runs_session_status;
+    DROP INDEX IF EXISTS idx_subagent_runs_user_status;
+    DROP TABLE IF EXISTS subagent_runs
+  `,
+}
+
+export const subagentTranscriptsTablePgMigration: PgMigration = {
+  version: 55,
+  name: 'create_subagent_transcripts_table',
+  // Mirrors SQLite v57 subagentTranscriptsTableMigration
+  up: `
+    CREATE TABLE IF NOT EXISTS subagent_transcripts (
+      id TEXT PRIMARY KEY,
+      subagent_run_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      content_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_subagent_transcripts_run_id ON subagent_transcripts(subagent_run_id);
+    CREATE INDEX IF NOT EXISTS idx_subagent_transcripts_run_type ON subagent_transcripts(subagent_run_id, event_type)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_subagent_transcripts_run_type;
+    DROP INDEX IF EXISTS idx_subagent_transcripts_run_id;
+    DROP TABLE IF EXISTS subagent_transcripts
+  `,
+}
+
+export const sessionsReasoningDepthPgMigration: PgMigration = {
+  version: 56,
+  name: 'add_session_reasoning_depth',
+  // Capability parity with SQLite v73 sessionReasoningDepthMigration (version numbers intentionally differ)
+  up: `
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='reasoning_depth') THEN
+        ALTER TABLE sessions ADD COLUMN reasoning_depth TEXT DEFAULT 'off';
+      END IF;
+    END $$;
+  `,
+  down: `
+    ALTER TABLE sessions DROP COLUMN IF EXISTS reasoning_depth
+  `,
+}
+
+export const childSessionSchemaPgMigration: PgMigration = {
+  version: 57,
+  name: 'add_child_session_columns',
+  // Mirrors Todo 1's SQLite child-session schema (all-stores-migrations.ts v74); idempotent guards match repo PG style (v53)
+  up: `
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='parent_session_id') THEN
+        ALTER TABLE sessions ADD COLUMN parent_session_id TEXT;
+      END IF;
+    END $$;
+
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='task_id') THEN
+        ALTER TABLE sessions ADD COLUMN task_id TEXT;
+      END IF;
+    END $$;
+
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='agent_profile') THEN
+        ALTER TABLE sessions ADD COLUMN agent_profile TEXT;
+      END IF;
+    END $$;
+
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='launch_mode') THEN
+        ALTER TABLE sessions ADD COLUMN launch_mode TEXT CHECK(launch_mode IS NULL OR launch_mode IN ('foreground', 'background'));
+      END IF;
+    END $$;
+
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='subagent_depth') THEN
+        ALTER TABLE sessions ADD COLUMN subagent_depth INTEGER NOT NULL DEFAULT 0;
+      END IF;
+    END $$;
+
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='sessions' AND column_name='session_kind') THEN
+        ALTER TABLE sessions ADD COLUMN session_kind TEXT NOT NULL DEFAULT 'foreground' CHECK(session_kind IN ('foreground', 'subagent'));
+      END IF;
+    END $$;
+
+    CREATE INDEX IF NOT EXISTS idx_sessions_parent_session_id ON sessions(parent_session_id) WHERE parent_session_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_sessions_task_id ON sessions(task_id) WHERE task_id IS NOT NULL
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_sessions_task_id;
+    DROP INDEX IF EXISTS idx_sessions_parent_session_id;
+    ALTER TABLE sessions DROP COLUMN IF EXISTS session_kind;
+    ALTER TABLE sessions DROP COLUMN IF EXISTS subagent_depth;
+    ALTER TABLE sessions DROP COLUMN IF EXISTS launch_mode;
+    ALTER TABLE sessions DROP COLUMN IF EXISTS agent_profile;
+    ALTER TABLE sessions DROP COLUMN IF EXISTS task_id;
+    ALTER TABLE sessions DROP COLUMN IF EXISTS parent_session_id
+  `,
+}
+
 export const deepseekProviderTypeMigration: PgMigration = {
   version: 59,
   name: 'add_deepseek_provider_type',
@@ -2528,6 +2663,10 @@ export const pgStoreMigrations: PgMigration[] = [
   organizationsTablePgMigration,
   userOrganizationsTablePgMigration,
   addTenantIdPgMigration,
+  subagentRunsTablePgMigration,
+  subagentTranscriptsTablePgMigration,
+  sessionsReasoningDepthPgMigration,
+  childSessionSchemaPgMigration,
   deepseekProviderTypeMigration,
   extendProviderConfigsRuntimeMetadataMigration,
   fileUploadsTablePgMigration,
