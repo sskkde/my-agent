@@ -36,6 +36,7 @@ import type { ContextBundle, ContextItem } from '../context/types.js'
 import type { Session, SessionStore } from '../storage/session-store.js'
 import type { SubagentRunStore, SubagentRunRecord } from '../storage/subagent-run-store.js'
 import type { SubagentTranscriptStore } from '../storage/subagent-transcript-store.js'
+import type { EventRecord, EventStore } from '../storage/event-store.js'
 import type { SubagentDefinition, SubagentRegistry } from './registry.js'
 import type { SubagentTaskSpec, SubagentResult, SubagentRunState, KernelAdapter } from './types.js'
 import {
@@ -190,6 +191,106 @@ export interface ChildTaskRunSnapshot {
 }
 
 // ---------------------------------------------------------------------------
+// Parent-side task lifecycle events (Todo 12)
+// ---------------------------------------------------------------------------
+
+/**
+ * Stable metadata carried by every parent-side child task lifecycle event.
+ * This is the ONLY per-task shape the parent timeline/UI consumes — child
+ * reasoning/text/tool content is NEVER included.
+ */
+export interface ChildTaskLifecycleMetadata {
+  /** Fixed identity: equals the child session id. */
+  taskId: string
+  childSessionId: string
+  /** The subagent_runs attempt id (one lifecycle sequence per attempt). */
+  runId: string
+  /** Subagent profile label (e.g. 'document_processor'). */
+  agentProfile: string
+  launchMode: 'foreground' | 'background'
+  status: SubagentRunState
+  /** Optional 0-100 progress hint. */
+  progress?: number
+  /** Safe, sanitized terminal message (error text only on failure/cancel). */
+  safeMessage?: string
+}
+
+/**
+ * Lifecycle events REUSE the existing run event types so the console timeline
+ * maps them with zero changes (`mapEventRecordToTimelineEvent` already maps
+ * run_started / run_completed / run_failed / run_cancelled).
+ */
+export type ChildTaskLifecycleEventType = 'run_started' | 'run_completed' | 'run_failed' | 'run_cancelled'
+
+const LIFECYCLE_STAGE_BY_TYPE: Record<ChildTaskLifecycleEventType, string> = {
+  run_started: 'started',
+  run_completed: 'completed',
+  run_failed: 'failed',
+  run_cancelled: 'cancelled',
+}
+
+/**
+ * Structural broadcast surface for parent-side lifecycle events. The API
+ * `TimelineBroadcaster` satisfies it — the runtime stays decoupled from
+ * src/api by depending on this minimal shape.
+ */
+export interface ChildTaskLifecycleBroadcaster {
+  broadcast(
+    sessionId: string,
+    event: {
+      eventId: string
+      eventType: string
+      sessionId: string
+      timestamp: string
+      content?: string
+      metadata?: Record<string, unknown>
+      actor?: string
+    },
+  ): void
+}
+
+/**
+ * Builds a deterministic parent-side lifecycle EventRecord.
+ *
+ * - `sessionId` is the PARENT session (the parent timeline/snapshot queries by
+ *   it; the child timeline never sees lifecycle events).
+ * - `eventId` is deterministic per (runId, stage): `child-task:<runId>:<stage>`.
+ * - `idempotencyKey` is deterministic per (taskId, stage) so re-emission and
+ *   reconnect reconstruction stay deduplicable.
+ * - `payload` carries ONLY the stable metadata (+ `message` alias for the
+ *   timeline `content` mapping). Never child response/transcript content.
+ */
+export function buildChildTaskLifecycleEvent(input: {
+  parentSessionId: string
+  userId: string
+  eventType: ChildTaskLifecycleEventType
+  metadata: ChildTaskLifecycleMetadata
+  tenantId?: string
+  createdAt?: string
+}): EventRecord {
+  const { parentSessionId, userId, eventType, metadata } = input
+  const createdAt = input.createdAt ?? new Date().toISOString()
+  const stage = LIFECYCLE_STAGE_BY_TYPE[eventType]
+
+  return {
+    eventId: `child-task:${metadata.runId}:${stage}`,
+    eventType,
+    sourceModule: 'subagent',
+    userId,
+    sessionId: parentSessionId,
+    idempotencyKey: `child-task-lifecycle:${metadata.taskId}:${stage}`,
+    relatedRefs: { subagentRunId: metadata.runId },
+    payload: {
+      ...metadata,
+      ...(metadata.safeMessage !== undefined ? { message: metadata.safeMessage } : {}),
+    },
+    sensitivity: 'low',
+    retentionClass: 'standard',
+    createdAt,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Runtime deps / interface
 // ---------------------------------------------------------------------------
 
@@ -204,6 +305,10 @@ export interface ChildSessionTaskRuntimeDeps {
   envelopeRegistry: AgentTypeToolEnvelopeRegistry
   defaultMaxIterations?: number
   defaultTimeoutMs?: number
+  /** Optional parent-side lifecycle event persistence (EventStore). */
+  eventStore?: EventStore
+  /** Optional best-effort live broadcast to the parent session stream. */
+  lifecycleBroadcaster?: ChildTaskLifecycleBroadcaster
 }
 
 export interface ChildSessionTaskRuntime {
@@ -442,6 +547,20 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
     }
     this.runs.set(subagentRunId, snapshot)
 
+    this.emitLifecycleEvent({
+      parentSessionId: taskSpec.parentSessionId,
+      userId: childSession.userId,
+      eventType: 'run_started',
+      metadata: {
+        taskId: childSession.taskId ?? childSession.sessionId,
+        childSessionId: childSession.sessionId,
+        runId: subagentRunId,
+        agentProfile: profileLabel,
+        launchMode: taskSpec.launchMode,
+        status: 'running',
+      },
+    })
+
     return {
       childSessionId: childSession.sessionId,
       taskId: childSession.taskId ?? childSession.sessionId,
@@ -535,6 +654,25 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
       run.status = result.status
       run.completedAt = new Date().toISOString()
       this.persistRunState(run)
+      this.emitLifecycleEvent({
+        parentSessionId: run.taskSpec.parentSessionId,
+        userId: run.userId,
+        eventType:
+          result.status === 'completed'
+            ? 'run_completed'
+            : result.status === 'cancelled'
+              ? 'run_cancelled'
+              : 'run_failed',
+        metadata: {
+          taskId: run.taskId,
+          childSessionId: run.childSessionId,
+          runId: run.subagentRunId,
+          agentProfile: run.taskSpec.profileId,
+          launchMode: run.taskSpec.launchMode,
+          status: run.status,
+          ...(result.error?.message ? { safeMessage: result.error.message.slice(0, 500) } : {}),
+        },
+      })
       this.persistChildConversation(run, result)
       this.recordTranscript(
         run.subagentRunId,
@@ -570,6 +708,20 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
       run.status = 'failed'
       run.completedAt = new Date().toISOString()
       this.persistRunState(run)
+      this.emitLifecycleEvent({
+        parentSessionId: run.taskSpec.parentSessionId,
+        userId: run.userId,
+        eventType: 'run_failed',
+        metadata: {
+          taskId: run.taskId,
+          childSessionId: run.childSessionId,
+          runId: run.subagentRunId,
+          agentProfile: run.taskSpec.profileId,
+          launchMode: run.taskSpec.launchMode,
+          status: 'failed',
+          safeMessage: errorMessage.slice(0, 500),
+        },
+      })
       this.recordTranscript(
         run.subagentRunId,
         'SubagentRunFailed',
@@ -603,6 +755,20 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
     run.status = 'cancelled'
     run.completedAt = new Date().toISOString()
     this.persistRunState(run)
+    this.emitLifecycleEvent({
+      parentSessionId: run.taskSpec.parentSessionId,
+      userId: run.userId,
+      eventType: 'run_cancelled',
+      metadata: {
+        taskId: run.taskId,
+        childSessionId: run.childSessionId,
+        runId: run.subagentRunId,
+        agentProfile: run.taskSpec.profileId,
+        launchMode: run.taskSpec.launchMode,
+        status: 'cancelled',
+        safeMessage: 'Subagent execution was cancelled',
+      },
+    })
     this.recordTranscript(
       run.subagentRunId,
       'SubagentRunCancelled',
@@ -774,6 +940,47 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
     this.deps.runStore.updateStatus(run.subagentRunId, run.status, run.tenantId)
     if (run.result) {
       this.deps.runStore.saveResult(run.subagentRunId, run.result, run.tenantId)
+    }
+  }
+
+  /**
+   * Persist + best-effort broadcast one parent-side task lifecycle event.
+   * Observability must never fail child/parent processing (project
+   * anti-pattern #11): persistence and broadcast failures are swallowed
+   * independently, and persistence always happens before broadcast so a
+   * throwing broadcaster cannot drop the event.
+   */
+  private emitLifecycleEvent(input: {
+    parentSessionId: string
+    userId: string
+    eventType: ChildTaskLifecycleEventType
+    metadata: ChildTaskLifecycleMetadata
+  }): void {
+    if (!input.parentSessionId) return
+
+    try {
+      const event = buildChildTaskLifecycleEvent({
+        parentSessionId: input.parentSessionId,
+        userId: input.userId,
+        eventType: input.eventType,
+        metadata: input.metadata,
+      })
+      this.deps.eventStore?.append(event)
+      try {
+        this.deps.lifecycleBroadcaster?.broadcast(input.parentSessionId, {
+          eventId: event.eventId,
+          eventType: event.eventType,
+          sessionId: event.sessionId!,
+          timestamp: event.createdAt,
+          content: input.metadata.safeMessage,
+          metadata: { ...input.metadata },
+          actor: event.sourceModule,
+        })
+      } catch {
+        // Best-effort broadcast — an observability failure must not fail the run.
+      }
+    } catch {
+      // Best-effort persistence — same guarantee.
     }
   }
 
