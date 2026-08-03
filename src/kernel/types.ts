@@ -230,6 +230,7 @@ export interface RuntimeDispatcher {
       kernelRunId?: string
       agentId?: string
       agentType?: AgentType
+      signal?: AbortSignal
     }
   }): Promise<{
     requestId: string

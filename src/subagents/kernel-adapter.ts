@@ -99,6 +99,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
     onCancel?: () => boolean
     taskSpec?: SubagentTaskSpec
     definition?: SubagentDefinition
+    signal?: AbortSignal
   }): Promise<KernelRunResult> {
     const { contextBundle, maxIterations, timeoutMs } = options
     let definition = options.definition
@@ -187,6 +188,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       model: resolvedProvider.model,
       ...(contextBundle.workDirRoot ? { workDirRoot: contextBundle.workDirRoot } : {}),
       ...(contextBundle.workDirId ? { workDirId: contextBundle.workDirId } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
     }
 
     const kernelRunFn = () => this.agentKernel.run(kernelInput)

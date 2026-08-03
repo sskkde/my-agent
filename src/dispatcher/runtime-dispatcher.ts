@@ -263,6 +263,7 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         (executionContext) =>
           adapter.execute.length >= 2 ? adapter.execute(action, executionContext) : adapter.execute(action),
         timeoutMs,
+        request.context.signal,
       )
 
       const completedAt = new Date().toISOString()
@@ -322,8 +323,23 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
   private async executeWithTimeout<T>(
     fn: (context: { signal: AbortSignal; timeoutMs: number }) => Promise<T>,
     timeoutMs: number,
+    externalSignal?: AbortSignal,
   ): Promise<T> {
     const controller = new AbortController()
+    let externalAbortListener: (() => void) | undefined
+
+    // Merge an external cancellation signal (e.g. the caller kernel aborted):
+    // abort the shared controller so adapters observe it via context.signal.
+    // We do NOT settle the promise here — the adapter is expected to stop
+    // cooperatively; the timeout remains the final guard.
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        controller.abort()
+      } else {
+        externalAbortListener = () => controller.abort()
+        externalSignal.addEventListener('abort', externalAbortListener, { once: true })
+      }
+    }
 
     return new Promise((resolve, reject) => {
       let settled = false
@@ -331,6 +347,9 @@ class RuntimeDispatcherImpl implements RuntimeDispatcher {
         if (settled) return
         settled = true
         clearTimeout(timeoutId)
+        if (externalAbortListener) {
+          externalSignal?.removeEventListener('abort', externalAbortListener)
+        }
         callback()
       }
 

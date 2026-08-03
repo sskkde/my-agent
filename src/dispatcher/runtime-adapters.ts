@@ -312,7 +312,7 @@ export function registerDefaultRuntimeAdapters(deps: {
 
   // Subagent runtime adapter - handles background subagent operations
   const subagentRuntimeAdapter: RuntimeAdapter = {
-    async execute(action: RuntimeAction): Promise<unknown> {
+    async execute(action: RuntimeAction, context?: RuntimeAdapterExecutionContext): Promise<unknown> {
       const actionType = action.actionType
       const payload = action.payload as Record<string, unknown>
 
@@ -411,7 +411,7 @@ export function registerDefaultRuntimeAdapters(deps: {
           }
 
           const run = subagentRuntime.launchSubagent(launchInput)
-          const result = await subagentRuntime.executeSubagent(run.subagentRunId)
+          const result = await subagentRuntime.executeSubagent(run.subagentRunId, context?.signal)
 
           return {
             subagentRunId: run.subagentRunId,
@@ -434,7 +434,7 @@ export function registerDefaultRuntimeAdapters(deps: {
           }
 
           if (run.status === 'queued') {
-            const result = await subagentRuntime.executeSubagent(subagentRunId)
+            const result = await subagentRuntime.executeSubagent(subagentRunId, context?.signal)
             return {
               subagentRunId,
               agentType: run.taskSpec.agentType,
@@ -470,8 +470,9 @@ export function registerDefaultRuntimeAdapters(deps: {
           throw new Error(`Unknown subagent_runtime action type: ${actionType}`)
       }
     },
-    // Underlying runtime API does not currently accept AbortSignal; dispatcher audit records cancelUnsupported on timeout.
-    cancelUnsupported: true,
+    // Subagent runtime now accepts AbortSignal (threaded to the child kernel),
+    // so dispatcher audit no longer records cancellation as unsupported.
+    cancelUnsupported: false,
   }
 
   // Register all adapters

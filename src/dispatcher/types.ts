@@ -151,6 +151,13 @@ export interface DispatchContext {
   parentSpanId?: string
   permissionContext?: PermissionContext
   callerModule: string
+  /**
+   * External AbortSignal (e.g. the caller kernel's cancellation signal).
+   * When provided, the dispatcher merges it into the per-dispatch
+   * executeWithTimeout controller so adapters observe cancellation through
+   * their RuntimeAdapterExecutionContext.signal.
+   */
+  signal?: AbortSignal
 }
 
 export interface PermissionContext {

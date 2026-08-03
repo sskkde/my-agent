@@ -210,7 +210,7 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
       outputContract: 'output:search-evidence.schema',
     }
 
-    let phase1Built
+    let phase1Built: Awaited<ReturnType<ModelInputBuilder['build']>>
     try {
       phase1Built = await modelInputBuilder.build(phase1BuildInput)
     } catch (error) {

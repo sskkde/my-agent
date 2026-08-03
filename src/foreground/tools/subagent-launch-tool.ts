@@ -19,6 +19,8 @@ export interface LaunchSubagentDeps {
   sessionId: string
   turnId: string
   profileRegistry: AgentProfileRegistry
+  /** Parent dispatch AbortSignal — cascades cancellation into the child subagent kernel. */
+  signal?: AbortSignal
 }
 
 export interface LaunchSubagentInput {
@@ -118,6 +120,7 @@ export async function handleLaunchSubagent(
         callerModule: 'foreground_subagent_launch_tool',
         userId: deps.userId,
         sessionId: deps.sessionId,
+        ...(deps.signal ? { signal: deps.signal } : {}),
       },
     })
 

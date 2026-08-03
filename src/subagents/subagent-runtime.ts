@@ -9,6 +9,7 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
   private runs = new Map<string, SubagentRun>()
   private runStore?: SubagentRunStore
   private transcriptStore?: SubagentTranscriptStore
+  private runControllers = new Map<string, AbortController>()
 
   constructor(config: SubagentConfig) {
     this.config = config
@@ -69,7 +70,7 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
     return run
   }
 
-  async executeSubagent(subagentRunId: string): Promise<SubagentResult> {
+  async executeSubagent(subagentRunId: string, signal?: AbortSignal): Promise<SubagentResult> {
     const run = this.runs.get(subagentRunId)
     if (!run) {
       throw new Error(`Subagent run not found: ${subagentRunId}`)
@@ -102,11 +103,18 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
         maxIterations,
         timeoutMs,
         onCancel: () => run.isCancelled,
+        signal: this.buildRunSignal(subagentRunId, signal),
       })
+
+      // Idempotent terminal write: if cancelSubagent fired while the kernel was
+      // running, the cancelled terminal state wins over a late completed/failed.
+      if (run.isCancelled) {
+        return run.result ?? this.createCancelledResult()
+      }
 
       const result = this.mapKernelResultToSubagentResult(kernelResult)
       run.result = result
-      run.status = result.status === 'completed' ? 'completed' : 'failed'
+      run.status = result.status
       run.completedAt = new Date().toISOString()
       this.persistRunState(run)
 
@@ -119,6 +127,15 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
 
       return result
     } catch (error) {
+      if (run.isCancelled) {
+        const cancelledResult = this.createCancelledResult()
+        run.result = cancelledResult
+        run.status = 'cancelled'
+        run.completedAt = new Date().toISOString()
+        this.persistRunState(run)
+        return cancelledResult
+      }
+
       const errorMessage = error instanceof Error ? error.message : String(error)
       const failedResult: SubagentResult = {
         status: 'failed',
@@ -146,6 +163,8 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
       })
 
       return failedResult
+    } finally {
+      this.runControllers.delete(subagentRunId)
     }
   }
 
@@ -155,7 +174,14 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
       throw new Error(`Subagent run not found: ${subagentRunId}`)
     }
 
+    // Idempotent cancel: an already-terminal run returns its existing result
+    // and is never re-transitioned.
+    if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
+      return run.result ?? this.createCancelledResult()
+    }
+
     run.isCancelled = true
+    this.runControllers.get(subagentRunId)?.abort()
 
     const cancelledResult = this.createCancelledResult()
     run.result = cancelledResult
@@ -305,6 +331,11 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
   private mapKernelResultToSubagentResult(kernelResult: KernelRunResult): SubagentResult {
     const status = this.mapKernelStatusToSubagentStatus(kernelResult.finalStatus)
 
+    const error =
+      status === 'cancelled'
+        ? { code: 'CANCELLED', message: 'Subagent execution was cancelled' }
+        : kernelResult.error
+
     return {
       status,
       response: kernelResult.finalResponse,
@@ -313,7 +344,7 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
         toolName: tc.toolName,
         params: tc.params,
       })),
-      error: kernelResult.error,
+      error,
       iterationsUsed: kernelResult.iterationsUsed,
     }
   }
@@ -322,6 +353,8 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
     switch (kernelStatus) {
       case 'completed':
         return 'completed'
+      case 'cancelled':
+        return 'cancelled'
       case 'failed':
       case 'timeout':
       case 'max_iterations_reached':
@@ -344,6 +377,39 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
       iterationsUsed: 0,
       completedAt: now,
     }
+  }
+
+  /**
+   * Merge the parent dispatch signal with the per-run cancellation controller
+   * into a single AbortSignal for the child kernel. A per-run controller is
+   * created lazily so cancelSubagent can abort a live kernel run.
+   */
+  private buildRunSignal(subagentRunId: string, external?: AbortSignal): AbortSignal | undefined {
+    let controller = this.runControllers.get(subagentRunId)
+    if (!controller) {
+      controller = new AbortController()
+      this.runControllers.set(subagentRunId, controller)
+    }
+
+    const signals: AbortSignal[] = [controller.signal]
+    if (external) {
+      signals.push(external)
+    }
+
+    if (signals.length === 1) {
+      return signals[0]
+    }
+
+    const merged = new AbortController()
+    const propagate = (): void => merged.abort()
+    for (const signal of signals) {
+      if (signal.aborted) {
+        merged.abort()
+        return merged.signal
+      }
+      signal.addEventListener('abort', propagate, { once: true })
+    }
+    return merged.signal
   }
 
   private generateId(prefix: string): string {

@@ -74,6 +74,11 @@ export interface KernelAdapter {
     onCancel?: () => boolean
     taskSpec?: SubagentTaskSpec
     definition?: SubagentDefinition
+    /**
+     * AbortSignal from the parent dispatch (RuntimeAdapterExecutionContext)
+     * or a subagent-run cancellation. Passed through to KernelRunInput.signal.
+     */
+    signal?: AbortSignal
   }): Promise<KernelRunResult>
 }
 
@@ -95,7 +100,7 @@ export interface LaunchSubagentInput {
 
 export interface SubagentRuntime {
   launchSubagent(input: LaunchSubagentInput): SubagentRun
-  executeSubagent(subagentRunId: string): Promise<SubagentResult>
+  executeSubagent(subagentRunId: string, signal?: AbortSignal): Promise<SubagentResult>
   cancelSubagent(subagentRunId: string): SubagentResult
   getSubagentResult(subagentRunId: string): SubagentResult | undefined
   getSubagentRun(subagentRunId: string): SubagentRun | undefined

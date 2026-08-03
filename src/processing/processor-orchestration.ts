@@ -289,6 +289,12 @@ export function createOrchestrationProcessor(
             )
           } else {
             const kernelRunId = `kr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+            // Live-abort identity: the abort registry is keyed by the public
+            // correlationId (turnId), while the cancel API resolves the internal
+            // kr-... kernel run row. Register BOTH keys pointing at the same
+            // controller so cancelKernelRun's abortRun(internalRunId) actually
+            // fires the live signal instead of only flipping the DB status.
+            registerRunAbort(kernelRunId, abortController)
             const rootSpanId = `span-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
             const kernelSpanId = `span-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
             const traceStartedAt = new Date().toISOString()
@@ -349,6 +355,7 @@ export function createOrchestrationProcessor(
               turnResult = await deps.foregroundAgent.runTurn(turnInput)
             } finally {
               unregisterRunAbort(input.correlationId)
+              unregisterRunAbort(kernelRunId)
             }
 
             const turnSucceeded = turnResult.status === 'completed'
@@ -356,10 +363,19 @@ export function createOrchestrationProcessor(
 
             if (deps.kernelRunStore) {
               try {
-                deps.kernelRunStore.updateStatus(
-                  kernelRunId,
-                  turnSucceeded ? KERNEL_RUN_STATES.COMPLETED : KERNEL_RUN_STATES.FAILED,
-                )
+                // Idempotent terminal write: if the coordinator already marked this
+                // run cancelled (cancel-active-run), a late completed/failed arrival
+                // from the unwinding kernel must NOT overwrite it.
+                const existingRun = deps.kernelRunStore.getById(kernelRunId)
+                const alreadyTerminal =
+                  existingRun != null &&
+                  ['completed', 'failed', 'cancelled', 'archived', 'expired', 'timeout'].includes(existingRun.status)
+                if (!alreadyTerminal) {
+                  deps.kernelRunStore.updateStatus(
+                    kernelRunId,
+                    turnSucceeded ? KERNEL_RUN_STATES.COMPLETED : KERNEL_RUN_STATES.FAILED,
+                  )
+                }
                 deps.kernelRunStore.saveFinalResult(kernelRunId, {
                   status: turnResult.status,
                   route: turnResult.decisionTrace?.route,

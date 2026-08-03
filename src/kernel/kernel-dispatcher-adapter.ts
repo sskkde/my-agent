@@ -72,6 +72,7 @@ export function createKernelDispatcherAdapter(runtimeDispatcher: DispatcherRunti
         userId: request.context.userId ?? request.action.userId,
         sessionId: request.context.sessionId,
         callerModule: request.context.callerModule,
+        ...(request.context.signal ? { signal: request.context.signal } : {}),
       }
 
       const result: DispatchResult = await runtimeDispatcher.dispatch({

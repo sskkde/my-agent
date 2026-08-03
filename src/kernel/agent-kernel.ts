@@ -1101,6 +1101,7 @@ export class AgentKernel {
         kernelRunId: effectiveRunId,
         agentId: input.agentId,
         agentType: input.agentType,
+        signal: input.signal,
       },
     })
 
@@ -1217,6 +1218,7 @@ export class AgentKernel {
           kernelRunId: effectiveRunId,
           agentId: input.agentId,
           agentType: input.agentType,
+          signal: input.signal,
         },
       })
     } catch (dispatchError) {
