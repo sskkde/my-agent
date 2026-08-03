@@ -276,7 +276,7 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
             </div>
           </div>
 
-          {isStopVisible && (
+          {isStopVisible ? (
             <button
               type="button"
               className="chat-stop-btn"
@@ -296,22 +296,23 @@ const ChatComposer: React.FC<ChatComposerProps> = ({
                 <rect x="6" y="6" width="12" height="12" rx="1" />
               </svg>
             </button>
+          ) : (
+            <button
+              type="button"
+              className="chat-send-btn"
+              data-testid="chat-send-button"
+              aria-label="发送"
+              onClick={() => {
+                if (!isSendDisabled) onSend()
+              }}
+              disabled={isSendDisabled}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
           )}
-          <button
-            type="button"
-            className="chat-send-btn"
-            data-testid="chat-send-button"
-            aria-label="发送"
-            onClick={() => {
-              if (!isSendDisabled) onSend()
-            }}
-            disabled={isSendDisabled}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
         </div>
       </div>
     </div>

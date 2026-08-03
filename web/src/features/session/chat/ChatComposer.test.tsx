@@ -87,14 +87,28 @@ describe('ChatComposer', () => {
       expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
     })
 
+    it('hides send button while stop button is visible', () => {
+      const { rerender } = render(
+        <ChatComposer value="hello" onChange={() => {}} onSend={() => {}} sending={true} />,
+      )
+      expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
+      expect(screen.queryByTestId('chat-send-button')).not.toBeInTheDocument()
+
+      rerender(<ChatComposer value="hello" onChange={() => {}} onSend={() => {}} sending={false} />)
+      expect(screen.queryByTestId('chat-stop-button')).not.toBeInTheDocument()
+      expect(screen.getByTestId('chat-send-button')).toBeInTheDocument()
+    })
+
     it('renders stop button when status is generating or tool', () => {
       const { rerender } = render(
         <ChatComposer value="hello" onChange={() => {}} onSend={() => {}} status="generating" />,
       )
       expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
+      expect(screen.queryByTestId('chat-send-button')).not.toBeInTheDocument()
 
       rerender(<ChatComposer value="hello" onChange={() => {}} onSend={() => {}} status="tool" />)
       expect(screen.getByTestId('chat-stop-button')).toBeInTheDocument()
+      expect(screen.queryByTestId('chat-send-button')).not.toBeInTheDocument()
     })
 
     it('does not render stop button when idle', () => {
