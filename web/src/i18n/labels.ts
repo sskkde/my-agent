@@ -1,4 +1,4 @@
-import type { ConsoleSessionInfo, UserRole, WorkflowStepType } from '../api/types'
+import type { ChildTaskLaunchMode, ChildTaskStatus, ConsoleSessionInfo, UserRole, WorkflowStepType } from '../api/types'
 
 export type SessionStatus = ConsoleSessionInfo['status']
 export type ChannelStatus = 'connected' | 'active' | 'disconnected' | 'inactive' | 'healthy' | 'degraded' | 'unhealthy'
@@ -55,6 +55,19 @@ export const WORKFLOW_STATUS_LABELS = {
   failed: '失败',
   cancelled: '已取消',
 } satisfies Record<WorkflowStatus, string>
+
+export const CHILD_TASK_STATUS_LABELS = {
+  queued: '排队中',
+  running: '运行中',
+  completed: '已完成',
+  failed: '失败',
+  cancelled: '已取消',
+} satisfies Record<ChildTaskStatus, string>
+
+export const CHILD_TASK_LAUNCH_MODE_LABELS = {
+  foreground: '前台任务',
+  background: '后台任务',
+} satisfies Record<ChildTaskLaunchMode, string>
 
 export const USER_ROLE_LABELS = {
   admin: '管理员',

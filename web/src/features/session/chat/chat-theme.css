@@ -2246,6 +2246,7 @@
 
 .chat-tool-event .tool-call-card__header {
   background: transparent;
+  flex-wrap: wrap;
 }
 
 .chat-tool-event .tool-call-card__header:hover {
@@ -2279,12 +2280,70 @@
   overflow-x: auto;
 }
 
+.chat-tool-event .tool-call-card__task-id,
+.chat-tool-event .tool-call-card__launch-mode,
+.chat-tool-event .tool-call-card__task-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--warm-paper-control-size-sm);
+  padding: 0 var(--warm-paper-space-2);
+  border-radius: var(--warm-paper-radius-sm);
+  color: var(--warm-paper-text-muted);
+  background: var(--warm-paper-bg-deep);
+  font-size: var(--warm-paper-font-caption);
+  white-space: nowrap;
+}
+
+.chat-tool-event .tool-call-card__task-id {
+  gap: var(--warm-paper-space-1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.chat-tool-event .tool-call-card__task-id-label {
+  color: var(--warm-paper-text-muted);
+}
+
+.chat-tool-event .tool-call-card__task-id-value {
+  color: var(--warm-paper-text-secondary);
+}
+
+.chat-task-event .bg-task-card__task-id {
+  color: var(--warm-paper-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--warm-paper-font-caption);
+}
+
+.chat-tool-event .child-task-actions,
+.chat-task-event .child-task-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--warm-paper-space-2);
+  padding: var(--warm-paper-space-2) var(--warm-paper-space-3);
+  border-top: var(--warm-paper-hairline-width) solid var(--warm-paper-border);
+  background: var(--warm-paper-bg-elevated);
+}
+
+.chat-tool-event .child-task-actions .ui-button,
+.chat-task-event .child-task-actions .ui-button {
+  min-height: var(--warm-paper-touch-target);
+}
+
+.chat-tool-event .child-task-actions .ui-button:disabled,
+.chat-task-event .child-task-actions .ui-button:disabled {
+  opacity: var(--warm-paper-disabled-opacity);
+  cursor: not-allowed;
+}
+
 .chat-task-event {
   display: flex;
   justify-content: flex-start;
   margin: 0 0 16px 48px;
   min-width: 0;
   max-width: min(680px, calc(100% - 48px));
+}
+
+.chat-task-event .bg-task-card__header {
+  flex-wrap: wrap;
 }
 
 .bg-task-card__open {

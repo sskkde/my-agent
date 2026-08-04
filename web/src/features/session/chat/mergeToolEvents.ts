@@ -7,6 +7,7 @@ import {
 } from '../session-utils'
 import {
   extractDurationMs,
+  extractChildTaskMeta,
   extractParameters,
   extractResultText,
   extractToolName,
@@ -33,6 +34,11 @@ export type ChatStreamToolItem = {
   resultText?: string
   status: ToolStatus
   durationMs?: number
+  taskId?: string
+  childSessionId?: string
+  parentSessionId?: string
+  launchMode?: 'foreground' | 'background'
+  taskStatus?: ChildTaskStatus
 }
 
 export type ChatStreamTaskItem = {
@@ -93,16 +99,29 @@ const projectToolItem = (pair: Pair): ChatStreamToolItem => {
   const fromCall = extractParameters(call)
   const parameters = Object.keys(fromCall).length > 0 ? fromCall : extractParameters(result)
 
+  const toolName = extractToolName(call, result)
+  const taskMeta =
+    toolName === 'foreground_launch_subagent'
+      ? extractChildTaskMeta(call, result, extractResultText(result, call))
+      : {}
+  const taskId = taskMeta.taskId ?? taskMeta.childSessionId
+  const launchMode = taskMeta.launchMode ?? (toolName === 'foreground_launch_subagent' && taskId ? 'foreground' : undefined)
+  const taskStatus = taskId ? (taskMeta.status ?? normalizeToolStatus(statusEvent)) : undefined
   return {
     kind: 'tool',
     key: stableToolKey(keyEvent) ?? keyEvent.eventId,
     call,
     result,
-    toolName: extractToolName(call, result),
+    toolName,
     parameters,
     resultText: extractResultText(result, call),
     status: normalizeToolStatus(statusEvent),
     durationMs: extractDurationMs(result, call),
+    ...(taskId ? { taskId } : {}),
+    ...(taskMeta.childSessionId ? { childSessionId: taskMeta.childSessionId } : {}),
+    ...(keyEvent.sessionId ? { parentSessionId: keyEvent.sessionId } : {}),
+    ...(launchMode ? { launchMode } : {}),
+    ...(taskStatus ? { taskStatus } : {}),
   }
 }
 

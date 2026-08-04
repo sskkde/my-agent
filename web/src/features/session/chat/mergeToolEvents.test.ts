@@ -776,4 +776,43 @@ describe('mergeToolEvents', () => {
 
     expect(tasks.map((task) => task.safeMessage)).toEqual(['子任务执行失败，请稍后重试', '任务已取消'])
   })
+
+  it('projects child metadata from an existing foreground_launch_subagent tool result without changing its stable key', () => {
+    const call = makeEvent({
+      eventId: 'tool-call-child',
+      eventType: 'tool_call',
+      metadata: {
+        toolCallId: 'tool-child',
+        toolName: 'foreground_launch_subagent',
+        status: 'running',
+        parameters: { objective: '整理资料', background: true },
+      },
+    })
+    const result = makeEvent({
+      eventId: 'tool-result-child',
+      eventType: 'tool_result',
+      metadata: {
+        toolCallId: 'tool-child',
+        toolName: 'foreground_launch_subagent',
+        status: 'completed',
+        result: JSON.stringify({
+          taskId: 'child-42',
+          childSessionId: 'child-42',
+          dispatchResult: { result: { status: 'completed' } },
+        }),
+      },
+    })
+
+    const [item] = mergeToolEvents([call, result])
+
+    expect(item).toMatchObject({
+      kind: 'tool',
+      key: 'tool-tool-child',
+      taskId: 'child-42',
+      childSessionId: 'child-42',
+      parentSessionId: 'session-1',
+      launchMode: 'background',
+      taskStatus: 'completed',
+    })
+  })
 })

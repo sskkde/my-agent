@@ -119,4 +119,67 @@ describe('ToolCallCard', () => {
     rerender(<ToolCallCard {...defaultProps} status="failed" />)
     expect(screen.getByTestId('tool-call-card')).toHaveAttribute('data-status', 'failed')
   })
+
+  it('renders child task metadata and foreground/background controls on launch results', () => {
+    render(
+      <ToolCallCard
+        toolName="foreground_launch_subagent"
+        parameters={{ objective: '整理资料', background: true }}
+        result='{"taskId":"child-42","status":"running"}'
+        status="running"
+        taskId="child-42"
+        parentSessionId="parent-7"
+        childSessionId="child-42"
+        launchMode="background"
+        onCancel={vi.fn()}
+        onResume={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(/任务 ID/)).toBeInTheDocument()
+    expect(screen.getByTestId('tool-call-card')).toHaveAttribute('data-task-id', 'child-42')
+    expect(screen.getByText('后台任务')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '取消任务' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '查看子会话' })).toBeEnabled()
+  })
+
+  it('offers resume for failed child tasks and disables stale cancel actions after terminal updates', () => {
+    const onResume = vi.fn()
+    const { rerender } = render(
+      <ToolCallCard
+        toolName="foreground_launch_subagent"
+        parameters={{ objective: '恢复失败任务' }}
+        status="failed"
+        taskId="child-43"
+        parentSessionId="parent-7"
+        childSessionId="child-43"
+        launchMode="foreground"
+        onCancel={vi.fn()}
+        onResume={onResume}
+        onOpen={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: '恢复任务' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '查看子会话' })).toBeEnabled()
+
+    rerender(
+      <ToolCallCard
+        toolName="foreground_launch_subagent"
+        parameters={{ objective: '恢复失败任务' }}
+        status="completed"
+        taskId="child-43"
+        parentSessionId="parent-7"
+        childSessionId="child-43"
+        launchMode="foreground"
+        onCancel={vi.fn()}
+        onResume={onResume}
+        onOpen={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: '取消任务' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '恢复任务' })).toBeEnabled()
+  })
 })

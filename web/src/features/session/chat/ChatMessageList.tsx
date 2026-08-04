@@ -7,6 +7,8 @@ import ToolCallCard from '../../../components/ToolCallCard'
 import BackgroundTaskCard from '../../../components/BackgroundTaskCard'
 import { filterParentTimelineEvents, getChildTaskProfileLabel } from '../session-utils'
 import { mergeToolEvents } from './mergeToolEvents'
+import * as api from '../../../api/client'
+import { showToast } from './ChatToast'
 
 export interface ChatMessageListProps {
   events: ConsoleTimelineEvent[]
@@ -112,13 +114,36 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                       message={item.safeMessage}
                       agentProfile={item.agentProfile}
                       launchMode={item.launchMode}
-                      onOpen={onTaskOpen && item.childSessionId ? () => onTaskOpen(item.taskId, item.childSessionId) : undefined}
+                      parentSessionId={parentSessionId}
+                      childSessionId={item.childSessionId}
+                      onCancel={
+                        item.childSessionId && parentSessionId
+                          ? () => api.cancelChildSession(parentSessionId, item.childSessionId ?? '').then(() => undefined)
+                          : undefined
+                      }
+                      onResume={
+                        item.childSessionId && parentSessionId
+                          ? () => api.resumeChildSession(parentSessionId, item.childSessionId ?? '').then(() => undefined)
+                          : undefined
+                      }
+                      onActionError={showToast}
+                      onOpen={
+                        onTaskOpen && item.childSessionId
+                          ? () => onTaskOpen(item.taskId, item.childSessionId)
+                          : undefined
+                      }
                     />
                   </div>
                 )
               }
 
               if (item.kind === 'tool') {
+                const taskId = item.taskId
+                const childSessionId = item.childSessionId ?? taskId
+                const taskActionContext =
+                  taskId && parentSessionId && childSessionId
+                    ? { taskId, parentSessionId, childSessionId }
+                    : undefined
                 return (
                   <div key={item.key} className="chat-tool-event" data-testid="chat-tool-event">
                     <ToolCallCard
@@ -127,6 +152,27 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                       result={item.resultText}
                       status={item.status}
                       durationMs={item.durationMs}
+                      taskId={taskId}
+                      childSessionId={childSessionId}
+                      parentSessionId={item.parentSessionId ?? parentSessionId}
+                      launchMode={item.launchMode}
+                      taskStatus={item.taskStatus}
+                      onCancel={
+                        taskActionContext
+                          ? () => api.cancelChildSession(taskActionContext.parentSessionId, taskActionContext.childSessionId).then(() => undefined)
+                          : undefined
+                      }
+                      onResume={
+                        taskActionContext
+                          ? () => api.resumeChildSession(taskActionContext.parentSessionId, taskActionContext.childSessionId).then(() => undefined)
+                          : undefined
+                      }
+                      onOpen={
+                        taskActionContext && onTaskOpen
+                          ? () => onTaskOpen(taskActionContext.taskId, taskActionContext.childSessionId)
+                          : undefined
+                      }
+                      onActionError={showToast}
                     />
                   </div>
                 )

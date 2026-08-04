@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
 import LoadingSpinner from './LoadingSpinner'
 import { CodeBlock } from './message/CodeBlock'
+import type { ChildTaskLaunchMode, ChildTaskStatus } from '../api/types'
+import { ChildTaskActions } from '../features/session/chat/ChildTaskActions'
+import { CHILD_TASK_LAUNCH_MODE_LABELS, CHILD_TASK_STATUS_LABELS } from '../i18n/labels'
 
 export interface ToolCallCardProps {
   toolName: string
@@ -11,6 +14,15 @@ export interface ToolCallCardProps {
   agentProfile?: string
   agentType?: string
   onExpand?: () => void
+  taskId?: string
+  childSessionId?: string
+  parentSessionId?: string
+  launchMode?: ChildTaskLaunchMode
+  taskStatus?: ChildTaskStatus
+  onCancel?: () => Promise<void>
+  onResume?: () => Promise<void>
+  onOpen?: () => void
+  onActionError?: (message: string) => void
 }
 
 const statusLabels: Record<ToolCallCardProps['status'], string> = {
@@ -30,6 +42,7 @@ const toolNameLabels: Record<string, string> = {
   transcript_search: '转录搜索',
   memory_retrieve: '记忆检索',
   status_query: '状态查询',
+  foreground_launch_subagent: '子代理任务',
 }
 
 const getToolDisplayName = (toolName: string): string => {
@@ -45,6 +58,15 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
   agentProfile,
   agentType,
   onExpand,
+  taskId,
+  childSessionId,
+  parentSessionId,
+  launchMode,
+  taskStatus,
+  onCancel,
+  onResume,
+  onOpen,
+  onActionError,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -69,8 +91,13 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
     }
   }
 
+  const isForegroundLaunch = toolName === 'foreground_launch_subagent'
+  const effectiveTaskStatus: ChildTaskStatus | undefined = isForegroundLaunch
+    ? taskStatus ?? (status === 'running' ? 'running' : status)
+    : undefined
+
   return (
-    <div className="tool-call-card" data-testid="tool-call-card" data-status={status}>
+    <div className="tool-call-card" data-testid="tool-call-card" data-status={status} data-task-id={taskId}>
       <div
         className="tool-call-card__header"
         onClick={handleToggle}
@@ -102,7 +129,31 @@ export const ToolCallCard: React.FC<ToolCallCardProps> = ({
         {durationMs !== undefined && status !== 'running' && (
           <span className="tool-call-card__duration">{formatDuration(durationMs)}</span>
         )}
+        {taskId && (
+          <span className="tool-call-card__task-id">
+            <span className="tool-call-card__task-id-label">任务 ID</span>
+            <span className="tool-call-card__task-id-value">{taskId}</span>
+          </span>
+        )}
+        {launchMode && <span className="tool-call-card__launch-mode">{CHILD_TASK_LAUNCH_MODE_LABELS[launchMode]}</span>}
+        {effectiveTaskStatus && (
+          <span className="tool-call-card__task-status">任务：{CHILD_TASK_STATUS_LABELS[effectiveTaskStatus]}</span>
+        )}
       </div>
+
+      {isForegroundLaunch && taskId && childSessionId && parentSessionId && effectiveTaskStatus && onOpen && (
+        <ChildTaskActions
+          parentSessionId={parentSessionId}
+          taskId={taskId}
+          childSessionId={childSessionId}
+          status={effectiveTaskStatus}
+          launchMode={launchMode ?? 'foreground'}
+          onCancel={onCancel}
+          onResume={onResume}
+          onOpen={onOpen}
+          onError={onActionError}
+        />
+      )}
 
       {isExpanded && (
         <div className="tool-call-card__body">

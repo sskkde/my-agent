@@ -1,5 +1,6 @@
 import React from 'react'
 import LoadingSpinner from './LoadingSpinner'
+import { ChildTaskActions } from '../features/session/chat/ChildTaskActions'
 
 export interface BackgroundTaskCardProps {
   taskId: string
@@ -10,6 +11,11 @@ export interface BackgroundTaskCardProps {
   agentProfile?: string
   launchMode?: 'foreground' | 'background'
   onOpen?: () => void
+  parentSessionId?: string
+  childSessionId?: string
+  onCancel?: () => Promise<void>
+  onResume?: () => Promise<void>
+  onActionError?: (message: string) => void
 }
 
 const statusLabels: Record<BackgroundTaskCardProps['status'], string> = {
@@ -34,6 +40,11 @@ export const BackgroundTaskCard: React.FC<BackgroundTaskCardProps> = ({
   agentProfile,
   launchMode,
   onOpen,
+  parentSessionId,
+  childSessionId,
+  onCancel,
+  onResume,
+  onActionError,
 }) => {
   const clampedProgress = progress !== undefined ? Math.max(0, Math.min(100, progress)) : undefined
 
@@ -47,12 +58,28 @@ export const BackgroundTaskCard: React.FC<BackgroundTaskCardProps> = ({
       <div className="bg-task-card__header">
         <span className="bg-task-card__label">{label}</span>
         {agentProfile && <span className="bg-task-card__profile">{agentProfile}</span>}
+        <span className="bg-task-card__task-id">任务 ID：{taskId}</span>
         {launchMode && <span className="bg-task-card__launch-mode">{launchModeLabels[launchMode]}</span>}
         <span className={`status-badge status-badge--${status}`}>
           {(status === 'queued' || status === 'running') && <LoadingSpinner size="small" inline label="" />}
           {statusLabels[status]}
         </span>
-        {onOpen && (
+      </div>
+
+      {onOpen && childSessionId && parentSessionId ? (
+        <ChildTaskActions
+          parentSessionId={parentSessionId}
+          taskId={taskId}
+          childSessionId={childSessionId}
+          status={status}
+          launchMode={launchMode ?? 'background'}
+          onCancel={onCancel}
+          onResume={onResume}
+          onOpen={onOpen}
+          onError={onActionError}
+        />
+      ) : (
+        onOpen && (
           <button
             type="button"
             className="bg-task-card__open"
@@ -62,8 +89,8 @@ export const BackgroundTaskCard: React.FC<BackgroundTaskCardProps> = ({
           >
             查看
           </button>
-        )}
-      </div>
+        )
+      )}
 
       {(status === 'queued' || status === 'running') && clampedProgress !== undefined && (
         <div className="bg-task-card__progress-wrapper">
