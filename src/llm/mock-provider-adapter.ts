@@ -123,7 +123,10 @@ export class MockProvider implements LLMProvider {
         yield {
           kind: 'tool_call_delta',
           index,
-          id: `call_${index}`,
+          // Unique per stream call: fixed ids (e.g. `call_0`) collide across
+          // turns in tool_executions (UNIQUE on tool_call_id), failing every
+          // later tool call in the same database. Mirrors buildMockLLMResponse.
+          id: `call_${Date.now()}_${index}`,
           name: tc.name,
           argumentsDelta: tc.arguments,
         }
