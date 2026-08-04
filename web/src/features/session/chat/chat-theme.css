@@ -2279,8 +2279,33 @@
   overflow-x: auto;
 }
 
+.chat-task-event {
+  display: flex;
+  justify-content: flex-start;
+  margin: 0 0 16px 48px;
+  min-width: 0;
+  max-width: min(680px, calc(100% - 48px));
+}
+
+.bg-task-card__open {
+  margin-left: auto;
+  border: 1px solid var(--chat-border, #e0d6c8);
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: var(--chat-text-muted, #8f867b);
+  background: transparent;
+  cursor: pointer;
+}
+
+.bg-task-card__open:hover,
+.bg-task-card__open:focus-visible {
+  color: var(--chat-accent, #537d96);
+  border-color: currentColor;
+}
+
 @media (max-width: 768px) {
-  .chat-tool-event {
+  .chat-tool-event,
+  .chat-task-event {
     margin-left: 0;
     max-width: 100%;
   }

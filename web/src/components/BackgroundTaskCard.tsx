@@ -9,6 +9,7 @@ export interface BackgroundTaskCardProps {
   message?: string
   agentProfile?: string
   launchMode?: 'foreground' | 'background'
+  onOpen?: () => void
 }
 
 const statusLabels: Record<BackgroundTaskCardProps['status'], string> = {
@@ -32,11 +33,17 @@ export const BackgroundTaskCard: React.FC<BackgroundTaskCardProps> = ({
   message,
   agentProfile,
   launchMode,
+  onOpen,
 }) => {
   const clampedProgress = progress !== undefined ? Math.max(0, Math.min(100, progress)) : undefined
 
   return (
-    <div className="bg-task-card" data-testid="bg-task-card" data-task-id={taskId} data-status={status}>
+    <div
+      className={`bg-task-card${onOpen ? ' bg-task-card--interactive' : ''}`}
+      data-testid="bg-task-card"
+      data-task-id={taskId}
+      data-status={status}
+    >
       <div className="bg-task-card__header">
         <span className="bg-task-card__label">{label}</span>
         {agentProfile && <span className="bg-task-card__profile">{agentProfile}</span>}
@@ -45,6 +52,17 @@ export const BackgroundTaskCard: React.FC<BackgroundTaskCardProps> = ({
           {(status === 'queued' || status === 'running') && <LoadingSpinner size="small" inline label="" />}
           {statusLabels[status]}
         </span>
+        {onOpen && (
+          <button
+            type="button"
+            className="bg-task-card__open"
+            onClick={onOpen}
+            aria-label="查看子会话"
+            title="查看子会话"
+          >
+            查看
+          </button>
+        )}
       </div>
 
       {(status === 'queued' || status === 'running') && clampedProgress !== undefined && (

@@ -3,9 +3,14 @@ import React from 'react'
 export interface StreamStatusIndicatorProps {
   streamStatus: 'connected' | 'connecting' | 'disconnected'
   onRetry: () => void
+  retryLabel?: string
 }
 
-export const StreamStatusIndicator: React.FC<StreamStatusIndicatorProps> = ({ streamStatus, onRetry }) => {
+export const StreamStatusIndicator: React.FC<StreamStatusIndicatorProps> = ({
+  streamStatus,
+  onRetry,
+  retryLabel = '重试',
+}) => {
   const statusText = streamStatus === 'connected' ? '已连接' : streamStatus === 'connecting' ? '连接中...' : '已断开'
   const statusClass =
     streamStatus === 'connected'
@@ -18,8 +23,8 @@ export const StreamStatusIndicator: React.FC<StreamStatusIndicatorProps> = ({ st
     <div className="stream-status-indicator" data-testid="session-timeline-stream-status">
       <span className={`stream-status-badge ${statusClass}`}>{statusText}</span>
       {streamStatus === 'disconnected' && (
-        <button className="stream-retry-button" onClick={onRetry}>
-          重试
+        <button className="stream-retry-button" onClick={onRetry} aria-label={retryLabel}>
+          {retryLabel}
         </button>
       )}
     </div>

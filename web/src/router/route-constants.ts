@@ -29,6 +29,7 @@ export const ROUTES = {
    */
   CHAT: '/chat',
   CHAT_SESSION: '/chat/:sessionId',
+  CHAT_TASK: '/chat/:sessionId/task/:taskId',
 
   /**
    * Workspace section routes
@@ -52,6 +53,7 @@ export const ROUTES = {
  */
 export const ROUTE_PARAMS = {
   SESSION_ID: 'sessionId',
+  TASK_ID: 'taskId',
   TAB_ID: 'tabId',
 } as const
 

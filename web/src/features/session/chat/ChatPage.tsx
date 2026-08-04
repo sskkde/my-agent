@@ -33,6 +33,7 @@ import { loadPreferences, getPreferencesStorageKey } from '../../../commands/pre
 import { safeRemoveLocalStorage } from '../session-migration'
 import { SELECTED_SESSION_KEY } from '../session-constants'
 import { useAuth } from '../../../context/AuthContext'
+import { buildPath, ROUTES } from '../../../router/route-constants'
 
 export interface ChatPageProps {
   initialSessionId?: string
@@ -825,6 +826,10 @@ const ChatPage: React.FC<ChatPageProps> = ({ initialSessionId }) => {
           hasMore={hasMoreTimeline}
           loadingMore={loadingMore}
           onLoadMore={loadMoreTimeline}
+          onTaskOpen={(taskId) => {
+            if (!selectedSessionId) return
+            navigate(buildPath(ROUTES.CHAT_TASK, { sessionId: selectedSessionId, taskId }))
+          }}
         />
         <ChatComposer
           value={draft}

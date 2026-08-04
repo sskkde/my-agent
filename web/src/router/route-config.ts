@@ -101,6 +101,19 @@ export const ROUTE_CONFIGS: Record<string, RouteConfig> = {
     getValidatedTab: () => DEFAULT_TABS.chat,
   },
 
+  chatTask: {
+    path: ROUTES.CHAT_TASK,
+    metadata: {
+      section: 'chat',
+      label: 'Child Task',
+      hasTabParam: false,
+      hasSessionParam: true,
+      defaultTab: DEFAULT_TABS.chat,
+      description: 'Parent-scoped child session transcript',
+    },
+    getValidatedTab: () => DEFAULT_TABS.chat,
+  },
+
   workspace: {
     path: ROUTES.WORKSPACE,
     metadata: {
@@ -177,7 +190,7 @@ export function getRouteConfigsBySection(section: ProductSection): RouteConfig[]
  */
 export function validateRouteParam(
   routePath: string,
-  param: 'tabId' | 'sessionId',
+  param: 'tabId' | 'sessionId' | 'taskId',
   value: string
 ): boolean {
   const config = getRouteConfig(routePath)
@@ -187,7 +200,7 @@ export function validateRouteParam(
     return config.validateTab(value)
   }
 
-  if (param === 'sessionId') {
+  if (param === 'sessionId' || param === 'taskId') {
     // Session IDs are always valid if present (non-empty string)
     return value.length > 0
   }

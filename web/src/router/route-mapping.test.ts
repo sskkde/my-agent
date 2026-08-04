@@ -24,6 +24,7 @@ describe('route-constants', () => {
       expect(ROUTES.ROOT).toBe('/')
       expect(ROUTES.CHAT).toBe('/chat')
       expect(ROUTES.CHAT_SESSION).toBe('/chat/:sessionId')
+      expect(ROUTES.CHAT_TASK).toBe('/chat/:sessionId/task/:taskId')
       expect(ROUTES.WORKSPACE).toBe('/workspace/:tabId')
       expect(ROUTES.OPERATIONS).toBe('/operations/:tabId')
       expect(ROUTES.ADMIN).toBe('/admin/:tabId')
@@ -33,6 +34,7 @@ describe('route-constants', () => {
   describe('ROUTE_PARAMS', () => {
     it('defines parameter names', () => {
       expect(ROUTE_PARAMS.SESSION_ID).toBe('sessionId')
+      expect(ROUTE_PARAMS.TASK_ID).toBe('taskId')
       expect(ROUTE_PARAMS.TAB_ID).toBe('tabId')
     })
   })
@@ -46,6 +48,11 @@ describe('route-constants', () => {
     it('handles multiple parameters', () => {
       const result = buildPath('/test/:a/:b', { a: 'foo', b: 'bar' })
       expect(result).toBe('/test/foo/bar')
+    })
+
+    it('builds a parent-scoped child task route', () => {
+      const result = buildPath(ROUTES.CHAT_TASK, { sessionId: 'parent-1', taskId: 'task-1' })
+      expect(result).toBe('/chat/parent-1/task/task-1')
     })
 
     it('returns original path if no params provided', () => {
@@ -219,6 +226,16 @@ describe('route-mapping', () => {
         })
       })
 
+      it('maps a child task route to chat with parent and task IDs', () => {
+        const result = routeToNavigation('/chat/parent-1/task/task-1')
+        expect(result).toEqual<NavigationState>({
+          tabId: 'session-console',
+          section: 'chat',
+          sessionId: 'parent-1',
+          taskId: 'task-1',
+        })
+      })
+
       it('maps /workspace/:tabId to workspace section', () => {
         const result = routeToNavigation('/workspace/dashboard')
         expect(result).toEqual<NavigationState>({
@@ -356,6 +373,11 @@ describe('route-mapping', () => {
       it('returns /chat/:sessionId for chat tab with session ID', () => {
         const result = navigationToRoute('session-console', 'abc123')
         expect(result).toBe('/chat/abc123')
+      })
+
+      it('returns the parent-scoped child task route with task ID', () => {
+        const result = navigationToRoute('session-console', 'parent-1', 'task-1')
+        expect(result).toBe('/chat/parent-1/task/task-1')
       })
     })
 

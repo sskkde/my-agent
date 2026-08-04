@@ -67,6 +67,7 @@ export interface NavigationState {
   tabId: TabId
   /** Optional session ID (only for chat section) */
   sessionId?: string
+  taskId?: string
   /** The product section this tab belongs to */
   section: ProductSection
 }
@@ -150,9 +151,11 @@ export function routeToNavigation(path: string): NavigationState {
   switch (sectionName) {
     case 'chat': {
       const sessionId = params[0]
+      const taskId = params[1] === 'task' ? params[2] : undefined
       return {
         tabId: DEFAULT_TABS.chat,
         sessionId,
+        taskId,
         section: 'chat',
       }
     }
@@ -216,12 +219,13 @@ export function getLegacyRedirectRoute(_tabId: TabId): string {
  * @param sessionId - Optional session ID (only used for chat section)
  * @returns The URL path
  */
-export function navigationToRoute(tabId: TabId, sessionId?: string): string {
+export function navigationToRoute(tabId: TabId, sessionId?: string, taskId?: string): string {
   const section = getProductSection(tabId)
 
   switch (section) {
     case 'chat': {
       if (sessionId) {
+        if (taskId) return buildPath(ROUTES.CHAT_TASK, { sessionId, taskId })
         return buildPath(ROUTES.CHAT_SESSION, { sessionId })
       }
       return ROUTES.CHAT

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, Suspense, lazy } from 'react'
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import AgentShell from './layout/AgentShell'
 import ChatPage from './features/session/chat/ChatPage'
+import ChildSessionPage from './features/session/child/ChildSessionPage'
 import LoginPage from './features/auth/LoginPage'
 import ProductionSetupChecklist from './features/setup/ProductionSetupChecklist'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -116,10 +117,7 @@ function AppRoutes() {
   // Derive activeTab from URL (primary source of truth)
   const navState = routeToNavigation(location.pathname)
   const activeTab = navState.tabId
-  const selectedSessionId = resolveSessionId(
-    navState.sessionId ?? null,
-    safeReadLocalStorage(SELECTED_SESSION_KEY),
-  )
+  const selectedSessionId = resolveSessionId(navState.sessionId ?? null, safeReadLocalStorage(SELECTED_SESSION_KEY))
 
   /**
    * Compatibility adapter: translates legacy tab-change calls to URL navigation.
@@ -180,6 +178,7 @@ function AppRoutes() {
             {/* Chat section routes */}
             <Route path="/chat" element={<ChatRouteContent />} />
             <Route path="/chat/:sessionId" element={<ChatRouteContent />} />
+            <Route path={ROUTES.CHAT_TASK} element={<ChildSessionPage />} />
 
             {/* Legacy secondary routes: redirected to Chat, opening the modal */}
             <Route path="/workspace/:tabId" element={<LegacyRouteRedirect />} />

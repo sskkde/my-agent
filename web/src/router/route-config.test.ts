@@ -18,6 +18,7 @@ describe('route-config', () => {
       expect(ROUTE_CONFIGS.root).toBeDefined()
       expect(ROUTE_CONFIGS.chat).toBeDefined()
       expect(ROUTE_CONFIGS.chatSession).toBeDefined()
+      expect(ROUTE_CONFIGS.chatTask).toBeDefined()
       expect(ROUTE_CONFIGS.workspace).toBeDefined()
       expect(ROUTE_CONFIGS.operations).toBeDefined()
       expect(ROUTE_CONFIGS.admin).toBeDefined()
@@ -27,6 +28,7 @@ describe('route-config', () => {
       expect(ROUTE_CONFIGS.root.path).toBe(ROUTES.ROOT)
       expect(ROUTE_CONFIGS.chat.path).toBe(ROUTES.CHAT)
       expect(ROUTE_CONFIGS.chatSession.path).toBe(ROUTES.CHAT_SESSION)
+      expect(ROUTE_CONFIGS.chatTask.path).toBe(ROUTES.CHAT_TASK)
       expect(ROUTE_CONFIGS.workspace.path).toBe(ROUTES.WORKSPACE)
       expect(ROUTE_CONFIGS.operations.path).toBe(ROUTES.OPERATIONS)
       expect(ROUTE_CONFIGS.admin.path).toBe(ROUTES.ADMIN)
@@ -61,6 +63,7 @@ describe('route-config', () => {
     it('chat routes have chat section metadata', () => {
       const chatConfig = ROUTE_CONFIGS.chat
       const chatSessionConfig = ROUTE_CONFIGS.chatSession
+      const chatTaskConfig = ROUTE_CONFIGS.chatTask
 
       expect(chatConfig.metadata.section).toBe('chat')
       expect(chatConfig.metadata.hasTabParam).toBe(false)
@@ -69,6 +72,8 @@ describe('route-config', () => {
       expect(chatSessionConfig.metadata.section).toBe('chat')
       expect(chatSessionConfig.metadata.hasTabParam).toBe(false)
       expect(chatSessionConfig.metadata.hasSessionParam).toBe(true)
+      expect(chatTaskConfig.metadata.section).toBe('chat')
+      expect(chatTaskConfig.metadata.hasSessionParam).toBe(true)
     })
 
     it('workspace route has workspace section metadata with tab param', () => {
@@ -192,6 +197,7 @@ describe('route-config', () => {
       it('always returns session-console tab', () => {
         expect(ROUTE_CONFIGS.chat.getValidatedTab(undefined)).toBe('session-console')
         expect(ROUTE_CONFIGS.chatSession.getValidatedTab(undefined)).toBe('session-console')
+        expect(ROUTE_CONFIGS.chatTask.getValidatedTab(undefined)).toBe('session-console')
         expect(ROUTE_CONFIGS.root.getValidatedTab(undefined)).toBe('session-console')
       })
     })
@@ -267,6 +273,11 @@ describe('route-config', () => {
       expect(validateRouteParam(ROUTES.CHAT_SESSION, 'sessionId', '')).toBe(false)
     })
 
+    it('validates taskId for the child task route', () => {
+      expect(validateRouteParam(ROUTES.CHAT_TASK, 'taskId', 'task-1')).toBe(true)
+      expect(validateRouteParam(ROUTES.CHAT_TASK, 'taskId', '')).toBe(false)
+    })
+
     it('returns false for invalid route path', () => {
       expect(validateRouteParam('/invalid', 'tabId', 'dashboard')).toBe(false)
     })
@@ -317,15 +328,15 @@ describe('route-config', () => {
     it('counts routes correctly', () => {
       const summary = getRouteConfigSummary()
       
-      expect(summary.totalRoutes).toBe(6) // root, chat, chatSession, workspace, operations, admin
+      expect(summary.totalRoutes).toBe(7)
       expect(summary.routesWithTabParam).toBe(3) // workspace, operations, admin
-      expect(summary.routesWithSessionParam).toBe(1) // chatSession
+      expect(summary.routesWithSessionParam).toBe(2)
     })
 
     it('counts routes by section correctly', () => {
       const summary = getRouteConfigSummary()
       
-      expect(summary.routesBySection.chat).toBe(3) // root, chat, chatSession
+      expect(summary.routesBySection.chat).toBe(4)
       expect(summary.routesBySection.workspace).toBe(1) // workspace
       expect(summary.routesBySection.operations).toBe(1) // operations
       expect(summary.routesBySection.admin).toBe(1) // admin

@@ -18,6 +18,7 @@ export interface ChatMessageListProps {
   hasMore?: boolean
   loadingMore?: boolean
   onLoadMore?: () => void
+  onTaskOpen?: (taskId: string, childSessionId?: string) => void
 }
 
 const eventTypeToRole = (eventType?: string): 'user' | 'assistant' | 'error' => {
@@ -42,6 +43,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   hasMore,
   loadingMore,
   onLoadMore,
+  onTaskOpen,
 }) => {
   const chatAreaRef = useRef<HTMLDivElement>(null)
   const isLoadingMoreRef = useRef(false)
@@ -110,6 +112,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
                       message={item.safeMessage}
                       agentProfile={item.agentProfile}
                       launchMode={item.launchMode}
+                      onOpen={onTaskOpen && item.childSessionId ? () => onTaskOpen(item.taskId, item.childSessionId) : undefined}
                     />
                   </div>
                 )
