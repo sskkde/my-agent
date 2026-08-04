@@ -86,9 +86,11 @@ describe('ChildSessionPage', () => {
 
     await waitFor(() => expect(screen.getByText('文档已处理完成')).toBeInTheDocument())
     expect(client.getChildSessions).toHaveBeenCalledWith(parentSession, 50, 0)
-    expect(client.getSessionTimeline).toHaveBeenCalledWith(childSession, 50)
+    // Child lifecycle events are persisted on the PARENT timeline — the page
+    // must fetch the parent session's timeline and filter by child identity.
+    expect(client.getSessionTimeline).toHaveBeenCalledWith(parentSession, 50)
     expect(client.subscribeSessionTimeline).toHaveBeenCalledWith(
-      childSession,
+      parentSession,
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),
@@ -101,7 +103,7 @@ describe('ChildSessionPage', () => {
     expect(screen.getAllByText('子会话').length).toBeGreaterThan(0)
   })
 
-  it('uses only the child stream and cleans it up when returning to the parent', async () => {
+  it('subscribes to the parent stream (child lifecycle lives there) and cleans it up when returning to the parent', async () => {
     const unsubscribe = vi.fn()
     vi.mocked(client.subscribeSessionTimeline).mockImplementation(
       (_sessionId, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
@@ -113,7 +115,7 @@ describe('ChildSessionPage', () => {
 
     await waitFor(() =>
       expect(client.subscribeSessionTimeline).toHaveBeenCalledWith(
-        childSession,
+        parentSession,
         expect.any(Function),
         expect.any(Function),
         expect.any(Function),
@@ -122,7 +124,7 @@ describe('ChildSessionPage', () => {
       ),
     )
     expect(client.subscribeSessionTimeline).not.toHaveBeenCalledWith(
-      parentSession,
+      childSession,
       expect.any(Function),
       expect.any(Function),
       expect.any(Function),

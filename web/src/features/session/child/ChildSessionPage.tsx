@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import * as api from '../../../api/client'
-import { filterChildTimelineEvents } from '../../../childTaskTimeline'
+import { filterChildTimelineEvents, isChildTimelineEvent } from '../../../childTaskTimeline'
 import type { ChildSessionInfo, ConsoleTimelineEvent, TokenStreamPayload } from '../../../api/types'
 import ChatMessageList from '../chat/ChatMessageList'
 import ChatShell from '../chat/ChatShell'
@@ -30,6 +30,7 @@ const ChildSessionPage: React.FC = () => {
   const navigate = useNavigate()
   const mountedRef = useRef(true)
   const selectedSessionIdRef = useRef<string | null>(null)
+  const childSessionIdRef = useRef<string | null>(null)
   const [pageState, setPageState] = useState<PageState>('loading')
   const [child, setChild] = useState<ChildSessionInfo | null>(null)
   const [events, setEvents] = useState<ConsoleTimelineEvent[]>([])
@@ -43,14 +44,15 @@ const ChildSessionPage: React.FC = () => {
   }, [navigate, parentSessionId])
 
   const handleEvent = useCallback((event: ConsoleTimelineEvent, source: 'live' | 'historical' = 'live') => {
-    if (event.sessionId !== selectedSessionIdRef.current) return
+    const childSessionId = childSessionIdRef.current
+    if (!childSessionId || !isChildTimelineEvent(event, childSessionId)) return
     setEvents((previous) => upsertTimelineEvent(previous, event))
     if (event.eventType === 'assistant_message' || event.eventType === 'error') {
       if (shouldClearDraftOnServerEvent(event, source)) {
         setStreamingDrafts((previous) =>
           clearDraftsForTerminalEvent(previous, event, {
             allowOldestFallback: source === 'live',
-            sessionId: selectedSessionIdRef.current,
+            sessionId: childSessionId,
             source,
           }),
         )
@@ -59,7 +61,7 @@ const ChildSessionPage: React.FC = () => {
   }, [])
 
   const handleToken = useCallback((token: TokenStreamPayload) => {
-    if (token.sessionId !== selectedSessionIdRef.current) return
+    if (token.sessionId !== childSessionIdRef.current) return
     setStreamingDrafts((previous) =>
       appendStreamingToken(previous, token, token.timestamp ? Date.parse(token.timestamp) : undefined),
     )
@@ -96,6 +98,7 @@ const ChildSessionPage: React.FC = () => {
     setEvents([])
     setStreamingDrafts(new Map())
     selectedSessionIdRef.current = null
+    childSessionIdRef.current = null
     disconnectSse()
     resetStreamStatus()
 
@@ -110,7 +113,9 @@ const ChildSessionPage: React.FC = () => {
           return
         }
 
-        const timelineResponse = await api.getSessionTimeline(matchedChild.sessionId, CHILD_TIMELINE_PAGE_SIZE)
+        // Child-task lifecycle events live on the PARENT session timeline
+        // (sessionId === parent, child identity in metadata.taskId/childSessionId).
+        const timelineResponse = await api.getSessionTimeline(parentSessionId, CHILD_TIMELINE_PAGE_SIZE)
         if (cancelled) return
         const initialEvents = mergeTimelineEvents(
           [],
@@ -119,10 +124,11 @@ const ChildSessionPage: React.FC = () => {
         initialEvents.sort(compareTimelineEventsForChat)
         setChild(matchedChild)
         setEvents(initialEvents)
-        selectedSessionIdRef.current = matchedChild.sessionId
+        childSessionIdRef.current = matchedChild.sessionId
+        selectedSessionIdRef.current = parentSessionId
         setPageState('ready')
         setTimelineLoading(false)
-        connectSse(matchedChild.sessionId)
+        connectSse(parentSessionId)
       } catch (error) {
         if (cancelled) return
         setPageState(isAccessError(error) ? 'not_found' : 'error')
@@ -135,6 +141,7 @@ const ChildSessionPage: React.FC = () => {
       cancelled = true
       disconnectSse()
       selectedSessionIdRef.current = null
+      childSessionIdRef.current = null
     }
   }, [connectSse, disconnectSse, parentSessionId, resetStreamStatus, taskId])
 
@@ -143,7 +150,7 @@ const ChildSessionPage: React.FC = () => {
     const visibleEvents = reasoningVisible ? events : events.filter((event) => event.eventType !== 'thinking_summary')
     const syntheticEvents: ConsoleTimelineEvent[] = []
     streamingDrafts.forEach((draft, draftKey) => {
-      if (draft.sessionId !== selectedSessionIdRef.current || (draft.content.length === 0 && draft.sealed)) return
+      if (draft.sessionId !== childSessionIdRef.current || (draft.content.length === 0 && draft.sealed)) return
       syntheticEvents.push({
         eventId: `synthetic-child-draft-${draftKey}`,
         eventType: 'assistant_message',
@@ -164,9 +171,8 @@ const ChildSessionPage: React.FC = () => {
 
   const status = child ? (getTerminalStatus(events) ?? child.status) : 'active'
   const retryStream = useCallback(() => {
-    const childSessionId = selectedSessionIdRef.current
-    if (childSessionId) connectSse(childSessionId)
-  }, [connectSse])
+    if (parentSessionId) connectSse(parentSessionId)
+  }, [connectSse, parentSessionId])
 
   if (pageState === 'not_found') {
     return <ChildSessionNotFound onBack={goBackToParent} />
@@ -219,7 +225,6 @@ const ChildSessionPage: React.FC = () => {
         </header>
         <ChatMessageList
           events={mergedEvents}
-          parentSessionId={selectedSessionIdRef.current ?? undefined}
           loading={timelineLoading}
           error={timelineError}
           onPromptSelect={() => {}}
