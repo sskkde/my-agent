@@ -1146,6 +1146,27 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const activeRun = sessionRuns.find((r) => !terminalStatuses.includes(r.status))
 
       if (!activeRun) {
+        // Child kernels do not persist kernel_runs rows (only the foreground
+        // processor does), so a live child run must be cancelled through the
+        // child runtime itself, which aborts the live child kernel.
+        const childRuntime =
+          'childSessionTaskRuntime' in context ? context.childSessionTaskRuntime : undefined
+        const subagentRunStore = 'subagentRunStore' in context ? context.subagentRunStore : undefined
+        const childAttempts = subagentRunStore
+          ? subagentRunStore.query({ childSessionId }).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          : []
+        const latestAttempt = childAttempts.find((a) => !terminalStatuses.includes(a.status))
+        if (childRuntime && latestAttempt) {
+          const result = childRuntime.cancelRun(latestAttempt.subagentRunId)
+          return reply
+            .code(200)
+            .send(
+              success(
+                { status: 'cancelled', runId: latestAttempt.subagentRunId, coordinatorStatus: result.status },
+                request.requestId,
+              ),
+            )
+        }
         return reply
           .code(404)
           .send(envelopeError('NOT_FOUND', 'No active run found for this session', request.requestId))
