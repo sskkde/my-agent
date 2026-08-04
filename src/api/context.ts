@@ -789,6 +789,15 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const agentProfileRegistry = createAgentProfileRegistry()
   registerSystemProfiles(agentProfileRegistry)
 
+  // Background runtime must exist before the foreground agent so completed
+  // child-task notifications can be injected into the parent's next turn.
+  const backgroundRuntime = createBackgroundRuntime({
+    backgroundRunStore,
+    eventStore,
+    maxConcurrentRuns: 10,
+    watchdogTimeoutMs: 60000,
+  })
+
   // Create foreground agent with tool registry for schema projection
   const foregroundAgent =
     injectedForegroundAgent ??
@@ -796,6 +805,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       agentConfig: agentConfigStore.getByUser('default') ?? undefined,
       toolRegistry,
       agentProfileRegistry,
+      backgroundRuntime,
     })
 
   const envelopeRegistry = createAgentTypeToolEnvelopeRegistry()
@@ -941,13 +951,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     waitConditionStore,
     eventStore,
     runtimeActionStore,
-  })
-
-  const backgroundRuntime = createBackgroundRuntime({
-    backgroundRunStore,
-    eventStore,
-    maxConcurrentRuns: 10,
-    watchdogTimeoutMs: 60000,
   })
 
   const subagentRegistry = createSubagentRegistry()

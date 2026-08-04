@@ -8,6 +8,7 @@ import type { SkillDocumentLoader } from '../skills/skill-document-loader.js'
 import { buildSkillPlaneProjection } from '../skills/skill-plane-projection.js'
 import type { AgentProfileRegistry } from '../taxonomy/agent-profile-registry.js'
 import type { AgentConfig } from '../storage/agent-config-store.js'
+import type { BackgroundRuntime } from '../subagents/background-runtime.js'
 import type { ToolRegistry } from '../tools/types.js'
 import { buildContextBundleFromForegroundState, type AttachmentResolver } from './context-bundle-builder.js'
 import {
@@ -46,6 +47,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
   private readonly skillDocumentLoader?: SkillDocumentLoader
   private readonly agentProfileRegistry?: AgentProfileRegistry
   private readonly attachmentResolver?: AttachmentResolver
+  private readonly backgroundRuntime?: BackgroundRuntime
 
   constructor(options?: CreateForegroundAgentOptions) {
     this.agentConfig = options?.agentConfig
@@ -59,6 +61,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.skillDocumentLoader = options?.skillDocumentLoader
     this.agentProfileRegistry = options?.agentProfileRegistry
     this.attachmentResolver = options?.attachmentResolver
+    this.backgroundRuntime = options?.backgroundRuntime
   }
 
   setAgentKernel(kernel: AgentKernel): void {
@@ -110,6 +113,14 @@ class ForegroundAgentImpl implements ForegroundAgent {
       DEFAULT_FOREGROUND_TOKEN_BUDGET,
       this.attachmentResolver,
     )
+    if (this.backgroundRuntime) {
+      const notifications = this.backgroundRuntime.collectParentTurnNotifications({
+        parentSessionId: input.sessionId,
+      })
+      if (notifications.length > 0) {
+        contextBundle.orderedItems.push(...notifications)
+      }
+    }
     const allTools = this.getToolSummaries()
     const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)
@@ -212,6 +223,8 @@ export interface CreateForegroundAgentOptions {
   readonly maxIterations?: number
   readonly timeoutMs?: number
   readonly attachmentResolver?: AttachmentResolver
+  /** Optional background runtime: injects exactly-once child-task notifications into the parent turn. */
+  readonly backgroundRuntime?: BackgroundRuntime
 }
 
 export function createForegroundAgent(options?: CreateForegroundAgentOptions): ForegroundAgent {
