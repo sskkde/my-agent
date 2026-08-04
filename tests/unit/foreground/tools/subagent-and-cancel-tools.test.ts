@@ -96,6 +96,79 @@ describe('Subagent Launch Tool', () => {
       expect(result.error?.recoverable).toBe(false)
     })
 
+    it('Outer catch redacts API-key-shaped secrets and stacks from error.message and summary', async () => {
+      const raw = new Error('Dispatch failed: upstream unreachable api_key=sk-abcdefghijklmnopqrstuvwxyz123456')
+      raw.stack =
+        'Error: Dispatch failed\n    at handleLaunchSubagent (subagent-launch-tool.ts:138:11)\n    at runTurn (foreground-agent.ts:42:7)'
+
+      const mockRuntimeDispatcher = {
+        dispatch: vi.fn().mockRejectedValue(raw),
+      } as unknown as RuntimeDispatcher
+
+      const deps: LaunchSubagentDeps = {
+        runtimeDispatcher: mockRuntimeDispatcher,
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
+        profileRegistry,
+      }
+
+      const input: LaunchSubagentInput = {
+        objective: 'Process the document',
+        agentType: 'document_processor',
+      }
+
+      const result = await handleLaunchSubagent(deps, input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('DISPATCH_SUBAGENT_ERROR')
+      expect(result.error?.message).not.toContain('sk-abcdefghijklmnopqrstuvwxyz123456')
+      expect(result.error?.message).not.toContain('subagent-launch-tool.ts')
+      expect(result.error?.message).toContain('[REDACTED_API_KEY]')
+      expect(result.userVisibleSummary).not.toContain('sk-abcdefghijklmnopqrstuvwxyz123456')
+      expect(result.userVisibleSummary).not.toContain('subagent-launch-tool.ts')
+    })
+
+    it('Legacy dispatch failure redacts secrets from error.message and userVisibleSummary', async () => {
+      const mockDispatchResult: DispatchResult = {
+        requestId: 'turn-1',
+        actionId: 'action-123',
+        status: 'failed',
+        targetRuntime: 'subagent_runtime',
+        createdAt: '2024-01-01T00:00:00Z',
+        error: {
+          code: 'DISPATCH_SUBAGENT_FAILED',
+          message: 'Dispatch failed: upstream unreachable api_key=sk-abcdefghijklmnopqrstuvwxyz123456',
+          recoverable: true,
+        },
+      }
+
+      const mockRuntimeDispatcher = {
+        dispatch: vi.fn().mockResolvedValue(mockDispatchResult),
+      } as unknown as RuntimeDispatcher
+
+      const deps: LaunchSubagentDeps = {
+        runtimeDispatcher: mockRuntimeDispatcher,
+        userId: 'user-1',
+        sessionId: 'session-1',
+        turnId: 'turn-1',
+        profileRegistry,
+      }
+
+      const input: LaunchSubagentInput = {
+        objective: 'Process the document',
+        agentType: 'document_processor',
+      }
+
+      const result = await handleLaunchSubagent(deps, input)
+
+      expect(result.success).toBe(false)
+      expect(result.error?.code).toBe('DISPATCH_SUBAGENT_FAILED')
+      expect(result.error?.message).not.toContain('sk-abcdefghijklmnopqrstuvwxyz123456')
+      expect(result.error?.message).toContain('[REDACTED_API_KEY]')
+      expect(result.userVisibleSummary).not.toContain('sk-abcdefghijklmnopqrstuvwxyz123456')
+    })
+
     it('Subagent launch payload includes minimal parentContext', async () => {
       const mockDispatchResult: DispatchResult = {
         requestId: 'turn-1',

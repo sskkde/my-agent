@@ -23,6 +23,7 @@ import type { SessionStore } from '../../storage/session-store.js'
 import type { BackgroundRuntime } from '../../subagents/background-runtime.js'
 import type { ToolResultStore } from '../../storage/tool-result-store.js'
 import { applyBoundedResultPolicy, toChildTaskTerminalError } from './child-task-contract.js'
+import { sanitizeErrorMessage } from '../../tools/error-sanitizer.js'
 import { processToolOutput } from '../../tools/tool-result-reference.js'
 
 export const LAUNCH_SUBAGENT_TOOL_ID = 'foreground_launch_subagent'
@@ -187,9 +188,10 @@ export async function handleLaunchSubagent(
 
     return await handleLegacyDispatch(deps, input, identity, parentContext)
   } catch (error) {
+    const rawMessage = error instanceof Error ? error.message : 'Failed to dispatch subagent'
     return createErrorResult(
       'DISPATCH_SUBAGENT_ERROR',
-      error instanceof Error ? error.message : 'Failed to dispatch subagent',
+      sanitizeErrorMessage(rawMessage),
       false,
       'Failed to launch subagent.',
     )
@@ -233,7 +235,8 @@ async function handleLegacyDispatch(
   })
 
   if (dispatchResult.status !== 'completed') {
-    const errorMsg = dispatchResult.error?.message || 'Dispatch failed'
+    const rawMsg = dispatchResult.error?.message || 'Dispatch failed'
+    const errorMsg = sanitizeErrorMessage(rawMsg)
     return createErrorResult(
       dispatchResult.error?.code || 'DISPATCH_SUBAGENT_FAILED',
       errorMsg,
