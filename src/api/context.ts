@@ -81,6 +81,10 @@ import { registerBuiltInTools } from '../tools/builtins/index.js'
 import { registerAMapMcpTools } from '../connectors/mcp/register-amap-mcp-tools.js'
 import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js'
 import { createBackgroundRuntime } from '../subagents/background-runtime.js'
+import {
+  createBackgroundSubagentWorker,
+  type BackgroundSubagentWorkerInstance,
+} from '../subagents/background-worker.js'
 import { createSubagentRegistry, type SubagentRegistry } from '../subagents/registry.js'
 import { registerBuiltInSubagents } from '../subagents/builtin-definitions.js'
 import { createDefaultSubagentContextManager } from '../subagents/context-manager.js'
@@ -214,6 +218,8 @@ export interface ApiContext {
   subagentRegistry: SubagentRegistry
   /** Unified child-session task runtime (Todo 7/17): launch/resume/execute/cancel/get. */
   childSessionTaskRuntime: ChildSessionTaskRuntime
+  /** Background child worker (Todo 9): polls queued runs through the child runtime. */
+  backgroundSubagentWorker: BackgroundSubagentWorkerInstance
   subagentRunStore: SubagentRunStore
   subagentTranscriptStore: SubagentTranscriptStore
   subagentProviderPreferenceStore: SubagentProviderPreferenceStore
@@ -1021,6 +1027,19 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     getChildSession: (taskId, tenantId) => childTaskRuntime.getChildSession(taskId, tenantId),
   }
 
+  // Background child worker (Todo 9): polls queued background runs and runs
+  // them through the child runtime (persisted task spec first). Started only
+  // outside test mode — the integration suite constructs its own workers and
+  // must not have a background poller mutating its queued runs.
+  const backgroundSubagentWorker = createBackgroundSubagentWorker({
+    backgroundRuntime,
+    childTaskRuntime: childSessionTaskRuntime,
+    backgroundRunStore,
+  })
+  if (process.env.NODE_ENV !== 'test') {
+    backgroundSubagentWorker.start()
+  }
+
   const foregroundToolRuntimeDeps: ForegroundToolRuntimeDeps = {
     runtimeDispatcher,
     plannerRuntime,
@@ -1182,6 +1201,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     subagentRuntime,
     subagentRegistry,
     childSessionTaskRuntime,
+    backgroundSubagentWorker,
     subagentRunStore,
     subagentTranscriptStore,
     subagentProviderPreferenceStore,

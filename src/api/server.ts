@@ -121,6 +121,12 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     })
   }
 
+  if (context?.backgroundSubagentWorker) {
+    server.addHook('onClose', async () => {
+      context.backgroundSubagentWorker.stop()
+    })
+  }
+
   await registerSecurityHeaders(server)
 
   // Register Swagger/OpenAPI documentation
