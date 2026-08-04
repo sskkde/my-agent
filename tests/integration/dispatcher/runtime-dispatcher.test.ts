@@ -921,6 +921,12 @@ describe('RuntimeDispatcher with subagent_runtime adapter', () => {
       getByLaunchSource: () => [],
       getByStatus: (status: string) => Array.from(runs.values()).filter((r) => r.status === status),
       getExpiredRuns: () => [],
+      saveTaskSpec: () => {},
+      linkChildTask: () => {},
+      saveNotification: () => {},
+      markNotificationDelivered: () => {},
+      saveErrorMessage: () => {},
+      getPendingNotifications: () => [],
     }
   }
 

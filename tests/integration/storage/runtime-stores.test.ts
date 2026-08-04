@@ -123,7 +123,13 @@ const runtimeMigrations: Migration[] = [
         retry_count INTEGER DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        tenant_id TEXT NOT NULL DEFAULT 'org_default'
+        tenant_id TEXT NOT NULL DEFAULT 'org_default',
+        task_spec_json TEXT,
+        task_id TEXT,
+        child_session_id TEXT,
+        notification_type TEXT,
+        notification_payload_json TEXT,
+        notification_delivered_at TEXT
       );
       CREATE INDEX idx_bg_runs_user_status ON background_runs(user_id, status);
       CREATE INDEX idx_bg_runs_session_status ON background_runs(session_id, status);
