@@ -369,6 +369,10 @@ describe('No Legacy Prompt Path', () => {
      * - storage/subagent-run-store.ts: DB schema stores profile label
      * - runtime/bootstrap.ts: bootstrap config with profile label
      * - prompt/prompt-template-registry.ts: SevenLayerInput.agentType is a compat field
+     * - foreground/tools/status-query-tool.ts: TaskStatusDetail.agentType mirrors the
+     *   legacy `subagent_runs.agent_type` DB column, which may hold any historical profile
+     * - observability/subagent-metrics.ts: SubagentRunMetricInput.agentType feeds the
+     *   `agent_type` metric label aggregating arbitrary run profiles
      */
     const AGENT_TYPE_STRING_ALLOWLIST = [
       'src/subagents/registry.ts',
@@ -382,6 +386,8 @@ describe('No Legacy Prompt Path', () => {
       'src/runtime/bootstrap.ts',
       'src/prompt/prompt-template-registry.ts',
       'src/kernel/model-input/model-input-builder.ts',
+      'src/foreground/tools/status-query-tool.ts',
+      'src/observability/subagent-metrics.ts',
     ]
 
     it('no src/ file uses agentType: string outside approved compat modules', () => {

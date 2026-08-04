@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
+import { ResourceType, Action } from '../../permissions/rbac-types.js'
 import {
   getMockProviderRegistry,
   type MockResponseConfig,
@@ -49,7 +50,10 @@ export function registerMockProviderRoutes(server: FastifyInstance, _context: Ap
 
   server.delete(
     '/api/v1/mock-provider/interactions',
-    async (_request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.delete)) {
+        return reply
+      }
       getMockProviderRegistry().clearInteractions()
       return reply.code(204).send()
     },
@@ -63,6 +67,9 @@ export function registerMockProviderRoutes(server: FastifyInstance, _context: Ap
   server.post<{ Body: SetResponseQueueBody }>(
     '/api/v1/mock-provider/responses',
     async (request: FastifyRequest<{ Body: SetResponseQueueBody }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.execute)) {
+        return reply
+      }
       const body = request.body ?? {}
       const responses = body.responses
       if (!Array.isArray(responses)) {
@@ -78,6 +85,9 @@ export function registerMockProviderRoutes(server: FastifyInstance, _context: Ap
   server.post<{ Body: SetModeBody }>(
     '/api/v1/mock-provider/mode',
     async (request: FastifyRequest<{ Body: SetModeBody }>, reply: FastifyReply) => {
+      if (!request.requirePermission(ResourceType.observability, Action.execute)) {
+        return reply
+      }
       const mode = request.body?.mode
       if (mode !== 'queue' && mode !== 'echo' && mode !== 'default') {
         return reply
@@ -96,6 +106,9 @@ export function registerMockProviderRoutes(server: FastifyInstance, _context: Ap
   )
 
   server.post('/api/v1/mock-provider/reset', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.observability, Action.execute)) {
+      return reply
+    }
     getMockProviderRegistry().reset()
     return reply.code(200).send(success(getMockProviderRegistry().getStats(), request.requestId))
   })

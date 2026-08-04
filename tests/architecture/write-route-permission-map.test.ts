@@ -26,6 +26,12 @@ const PUBLIC_WRITE_ROUTES = new Map<string, string>([
 const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
   {
     file: 'admin.ts',
+    method: 'POST',
+    path: '/api/v1/admin/users',
+    permission: 'ResourceType.users, Action.manage',
+  },
+  {
+    file: 'admin.ts',
     method: 'PATCH',
     path: '/api/v1/admin/users/:userId/role',
     permission: 'ResourceType.users, Action.manage',
@@ -160,6 +166,30 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
     permission: 'public-webhook',
   },
   {
+    file: 'mock-provider.ts',
+    method: 'DELETE',
+    path: '/api/v1/mock-provider/interactions',
+    permission: 'ResourceType.observability, Action.delete',
+  },
+  {
+    file: 'mock-provider.ts',
+    method: 'POST',
+    path: '/api/v1/mock-provider/responses',
+    permission: 'ResourceType.observability, Action.execute',
+  },
+  {
+    file: 'mock-provider.ts',
+    method: 'POST',
+    path: '/api/v1/mock-provider/mode',
+    permission: 'ResourceType.observability, Action.execute',
+  },
+  {
+    file: 'mock-provider.ts',
+    method: 'POST',
+    path: '/api/v1/mock-provider/reset',
+    permission: 'ResourceType.observability, Action.execute',
+  },
+  {
     file: 'oauth.ts',
     method: 'POST',
     path: '/api/v1/connectors/:type/oauth/callback',
@@ -240,7 +270,19 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
   {
     file: 'providers.ts',
     method: 'POST',
+    path: '/api/v1/providers/probe-models',
+    permission: "'provider' as ResourceType, Action.execute",
+  },
+  {
+    file: 'providers.ts',
+    method: 'POST',
     path: '/api/v1/providers/:providerId/test',
+    permission: "'provider' as ResourceType, Action.execute",
+  },
+  {
+    file: 'providers.ts',
+    method: 'POST',
+    path: '/api/v1/providers/:providerId/models/refresh',
     permission: "'provider' as ResourceType, Action.execute",
   },
   { file: 'sessions.ts', method: 'POST', path: '/api/v1/sessions', permission: 'ResourceType.sessions, Action.create' },
@@ -258,6 +300,12 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
   },
   {
     file: 'sessions.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/children/:childSessionId/resume',
+    permission: 'ResourceType.sessions, Action.read',
+  },
+  {
+    file: 'sessions.ts',
     method: 'PATCH',
     path: '/api/v1/sessions/:sessionId',
     permission: 'ResourceType.sessions, Action.update',
@@ -266,6 +314,24 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
     file: 'sessions.ts',
     method: 'PATCH',
     path: '/api/v1/sessions/:sessionId/model',
+    permission: 'ResourceType.sessions, Action.update',
+  },
+  {
+    file: 'sessions.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/cancel-active-run',
+    permission: 'ResourceType.sessions, Action.execute',
+  },
+  {
+    file: 'sessions.ts',
+    method: 'POST',
+    path: '/api/v1/sessions/:sessionId/children/:childSessionId/cancel',
+    permission: 'ResourceType.sessions, Action.execute',
+  },
+  {
+    file: 'sessions.ts',
+    method: 'PATCH',
+    path: '/api/v1/sessions/:sessionId/reasoning-depth',
     permission: 'ResourceType.sessions, Action.update',
   },
   { file: 'setup.ts', method: 'POST', path: '/api/v1/setup/user', permission: 'public-bootstrap' },
