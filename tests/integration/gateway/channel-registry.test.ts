@@ -106,6 +106,64 @@ describe('Channel Registry', () => {
       expect(channels[0].connectorId).toBe('webui')
       expect(channels[0].type).toBe('webui')
     })
+
+    it('should broadcast a synthesized error event when an error envelope has no persisted timeline events', async () => {
+      const broadcasted: Array<{ sessionId: string; event: { eventType: string; content?: string } }> = []
+      const webuiHandler = createWebUIChannelHandler({
+        timelineBroadcaster: {
+          broadcast: (sessionId: string, event: { eventType: string; content?: string }) => {
+            broadcasted.push({ sessionId, event })
+          },
+        } as never,
+        consoleTimelineService: {
+          getTimeline: () => ({ events: [] }),
+        } as never,
+      })
+
+      const envelope: OutboundEnvelope = {
+        envelopeId: 'env-err-1',
+        messageType: 'error',
+        recipient: { userId: 'user-1', sessionId: 'session-1', channel: 'webui' },
+        content: { error: { code: 'PROCESSING_ERROR', message: 'boom' } },
+        correlationId: 'corr-err-1',
+        timestamp: new Date().toISOString(),
+      }
+
+      const result = await webuiHandler.deliver(envelope)
+
+      expect(result.success).toBe(true)
+      expect(broadcasted).toHaveLength(1)
+      expect(broadcasted[0].sessionId).toBe('session-1')
+      expect(broadcasted[0].event.eventType).toBe('error')
+      expect(broadcasted[0].event.content).toBe('boom')
+    })
+
+    it('should not broadcast a synthesized error event for non-error envelopes without timeline events', async () => {
+      const broadcasted: unknown[] = []
+      const webuiHandler = createWebUIChannelHandler({
+        timelineBroadcaster: {
+          broadcast: (sessionId: string, event: unknown) => {
+            broadcasted.push({ sessionId, event })
+          },
+        } as never,
+        consoleTimelineService: {
+          getTimeline: () => ({ events: [] }),
+        } as never,
+      })
+
+      const envelope: OutboundEnvelope = {
+        envelopeId: 'env-text-1',
+        messageType: 'text',
+        recipient: { userId: 'user-1', sessionId: 'session-1', channel: 'webui' },
+        content: { text: 'Hello' },
+        correlationId: 'corr-text-1',
+        timestamp: new Date().toISOString(),
+      }
+
+      await webuiHandler.deliver(envelope)
+
+      expect(broadcasted).toHaveLength(0)
+    })
   })
 
   describe('delivery', () => {

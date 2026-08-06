@@ -64,24 +64,18 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
 
     it('includes toolName in metadata for AMap tool calls', () => {
       const result = service.getTimeline(session)
-      const toolCall = result.events.find(
-        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-1',
-      )
+      const toolCall = result.events.find((e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-1')
       expect(toolCall).toBeDefined()
       expect(toolCall!.metadata?.toolName).toBe('mcp.amap-maps.maps_search_poi')
     })
 
     it('includes toolName in metadata for non-AMap tool calls', () => {
       const result = service.getTimeline(session)
-      const readFile = result.events.find(
-        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-2',
-      )
+      const readFile = result.events.find((e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-2')
       expect(readFile).toBeDefined()
       expect(readFile!.metadata?.toolName).toBe('read_file')
 
-      const webSearch = result.events.find(
-        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-3',
-      )
+      const webSearch = result.events.find((e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-3')
       expect(webSearch).toBeDefined()
       expect(webSearch!.metadata?.toolName).toBe('web_search')
     })
@@ -90,14 +84,16 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
   describe('AMap geocode tool_result enrichment', () => {
     const session = 'test-amap-geocode'
     const geocodeResult = JSON.stringify({
-      geocodes: [{
-        formatted_address: '北京市朝阳区望京街道',
-        location: '116.481028,39.989643',
-        level: '门牌号',
-        province: '北京市',
-        city: '北京市',
-        district: '朝阳区',
-      }],
+      geocodes: [
+        {
+          formatted_address: '北京市朝阳区望京街道',
+          location: '116.481028,39.989643',
+          level: '门牌号',
+          province: '北京市',
+          city: '北京市',
+          district: '朝阳区',
+        },
+      ],
     })
 
     beforeEach(() => {
@@ -148,8 +144,20 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
     const session = 'test-amap-poi'
     const poiResult = JSON.stringify({
       pois: [
-        { name: '星巴克(望京店)', location: '116.481028,39.989643', address: '望京街道1号', type: '餐饮服务;咖啡厅', typecode: '050301' },
-        { name: '瑞幸咖啡(望京SOHO)', location: '116.482000,39.990000', address: '望京SOHO T1', type: '餐饮服务;咖啡厅', typecode: '050301' },
+        {
+          name: '星巴克(望京店)',
+          location: '116.481028,39.989643',
+          address: '望京街道1号',
+          type: '餐饮服务;咖啡厅',
+          typecode: '050301',
+        },
+        {
+          name: '瑞幸咖啡(望京SOHO)',
+          location: '116.482000,39.990000',
+          address: '望京SOHO T1',
+          type: '餐饮服务;咖啡厅',
+          typecode: '050301',
+        },
       ],
     })
 
@@ -192,7 +200,10 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
       route: {
         origin: '116.481028,39.989643',
         destination: '116.397428,39.90923',
-        paths: [{ distance: '15200', duration: '2700' }, { distance: '18500', duration: '3200' }],
+        paths: [
+          { distance: '15200', duration: '2700' },
+          { distance: '18500', duration: '3200' },
+        ],
       },
     })
 
@@ -207,7 +218,11 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         },
         runtimeSummary: {
           toolCallSummaries: [
-            { toolCallId: 'tc-route-1', toolName: 'mcp.amap-maps.maps_direction_driving', status: 'completed' as const },
+            {
+              toolCallId: 'tc-route-1',
+              toolName: 'mcp.amap-maps.maps_direction_driving',
+              status: 'completed' as const,
+            },
           ],
         },
         visibility: 'public',
@@ -234,10 +249,16 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
   describe('AMap weather tool_result enrichment', () => {
     const session = 'test-amap-weather'
     const weatherResult = JSON.stringify({
-      lives: [{
-        city: '北京市', weather: '晴', temperature: '28',
-        winddirection: '南', windpower: '≤3', humidity: '45',
-      }],
+      lives: [
+        {
+          city: '北京市',
+          weather: '晴',
+          temperature: '28',
+          winddirection: '南',
+          windpower: '≤3',
+          humidity: '45',
+        },
+      ],
     })
 
     beforeEach(() => {
@@ -277,7 +298,10 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
   describe('AMap distance tool_result enrichment', () => {
     const session = 'test-amap-distance'
     const distanceResult = JSON.stringify({
-      results: [{ distance: '5200', duration: '600' }, { distance: '8100', duration: '900' }],
+      results: [
+        { distance: '5200', duration: '600' },
+        { distance: '8100', duration: '900' },
+      ],
     })
 
     beforeEach(() => {
@@ -322,23 +346,27 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'Geocode with leaked key' },
         output: {
-          visibleMessages: [{
-            messageId: 'msg-redact-001',
-            role: 'tool',
-            content: JSON.stringify({
-              geocodes: [{
-                formatted_address: '北京市朝阳区',
-                location: '116.481028,39.989643',
-                level: '门牌号',
-                province: '北京市',
-                city: '北京市',
-                district: '朝阳区',
-                apiKey: SENTINEL_SECRET,
-                token: 'leaked_bearer_token_value_here',
-                secret: 'should_not_appear',
-              }],
-            }),
-          }],
+          visibleMessages: [
+            {
+              messageId: 'msg-redact-001',
+              role: 'tool',
+              content: JSON.stringify({
+                geocodes: [
+                  {
+                    formatted_address: '北京市朝阳区',
+                    location: '116.481028,39.989643',
+                    level: '门牌号',
+                    province: '北京市',
+                    city: '北京市',
+                    district: '朝阳区',
+                    apiKey: SENTINEL_SECRET,
+                    token: 'leaked_bearer_token_value_here',
+                    secret: 'should_not_appear',
+                  },
+                ],
+              }),
+            },
+          ],
         },
         runtimeSummary: {
           toolCallSummaries: [
@@ -381,16 +409,26 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'POI with sentinel secrets in wrapper' },
         output: {
-          visibleMessages: [{
-            messageId: 'msg-sentinel-001',
-            role: 'tool',
-            content: JSON.stringify({
-              pois: [{ name: 'Test POI', location: '116.0,39.0', address: 'Test Address', type: 'test', typecode: '000000' }],
-              key: SENTINEL_SECRET,
-              api_key: SENTINEL_SECRET,
-              access_token: SENTINEL_SECRET,
-            }),
-          }],
+          visibleMessages: [
+            {
+              messageId: 'msg-sentinel-001',
+              role: 'tool',
+              content: JSON.stringify({
+                pois: [
+                  {
+                    name: 'Test POI',
+                    location: '116.0,39.0',
+                    address: 'Test Address',
+                    type: 'test',
+                    typecode: '000000',
+                  },
+                ],
+                key: SENTINEL_SECRET,
+                api_key: SENTINEL_SECRET,
+                access_token: SENTINEL_SECRET,
+              }),
+            },
+          ],
         },
         runtimeSummary: {
           toolCallSummaries: [
@@ -430,9 +468,7 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
           visibleMessages: [{ messageId: 'msg-nonamap-001', role: 'tool', content: '{"fileContents":"hello world"}' }],
         },
         runtimeSummary: {
-          toolCallSummaries: [
-            { toolCallId: 'tc-nonamap-1', toolName: 'read_file', status: 'completed' as const },
-          ],
+          toolCallSummaries: [{ toolCallId: 'tc-nonamap-1', toolName: 'read_file', status: 'completed' as const }],
         },
         visibility: 'public',
         createdAt: '2026-06-27T18:00:00.000Z',
@@ -489,11 +525,13 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'AMap tool returns non-AMap structure' },
         output: {
-          visibleMessages: [{
-            messageId: 'msg-nonamapjson-001',
-            role: 'tool',
-            content: JSON.stringify({ status: 'ok', data: [1, 2, 3] }),
-          }],
+          visibleMessages: [
+            {
+              messageId: 'msg-nonamapjson-001',
+              role: 'tool',
+              content: JSON.stringify({ status: 'ok', data: [1, 2, 3] }),
+            },
+          ],
         },
         runtimeSummary: {
           toolCallSummaries: [
@@ -524,18 +562,18 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'Geocode with raw tool name' },
         output: {
-          visibleMessages: [{
-            messageId: 'msg-raw-001',
-            role: 'tool',
-            content: JSON.stringify({
-              geocodes: [{ formatted_address: '上海市浦东新区', location: '121.473701,31.230416' }],
-            }),
-          }],
+          visibleMessages: [
+            {
+              messageId: 'msg-raw-001',
+              role: 'tool',
+              content: JSON.stringify({
+                geocodes: [{ formatted_address: '上海市浦东新区', location: '121.473701,31.230416' }],
+              }),
+            },
+          ],
         },
         runtimeSummary: {
-          toolCallSummaries: [
-            { toolCallId: 'tc-raw-1', toolName: 'amap_geocode', status: 'completed' as const },
-          ],
+          toolCallSummaries: [{ toolCallId: 'tc-raw-1', toolName: 'amap_geocode', status: 'completed' as const }],
         },
         visibility: 'public',
         createdAt: '2026-06-27T21:00:00.000Z',
@@ -636,36 +674,28 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
 
     it('tool_call metadata.status matches summary.status for completed', () => {
       const result = service.getTimeline(session)
-      const ev = result.events.find(
-        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-ok',
-      )
+      const ev = result.events.find((e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-ok')
       expect(ev).toBeDefined()
       expect(ev!.metadata?.status).toBe('completed')
     })
 
     it('tool_call metadata.status matches summary.status for failed', () => {
       const result = service.getTimeline(session)
-      const ev = result.events.find(
-        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-fail',
-      )
+      const ev = result.events.find((e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-fail')
       expect(ev).toBeDefined()
       expect(ev!.metadata?.status).toBe('failed')
     })
 
     it('tool_call metadata.status matches summary.status for pending', () => {
       const result = service.getTimeline(session)
-      const ev = result.events.find(
-        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-pending',
-      )
+      const ev = result.events.find((e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-pending')
       expect(ev).toBeDefined()
       expect(ev!.metadata?.status).toBe('pending')
     })
 
     it('tool_call metadata.status matches summary.status for skipped', () => {
       const result = service.getTimeline(session)
-      const ev = result.events.find(
-        (e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-skip',
-      )
+      const ev = result.events.find((e) => e.eventType === 'tool_call' && e.metadata?.toolCallId === 'tc-skip')
       expect(ev).toBeDefined()
       expect(ev!.metadata?.status).toBe('skipped')
     })
@@ -682,14 +712,10 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'Read a file' },
         output: {
-          visibleMessages: [
-            { messageId: 'msg-1to1-tool', role: 'tool', content: toolContent },
-          ],
+          visibleMessages: [{ messageId: 'msg-1to1-tool', role: 'tool', content: toolContent }],
         },
         runtimeSummary: {
-          toolCallSummaries: [
-            { toolCallId: 'tc-1to1', toolName: 'read_file', status: 'completed' as const },
-          ],
+          toolCallSummaries: [{ toolCallId: 'tc-1to1', toolName: 'read_file', status: 'completed' as const }],
         },
         visibility: 'public',
         createdAt: '2026-06-28T11:00:00.000Z',
@@ -725,14 +751,10 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'Failing tool' },
         output: {
-          visibleMessages: [
-            { messageId: 'msg-1to1-fail', role: 'tool', content: 'Error: boom' },
-          ],
+          visibleMessages: [{ messageId: 'msg-1to1-fail', role: 'tool', content: 'Error: boom' }],
         },
         runtimeSummary: {
-          toolCallSummaries: [
-            { toolCallId: 'tc-1to1-fail', toolName: 'web_search', status: 'failed' as const },
-          ],
+          toolCallSummaries: [{ toolCallId: 'tc-1to1-fail', toolName: 'web_search', status: 'failed' as const }],
         },
         visibility: 'public',
         createdAt: '2026-06-28T11:30:00.000Z',
@@ -797,9 +819,7 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'Ambiguous tool results' },
         output: {
-          visibleMessages: [
-            { messageId: 'msg-ambig-1', role: 'tool', content: 'lone-result' },
-          ],
+          visibleMessages: [{ messageId: 'msg-ambig-1', role: 'tool', content: 'lone-result' }],
         },
         runtimeSummary: {
           toolCallSummaries: [
@@ -844,9 +864,7 @@ describe('Console Timeline — AMap MCP Metadata Enrichment', () => {
         userId: 'user-1',
         input: { userMessageSummary: 'Tool message without summary' },
         output: {
-          visibleMessages: [
-            { messageId: 'msg-nosum-1', role: 'tool', content: 'orphan-result' },
-          ],
+          visibleMessages: [{ messageId: 'msg-nosum-1', role: 'tool', content: 'orphan-result' }],
         },
         runtimeSummary: {
           toolCallSummaries: [],

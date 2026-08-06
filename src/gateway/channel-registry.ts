@@ -187,9 +187,24 @@ export function createWebUIChannelHandler(options: WebUIChannelHandlerOptions = 
             return metadata?.turnId === correlationId || metadata?.correlationId === correlationId
           })
 
-          // Broadcast each related event to SSE connections
-          for (const event of relatedEvents) {
-            timelineBroadcaster.broadcast(sessionId, event)
+          if (relatedEvents.length > 0) {
+            // Broadcast each related event to SSE connections
+            for (const event of relatedEvents) {
+              timelineBroadcaster.broadcast(sessionId, event)
+            }
+          } else if (envelope.messageType === 'error') {
+            // A failed turn leaves no transcript behind, so the timeline has no
+            // events to broadcast. Surface the error explicitly — otherwise the
+            // client silently shows nothing and the user thinks the message hung.
+            timelineBroadcaster.broadcast(sessionId, {
+              eventId: `error-${envelope.envelopeId}`,
+              eventType: 'error',
+              sessionId,
+              timestamp: envelope.timestamp,
+              content: envelope.content?.error?.message ?? 'Message processing failed',
+              metadata: { correlationId, source: 'gateway' },
+              actor: 'system',
+            })
           }
         } catch {
           // Best-effort broadcast - failures should not block delivery

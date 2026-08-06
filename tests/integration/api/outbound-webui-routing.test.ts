@@ -389,7 +389,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
         ])
 
         expect(receivedErrorEvent).toBe(true)
-        expect(sseChunks).toContain('event: timeline_event')
+        expect(sseChunks).toContain('"type":"timeline_event"')
         expect(sseChunks).toContain('"eventType":"error"')
 
         await closeSseReader(reader)
@@ -526,7 +526,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
         ])
 
         expect(receivedAssistantEvent).toBe(true)
-        expect(sseChunks).toContain('event: timeline_event')
+        expect(sseChunks).toContain('"type":"timeline_event"')
         expect(sseChunks).toContain('"eventType":"assistant_message"')
         expect(sseChunks).toContain('Live assistant response via Gateway')
 
@@ -593,7 +593,7 @@ describe('Outbound WebUI Routing - Task 8', () => {
         ])
 
         expect(receivedUserEvent).toBe(true)
-        expect(sseChunks).toContain('event: timeline_event')
+        expect(sseChunks).toContain('"type":"timeline_event"')
         expect(sseChunks).toContain('"eventType":"user_message"')
         expect(sseChunks).toContain('User message content')
 

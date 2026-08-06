@@ -232,7 +232,7 @@ describe('ConsoleTimelineService', () => {
       })
     })
 
-    it('should sort timeline events by timestamp', () => {
+    it('should sort timeline events by timestamp (newest first)', () => {
       const sessionId = 'session-sort-001'
 
       const transcript1: TurnTranscript = {
@@ -279,8 +279,8 @@ describe('ConsoleTimelineService', () => {
 
       const userMessages = result.events.filter((e) => e.eventType === 'user_message')
       expect(userMessages).toHaveLength(2)
-      expect(userMessages[0].content).toBe('First message')
-      expect(userMessages[1].content).toBe('Second message')
+      expect(userMessages[0].content).toBe('Second message')
+      expect(userMessages[1].content).toBe('First message')
     })
 
     it('should apply event type filters correctly', () => {
@@ -623,8 +623,6 @@ describe('ConsoleTimelineService', () => {
   })
 })
 
-
-
 describe('Plan C interleaved tool order', () => {
   it('emits tool_call before tool_result before later assistant text', () => {
     const savedTranscripts: TurnTranscript[] = []
@@ -708,13 +706,7 @@ describe('Plan C interleaved tool order', () => {
     const service = createConsoleTimelineService(stores)
     const result = service.getTimeline(sessionId)
     const types = result.events.map((e) => e.eventType)
-    expect(types).toEqual([
-      'user_message',
-      'assistant_message',
-      'tool_call',
-      'tool_result',
-      'assistant_message',
-    ])
+    expect(types).toEqual(['assistant_message', 'tool_result', 'tool_call', 'assistant_message', 'user_message'])
     const toolCall = result.events.find((e) => e.eventType === 'tool_call')
     const toolResult = result.events.find((e) => e.eventType === 'tool_result')
     expect(toolCall?.metadata?.toolCallId).toBe('tc-1')
@@ -784,7 +776,7 @@ describe('Plan C legacy tool-before-final-answer', () => {
 
     const result = createConsoleTimelineService(stores).getTimeline(sessionId)
     const types = result.events.map((e) => e.eventType)
-    expect(types).toEqual(['user_message', 'tool_call', 'tool_result', 'assistant_message'])
+    expect(types).toEqual(['tool_call', 'tool_result', 'assistant_message', 'user_message'])
   })
 })
 
@@ -850,14 +842,7 @@ describe('Plan C multi-tool legacy summary-only order', () => {
 
     const result = createConsoleTimelineService(stores).getTimeline(sessionId)
     const types = result.events.map((e) => e.eventType)
-    expect(types).toEqual([
-      'user_message',
-      'tool_call',
-      'tool_result',
-      'tool_call',
-      'tool_result',
-      'assistant_message',
-    ])
+    expect(types).toEqual(['user_message', 'tool_call', 'tool_result', 'tool_call', 'tool_result', 'assistant_message'])
     expect(result.events.filter((e) => e.eventType === 'tool_call')[0].metadata?.toolCallId).toBe('tc-a')
     expect(result.events.filter((e) => e.eventType === 'tool_call')[1].metadata?.toolCallId).toBe('tc-b')
   })

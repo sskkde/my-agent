@@ -139,18 +139,14 @@ class TimelineBroadcasterImpl implements TimelineBroadcaster {
     if (!connection || !connection.active) return
 
     const result = this.timelineService.getTimeline(sessionId)
-    const events = result.events
+    // Timeline is returned newest-first; catch-up needs ascending order so the
+    // cursor's newer events land AFTER the cursor index.
+    const ascending = [...result.events].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+    const afterIndex = ascending.findIndex((e) => e.eventId === afterEventId)
+    const eventsToSend = afterIndex === -1 ? ascending : ascending.slice(afterIndex + 1)
 
-    const afterIndex = events.findIndex((e) => e.eventId === afterEventId)
-    if (afterIndex === -1) {
-      for (const event of events) {
-        this.sendEventToConnection(connection, event)
-      }
-    } else {
-      const eventsToSend = events.slice(afterIndex + 1)
-      for (const event of eventsToSend) {
-        this.sendEventToConnection(connection, event)
-      }
+    for (const event of eventsToSend) {
+      this.sendEventToConnection(connection, event)
     }
   }
 

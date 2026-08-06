@@ -162,7 +162,7 @@ describe('Timeline SSE Route Integration', () => {
         ])
 
         expect(receivedLiveEvent).toBe(true)
-        expect(chunks).toContain('event: timeline_event')
+        expect(chunks).toContain('"type":"timeline_event"')
         expect(chunks).toContain('live-test-event-001')
         expect(chunks).toContain('Live test message')
 

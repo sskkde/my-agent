@@ -907,9 +907,13 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
       const effectiveAfter = lastEventId ?? after
 
       if (effectiveAfter) {
-        const afterIndex = events.findIndex((e) => e.eventId === effectiveAfter)
+        // Timeline is returned newest-first; flip to ascending so the cursor's
+        // newer events sit AFTER the cursor index, then restore newest-first
+        // for the snapshot payload.
+        const ascending = [...events].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+        const afterIndex = ascending.findIndex((e) => e.eventId === effectiveAfter)
         if (afterIndex !== -1) {
-          events = events.slice(afterIndex + 1)
+          events = ascending.slice(afterIndex + 1).reverse()
         }
       }
 
@@ -1149,8 +1153,7 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
         // Child kernels do not persist kernel_runs rows (only the foreground
         // processor does), so a live child run must be cancelled through the
         // child runtime itself, which aborts the live child kernel.
-        const childRuntime =
-          'childSessionTaskRuntime' in context ? context.childSessionTaskRuntime : undefined
+        const childRuntime = 'childSessionTaskRuntime' in context ? context.childSessionTaskRuntime : undefined
         const subagentRunStore = 'subagentRunStore' in context ? context.subagentRunStore : undefined
         const childAttempts = subagentRunStore
           ? subagentRunStore.query({ childSessionId }).sort((a, b) => b.createdAt.localeCompare(a.createdAt))

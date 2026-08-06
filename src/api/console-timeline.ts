@@ -6,7 +6,6 @@ import { redactMcpConfig } from '../connectors/mcp/mcp-secret-redaction.js'
 import {
   buildToolCallEventId,
   buildToolResultEventId,
-  formatToolRunningContent,
   formatToolTerminalContent,
 } from '../foreground/tools/transcript-redaction-mapper.js'
 
@@ -32,7 +31,15 @@ const MAX_LIMIT = 200
 function isAMapMcpToolName(toolName: string): boolean {
   if (typeof toolName !== 'string') return false
   const lower = toolName.toLowerCase()
-  return lower.startsWith('mcp.amap-maps.') || lower.startsWith('amap_maps') || lower.startsWith('amap_geocode') || lower.startsWith('amap_poi') || lower.startsWith('amap_route') || lower.startsWith('amap_weather') || lower.startsWith('amap_distance')
+  return (
+    lower.startsWith('mcp.amap-maps.') ||
+    lower.startsWith('amap_maps') ||
+    lower.startsWith('amap_geocode') ||
+    lower.startsWith('amap_poi') ||
+    lower.startsWith('amap_route') ||
+    lower.startsWith('amap_weather') ||
+    lower.startsWith('amap_distance')
+  )
 }
 
 function tryParseJsonSafe(text: string): unknown | undefined {
@@ -143,9 +150,7 @@ function buildAMapResultMetadata(content: string): Record<string, unknown> | und
 
 function collectAMapToolNames(turn: TurnTranscript): string[] {
   if (!turn.runtimeSummary?.toolCallSummaries) return []
-  return turn.runtimeSummary.toolCallSummaries
-    .filter((s) => isAMapMcpToolName(s.toolName))
-    .map((s) => s.toolName)
+  return turn.runtimeSummary.toolCallSummaries.filter((s) => isAMapMcpToolName(s.toolName)).map((s) => s.toolName)
 }
 
 /**
@@ -216,24 +221,17 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
       .map((s) => [s.toolCallId, s]),
   )
   const emittedSummaryIds = new Set<string>()
-  const toolRoleMessages =
-    turn.output.visibleMessages?.filter((msg) => msg.role === 'tool') ?? []
-  const canAssociateByOrdinal =
-    toolCallSummaries.length > 0 && toolCallSummaries.length === toolRoleMessages.length
-  const canAssociateSingle =
-    toolCallSummaries.length === 1 && toolRoleMessages.length === 1
+  const toolRoleMessages = turn.output.visibleMessages?.filter((msg) => msg.role === 'tool') ?? []
+  const canAssociateByOrdinal = toolCallSummaries.length > 0 && toolCallSummaries.length === toolRoleMessages.length
+  const canAssociateSingle = toolCallSummaries.length === 1 && toolRoleMessages.length === 1
   let toolResultOrdinal = 0
 
   // Legacy path: no tool-role messages but toolCallSummaries exist (e.g. final answer only).
   // Emit tools before assistant messages so history matches execution order.
   const hasToolRoleMessages = toolRoleMessages.length > 0
-  const legacyToolsOnlyAsSummaries =
-    !hasToolRoleMessages && toolCallSummaries.length > 0
+  const legacyToolsOnlyAsSummaries = !hasToolRoleMessages && toolCallSummaries.length > 0
 
-  const emitOrphanToolSummary = (
-    summary: (typeof toolCallSummaries)[number],
-    index: number,
-  ): void => {
+  const emitOrphanToolSummary = (summary: (typeof toolCallSummaries)[number], index: number): void => {
     if (emittedSummaryIds.has(summary.toolCallId)) return
     emittedSummaryIds.add(summary.toolCallId)
     const status = summary.status === 'pending' ? 'completed' : summary.status
@@ -243,13 +241,13 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
       eventType: 'tool_call',
       sessionId: turn.sessionId,
       timestamp: ts,
-      content: formatToolRunningContent(summary.toolName),
+      content: `${summary.toolName}: ${summary.status}`,
       metadata: {
         ...baseMetadata,
         toolCallIndex: summary.turnSequence ?? index,
         toolCallId: summary.toolCallId,
         toolName: summary.toolName,
-        status: 'running',
+        status: summary.status,
         turnSequence: summary.turnSequence ?? index,
       },
       actor: 'system',
@@ -283,9 +281,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
       // force ALL assistants after every tool pair so multi-tool same-timestamp
       // sorts cannot interleave assistants between tools, even if the persisted
       // message carries its own turnSequence: 0.
-      const turnSequence = legacyToolsOnlyAsSummaries
-        ? toolCallSummaries.length + index
-        : (msg.turnSequence ?? index)
+      const turnSequence = legacyToolsOnlyAsSummaries ? toolCallSummaries.length + index : (msg.turnSequence ?? index)
 
       if (msg.role === 'assistant') {
         events.push({
@@ -353,14 +349,13 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
             ? summariesById.get(msg.toolCallId)
             : undefined
         const associatedSummary =
-          byId ??
-          ((canAssociateByOrdinal || canAssociateSingle)
-            ? toolCallSummaries[toolResultOrdinal]
-            : undefined)
+          byId ?? (canAssociateByOrdinal || canAssociateSingle ? toolCallSummaries[toolResultOrdinal] : undefined)
         if (!byId) toolResultOrdinal += 1
 
         const toolCallId = msg.toolCallId ?? associatedSummary?.toolCallId
-        const toolName = msg.toolName ?? associatedSummary?.toolName ?? 'unknown'
+        // toolName stays undefined when the association is ambiguous — guessing
+        // a name for the tool_result would fabricate provenance.
+        const toolName = msg.toolName ?? associatedSummary?.toolName
         const status =
           msg.toolStatus ??
           (associatedSummary?.status === 'pending' ? 'completed' : associatedSummary?.status) ??
@@ -368,17 +363,20 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
 
         if (toolCallId) {
           emittedSummaryIds.add(toolCallId)
+          // Rebuilt timelines know the summary's terminal status; surface it
+          // instead of a generic "running" placeholder.
+          const callStatus = associatedSummary?.status ?? status
           events.push({
             eventId: buildToolCallEventId(turn.turnId, toolCallId),
             eventType: 'tool_call',
             sessionId: turn.sessionId,
             timestamp: associatedSummary?.startedAt ?? partTimestamp,
-            content: formatToolRunningContent(toolName),
+            content: `${toolName}: ${callStatus}`,
             metadata: {
               ...baseMetadata,
               toolCallId,
               toolName,
-              status: 'running',
+              status: callStatus,
               turnSequence,
               toolCallIndex: associatedSummary?.turnSequence,
             },
@@ -418,7 +416,7 @@ function mapTurnToTimelineEvents(turn: TurnTranscript, fileUploadStore?: FileUpl
           eventType: 'tool_result',
           sessionId: turn.sessionId,
           timestamp: partTimestamp,
-          content: msg.content || formatToolTerminalContent(toolName, status === 'failed'),
+          content: msg.content || formatToolTerminalContent(toolName ?? 'unknown', status === 'failed'),
           metadata: toolResultMetadata,
           actor: 'system',
         })

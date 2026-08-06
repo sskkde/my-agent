@@ -128,9 +128,9 @@ describe('Console Timeline Service', () => {
 
       expect(toolCalls).toHaveLength(2)
       expect(toolResults).toHaveLength(2)
-      expect(toolCalls[0].content).toBe('Tool running: analyze_data')
+      expect(toolCalls[0].content).toBe('analyze_data: completed')
       expect(toolCalls[0].metadata?.toolCallId).toBe('tc-1')
-      expect(toolCalls[1].content).toBe('Tool running: generate_report')
+      expect(toolCalls[1].content).toBe('generate_report: completed')
       expect(toolCalls[1].metadata?.toolCallId).toBe('tc-2')
       expect(toolResults[0].content).toBe('Tool completed: analyze_data')
       expect(toolResults[1].content).toBe('Tool completed: generate_report')
@@ -258,9 +258,9 @@ describe('Console Timeline Service', () => {
       const result = timelineService.getTimeline(sessionWithRuns)
 
       expect(result.total).toBe(3)
-      expect(result.events[0].eventType).toBe('run_started')
+      expect(result.events[0].eventType).toBe('run_completed')
       expect(result.events[1].eventType).toBe('run_progress')
-      expect(result.events[2].eventType).toBe('run_completed')
+      expect(result.events[2].eventType).toBe('run_started')
     })
 
     it('should preserve event metadata from event store', () => {
@@ -307,9 +307,10 @@ describe('Console Timeline Service', () => {
       const errorEvents = result.events.filter((e) => e.eventType === 'error')
 
       expect(errorEvents).toHaveLength(2)
-      expect(errorEvents[0].content).toBe('Tool execution failed: timeout')
-      expect(errorEvents[0].metadata?.originalEventType).toBe('tool_execution_error')
-      expect(errorEvents[1].content).toBe('Kernel panic')
+      expect(errorEvents[0].content).toBe('Kernel panic')
+      expect(errorEvents[0].metadata?.originalEventType).toBe('error')
+      expect(errorEvents[1].content).toBe('Tool execution failed: timeout')
+      expect(errorEvents[1].metadata?.originalEventType).toBe('tool_execution_error')
     })
   })
 
@@ -345,15 +346,15 @@ describe('Console Timeline Service', () => {
       const result = timelineService.getTimeline(sessionForPagination, { limit: 2 })
       expect(result.events).toHaveLength(2)
       expect(result.total).toBe(5)
-      expect(result.events[0].content).toBe('Message 0')
-      expect(result.events[1].content).toBe('Message 1')
+      expect(result.events[0].content).toBe('Message 4')
+      expect(result.events[1].content).toBe('Message 3')
     })
 
     it('should offset results with offset option', () => {
       const result = timelineService.getTimeline(sessionForPagination, { limit: 2, offset: 2 })
       expect(result.events).toHaveLength(2)
       expect(result.events[0].content).toBe('Message 2')
-      expect(result.events[1].content).toBe('Message 3')
+      expect(result.events[1].content).toBe('Message 1')
     })
 
     it('should handle offset beyond total', () => {
@@ -597,8 +598,9 @@ describe('Console Timeline Service', () => {
       const result = timelineService.getTimeline(complexSession)
       const timestamps = result.events.map((e) => new Date(e.timestamp).getTime())
 
+      // Timeline is newest-first: timestamps are non-increasing.
       for (let i = 1; i < timestamps.length; i++) {
-        expect(timestamps[i]).toBeGreaterThanOrEqual(timestamps[i - 1])
+        expect(timestamps[i]).toBeLessThanOrEqual(timestamps[i - 1])
       }
     })
   })
