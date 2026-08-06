@@ -97,6 +97,9 @@ export function buildControllerPlan(input: SearchSubagentInput, hints: SearchPla
 }
 
 export function buildReplanDynamicContext(
+  roundCount: number,
+  maxRounds: number,
+  replansRemaining: number,
   plan: SearchQueryPlan,
   seenQueries: readonly string[],
   replanContext: SearchReplanContext | undefined,
@@ -104,13 +107,18 @@ export function buildReplanDynamicContext(
 ): ContextItemData[] {
   const items: ContextItemData[] = [
     {
+      itemId: 'search-round-progress',
+      content: `Search Round Progress: Round ${roundCount} of ${maxRounds} (max replans remaining: ${replansRemaining})`,
+      semanticType: 'search_context',
+    },
+    {
       itemId: 'original-question',
       content: `Original Question: ${plan.originalQuestion}`,
       semanticType: 'search_context',
     },
     {
       itemId: 'prior-queries',
-      content: `Previously Executed Queries:\n${seenQueries.map((query, index) => `${index + 1}. ${query}`).join('\n') || '(none)'}`,
+      content: `Previously Executed Queries (do not repeat):\n${seenQueries.map((query, index) => `${index + 1}. ${query}`).join('\n') || '(none)'}`,
       semanticType: 'search_context',
     },
   ]

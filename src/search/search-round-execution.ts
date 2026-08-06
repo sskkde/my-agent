@@ -58,7 +58,15 @@ export async function runRoundLoop(
 
     const dynamicContextItems =
       roundIndex > 1
-        ? buildReplanDynamicContext(plan, state.seenQueries, state.replanContext, state.mergedResults)
+        ? buildReplanDynamicContext(
+            roundIndex,
+            deps.roundPolicy.maxRounds,
+            Math.max(0, deps.roundPolicy.maxReplans - (roundIndex - 1)),
+            plan,
+            state.seenQueries,
+            state.replanContext,
+            state.mergedResults,
+          )
         : undefined
 
     const queryPhaseRace = await raceWithDeadline(
