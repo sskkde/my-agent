@@ -735,6 +735,10 @@ describe('buildForegroundToolProjection', () => {
     category,
     sensitivity,
     description,
+    schema: {
+      type: 'object' as const,
+      properties: { query: { type: 'string' } },
+    },
   })
 
   describe('Safe defaults', () => {
@@ -850,7 +854,10 @@ describe('buildForegroundToolProjection', () => {
         function: {
           name: 'web_search',
           description: 'Search the web',
-          parameters: { type: 'object', properties: {} },
+          parameters: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+          },
         },
       })
     })
@@ -1230,7 +1237,6 @@ describe('Timeout Safe Failure', () => {
   })
 })
 
-
 // ─── Ordered Visible Turn Parts Contract (Plan C) ────────────────────────────
 
 describe('Ordered visible turn parts contract', () => {
@@ -1239,9 +1245,7 @@ describe('Ordered visible turn parts contract', () => {
       status: 'completed',
       finalResponse: 'hello',
       decisionTrace: { route: 'answer_directly', requiresPlanner: false, reason: 'ok' },
-      visibleMessages: [
-        { messageId: 'm1', role: 'assistant', content: 'hello', turnSequence: 0 },
-      ],
+      visibleMessages: [{ messageId: 'm1', role: 'assistant', content: 'hello', turnSequence: 0 }],
     }
     expect(result.visibleMessages?.[0].toolCallId).toBeUndefined()
     expect(result.visibleMessages?.[0].content).toBe('hello')

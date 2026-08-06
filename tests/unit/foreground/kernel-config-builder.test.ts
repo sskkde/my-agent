@@ -74,7 +74,7 @@ describe('buildKernelConfigFromDeps', () => {
       toolProjection: { toolIds: [] },
     })
 
-    expect(built.segments.staticPrefix).toContain('You are a foreground routing agent')
+    expect(built.segments.staticPrefix).toContain('You are a helpful AI assistant with access to tools')
     expect(built.segmentHashes.segmentA).toMatch(/^[a-f0-9]{64}$/)
     expect(built.segmentHashes.segmentA).not.toBe('')
   })
