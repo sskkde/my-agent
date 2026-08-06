@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
 import { createProviderConfigStore, type ProviderConfigStore } from '../../../src/storage/provider-config-store.js'
 import { createProviderScopedLLMAdapter } from '../../../src/llm/provider-runtime.js'
@@ -72,6 +72,39 @@ describe('provider-runtime', () => {
       expect(adapter.providers[0].id).toBe('provider-user-1')
       expect(adapter.providers[0].config.capabilities.supportedModels).toEqual(['openrouter/model-1'])
     })
+  })
+
+  it('skips providers whose API key cannot be decrypted instead of failing the turn', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    providerConfigStore.create({
+      providerId: 'provider-good',
+      userId: 'user-1',
+      providerType: 'openai',
+      displayName: 'Good',
+      apiKey: 'sk-good',
+    })
+
+    // Encrypt this provider's key under a different APP_SECRET_KEY so that
+    // decryption with the runtime key fails (corrupted/migrated record).
+    process.env.APP_SECRET_KEY = 'a-different-secret-key-for-provider-runtime'
+    providerConfigStore.create({
+      providerId: 'provider-broken',
+      userId: 'user-1',
+      providerType: 'openai',
+      displayName: 'Broken',
+      apiKey: 'sk-broken',
+    })
+    process.env.APP_SECRET_KEY = 'test-secret-key-for-provider-runtime'
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
+
+    await adapter.runWithUserProviders('user-1', async () => {
+      expect(adapter.providers.map((provider) => provider.id)).toEqual(['provider-good'])
+    })
+
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 
   it('isolates provider scopes across users and restores the outer scope', async () => {
@@ -984,41 +1017,44 @@ describe('provider-runtime', () => {
 
         const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
-        return adapter.runWithUserProviders('user-no-db', async () => {
-          const provider = adapter.providers.find((p) => p.id === type)
-          expect(provider, `provider ${type} not found`).toBeDefined()
-          expect(provider?.config.baseUrl).toBe(defaultBaseUrl)
-          expect(provider?.config.capabilities.supportedModels).toEqual([defaultModel])
-        }).finally(() => {
-          delete process.env[envKey]
-        })
+        return adapter
+          .runWithUserProviders('user-no-db', async () => {
+            const provider = adapter.providers.find((p) => p.id === type)
+            expect(provider, `provider ${type} not found`).toBeDefined()
+            expect(provider?.config.baseUrl).toBe(defaultBaseUrl)
+            expect(provider?.config.capabilities.supportedModels).toEqual([defaultModel])
+          })
+          .finally(() => {
+            delete process.env[envKey]
+          })
       },
     )
 
-    it.each(DOMESTIC_PROVIDERS.filter((p) => p.envBaseUrl).map((p) => [
-      p.providerType,
-      p.envApiKey,
-      p.envBaseUrl!,
-      p.defaultBaseUrl,
-    ]))(
-      'domestic provider %s respects env baseUrl override via %s',
-      (type, envKey, baseUrlEnvKey, _defaultBaseUrl) => {
-        process.env.NODE_ENV = 'development'
-        process.env[envKey] = `sk-env-${type}`
-        process.env[baseUrlEnvKey] = 'https://custom.api.example.com/v1'
+    it.each(
+      DOMESTIC_PROVIDERS.filter((p) => p.envBaseUrl).map((p) => [
+        p.providerType,
+        p.envApiKey,
+        p.envBaseUrl!,
+        p.defaultBaseUrl,
+      ]),
+    )('domestic provider %s respects env baseUrl override via %s', (type, envKey, baseUrlEnvKey, _defaultBaseUrl) => {
+      process.env.NODE_ENV = 'development'
+      process.env[envKey] = `sk-env-${type}`
+      process.env[baseUrlEnvKey] = 'https://custom.api.example.com/v1'
 
-        const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
+      const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
-        return adapter.runWithUserProviders('user-no-db', async () => {
+      return adapter
+        .runWithUserProviders('user-no-db', async () => {
           const provider = adapter.providers.find((p) => p.id === type)
           expect(provider).toBeDefined()
           expect(provider?.config.baseUrl).toBe('https://custom.api.example.com/v1')
-        }).finally(() => {
+        })
+        .finally(() => {
           delete process.env[envKey]
           delete process.env[baseUrlEnvKey]
         })
-      },
-    )
+    })
 
     it('domestic env providers are not created when NODE_ENV=test', () => {
       process.env.NODE_ENV = 'test'
@@ -1028,16 +1064,18 @@ describe('provider-runtime', () => {
 
       const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
 
-      return adapter.runWithUserProviders('user-no-db', async () => {
-        for (const domestic of DOMESTIC_PROVIDERS) {
-          const provider = adapter.providers.find((p) => p.id === domestic.providerType)
-          expect(provider, `domestic provider ${domestic.providerType} should not exist in test mode`).toBeUndefined()
-        }
-      }).finally(() => {
-        for (const domestic of DOMESTIC_PROVIDERS) {
-          delete process.env[domestic.envApiKey]
-        }
-      })
+      return adapter
+        .runWithUserProviders('user-no-db', async () => {
+          for (const domestic of DOMESTIC_PROVIDERS) {
+            const provider = adapter.providers.find((p) => p.id === domestic.providerType)
+            expect(provider, `domestic provider ${domestic.providerType} should not exist in test mode`).toBeUndefined()
+          }
+        })
+        .finally(() => {
+          for (const domestic of DOMESTIC_PROVIDERS) {
+            delete process.env[domestic.envApiKey]
+          }
+        })
     })
   })
 })

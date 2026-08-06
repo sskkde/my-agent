@@ -106,6 +106,33 @@ function replaceProviders(adapter: LLMAdapter, providers: LLMProvider[]): void {
   }
 }
 
+// A single provider whose key cannot be decrypted (e.g. encrypted under a
+// different APP_SECRET_KEY) must not take down the whole turn — skip it and
+// surface the issue so operators can clean up the damaged record.
+function loadDbProvidersWithSecrets(
+  providerConfigStore: ProviderConfigStore,
+  userId: string,
+): ProviderConfigWithSecret[] {
+  const storedProviders = providerConfigStore.listByUser(userId)
+  const loaded: ProviderConfigWithSecret[] = []
+
+  for (const provider of storedProviders) {
+    try {
+      const withSecret = providerConfigStore.getByIdWithSecret(provider.providerId)
+      if (withSecret) {
+        loaded.push(withSecret)
+      }
+    } catch (error) {
+      console.error(
+        `[provider-runtime] skipping provider ${provider.providerId} (${provider.providerType}/${provider.displayName}): ` +
+          `unable to load API key: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  return loaded
+}
+
 function buildLLMProvidersForUser(
   providerConfigStore: ProviderConfigStore,
   userId?: string,
@@ -113,10 +140,7 @@ function buildLLMProvidersForUser(
 ): LLMProvider[] {
   let dbProviders: ProviderConfigWithSecret[] = []
   if (userId) {
-    const storedProviders = providerConfigStore.listByUser(userId)
-    dbProviders = storedProviders
-      .map((p) => providerConfigStore.getByIdWithSecret(p.providerId))
-      .filter((p): p is ProviderConfigWithSecret => p !== null)
+    dbProviders = loadDbProvidersWithSecrets(providerConfigStore, userId)
   }
 
   const candidates = resolveProviderCandidates({
@@ -150,11 +174,7 @@ export function createProviderScopedLLMAdapter(
 
     let dbProviders: ProviderConfigWithSecret[] = []
     if (ctx?.userId) {
-      const store = options.providerConfigStore
-      const storedProviders = store.listByUser(ctx.userId)
-      dbProviders = storedProviders
-        .map((p) => store.getByIdWithSecret(p.providerId))
-        .filter((p): p is ProviderConfigWithSecret => p !== null)
+      dbProviders = loadDbProvidersWithSecrets(options.providerConfigStore, ctx.userId)
     }
 
     const candidates = resolveProviderCandidates({
@@ -272,10 +292,7 @@ export function createProviderScopedLLMAdapter(
     },
     runWithUserProviders<T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string): Promise<T> {
       const candidates = resolveProviderCandidates({
-        dbProviders: options.providerConfigStore
-          .listByUser(userId)
-          .map((p) => options.providerConfigStore.getByIdWithSecret(p.providerId))
-          .filter((p): p is ProviderConfigWithSecret => p !== null),
+        dbProviders: loadDbProvidersWithSecrets(options.providerConfigStore, userId),
         envProviders: buildEnvProviderDescriptors(),
         preferredProviderId,
         nodeEnv: process.env.NODE_ENV,
