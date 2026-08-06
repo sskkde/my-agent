@@ -54,35 +54,67 @@ describe('SettingsTab', () => {
     })
   })
 
-  it('shows loading state initially', () => {
-    ;(client.getSettings as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise(() => {}))
-
-    renderWithAuth(<SettingsTab />)
-
-    expect(screen.getByTestId('settings-loading')).toBeInTheDocument()
-  })
-
-  it('shows settings content with correct data', async () => {
+  it('lists the four settings categories as navigation rows', async () => {
     ;(client.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(mockSettings)
 
     renderWithAuth(<SettingsTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('settings-content')).toBeInTheDocument()
+      expect(screen.getByTestId('settings-panel')).toBeInTheDocument()
     })
 
-    expect(screen.getByTestId('local-only-yes')).toBeInTheDocument()
-    expect(screen.getByTestId('retention-days')).toHaveTextContent('30 天')
+    expect(screen.getByTestId('settings-nav-settings-general')).toBeInTheDocument()
+    expect(screen.getByTestId('settings-nav-settings-appearance')).toBeInTheDocument()
+    expect(screen.getByTestId('settings-nav-settings-provider')).toBeInTheDocument()
+    expect(screen.getByTestId('settings-nav-settings-agent')).toBeInTheDocument()
   })
 
-  it('shows error state on API failure', async () => {
-    ;(client.getSettings as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('API error'))
+  it('delegates category clicks to onTabChange when provided', async () => {
+    ;(client.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(mockSettings)
+    const onTabChange = vi.fn()
+
+    renderWithAuth(<SettingsTab onTabChange={onTabChange} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-nav-settings-appearance')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('settings-nav-settings-appearance'))
+
+    expect(onTabChange).toHaveBeenCalledWith('settings-appearance')
+    expect(screen.queryByTestId('settings-general-tab')).not.toBeInTheDocument()
+  })
+
+  it('falls back to in-panel rendering of the general category without onTabChange', async () => {
+    ;(client.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(mockSettings)
 
     renderWithAuth(<SettingsTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeInTheDocument()
+      expect(screen.getByTestId('settings-general-tab')).toBeInTheDocument()
     })
+
+    expect(screen.getByTestId('command-prefs-section')).toBeInTheDocument()
+    expect(screen.getByTestId('pref-verbose')).toBeInTheDocument()
+    expect(screen.getByTestId('pref-reasoning')).toBeInTheDocument()
+    expect(screen.getByTestId('pref-thinking-level')).toBeInTheDocument()
+  })
+
+  it('switches to the appearance category in fallback mode', async () => {
+    ;(client.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(mockSettings)
+
+    renderWithAuth(<SettingsTab />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-general-tab')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('settings-nav-settings-appearance'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-appearance-tab')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('settings-general-tab')).not.toBeInTheDocument()
   })
 
   it('shows security notice', async () => {
@@ -98,18 +130,22 @@ describe('SettingsTab', () => {
     expect(screen.getByText(/API 密钥/)).toBeInTheDocument()
   })
 
-  it('renders command preferences section', async () => {
-    ;(client.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(mockSettings)
+  it('shows loading state initially', () => {
+    ;(client.getSettings as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise(() => {}))
+
+    renderWithAuth(<SettingsTab />)
+
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
+  })
+
+  it('shows error state on API failure', async () => {
+    ;(client.getSettings as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('API error'))
 
     renderWithAuth(<SettingsTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('command-prefs-section')).toBeInTheDocument()
+      expect(screen.getByTestId('error-message')).toBeInTheDocument()
     })
-
-    expect(screen.getByTestId('pref-verbose')).toBeInTheDocument()
-    expect(screen.getByTestId('pref-reasoning')).toBeInTheDocument()
-    expect(screen.getByTestId('pref-thinking-level')).toBeInTheDocument()
   })
 
   it('calls updateSettings when toggling verbose preference', async () => {
@@ -137,7 +173,7 @@ describe('SettingsTab', () => {
     })
   })
 
-  it('calls updateSettings when changing theme', async () => {
+  it('calls updateSettings when changing theme in the appearance category', async () => {
     ;(client.getSettings as ReturnType<typeof vi.fn>).mockResolvedValue(mockSettings)
     ;(client.updateSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
       settings: {
@@ -149,11 +185,16 @@ describe('SettingsTab', () => {
     renderWithAuth(<SettingsTab />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('theme-settings-section')).toBeInTheDocument()
+      expect(screen.getByTestId('settings-general-tab')).toBeInTheDocument()
     })
 
-    const warmPaperRadio = screen.getByDisplayValue('warm-paper') as HTMLInputElement
-    fireEvent.click(warmPaperRadio)
+    fireEvent.click(screen.getByTestId('settings-nav-settings-appearance'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('theme-option-warm-paper')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('theme-option-warm-paper'))
 
     await waitFor(() => {
       expect(client.updateSettings).toHaveBeenCalledWith({ theme: 'warm-paper' })

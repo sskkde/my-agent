@@ -29,8 +29,7 @@ const PrefToggle: React.FC<PrefToggleProps> = ({ checked, disabled, onChange, te
 )
 
 const GeneralTab: React.FC = () => {
-  const { settings, loading, error, commandPrefs, savingPrefs, handleCommandPrefChange, fetchData } =
-    useSettingsData()
+  const { loading, error, commandPrefs, savingPrefs, handleCommandPrefChange, fetchData } = useSettingsData()
 
   if (loading) {
     return <LoadingSpinner size="large" label="加载设置..." />
@@ -40,35 +39,10 @@ const GeneralTab: React.FC = () => {
     return <ErrorMessage error={error} retry={{ onClick: fetchData }} size="large" />
   }
 
-  if (!settings) {
-    return null
-  }
-
   return (
     <div className="settings-tab-content" data-testid="settings-general-tab">
-      <SettingsList>
-        <SettingsRow
-          title="本地模式"
-          description={settings.localOnly ? '已启用' : '未启用'}
-          control={
-            <span className={`checkmark ${settings.localOnly ? 'checkmark-yes' : 'checkmark-no'}`}>
-              {settings.localOnly ? '✓ 是' : '✗ 否'}
-            </span>
-          }
-        />
-        <SettingsRow
-          title="数据保留天数"
-          description="自动清理周期"
-          control={
-            <span className="setting-value" data-testid="retention-days">
-              {settings.retentionDays} 天
-            </span>
-          }
-        />
-      </SettingsList>
-
       <h3 className="settings-section-title">控制台偏好</h3>
-      <SettingsList>
+      <SettingsList testId="command-prefs-section">
         <SettingsRow
           title="详细输出"
           description="显示更多运行日志"

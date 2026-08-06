@@ -456,6 +456,7 @@ const AgentsTab: React.FC = () => {
                 </option>
               ))}
             </select>
+            <span className="form-hint">Provider 凭据在「设置 → Provider」中管理，此处为代理级覆盖</span>
           </div>
 
           <div className="form-group">

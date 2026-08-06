@@ -99,6 +99,20 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
   const formDataRef = useRef(formData)
   formDataRef.current = formData
 
+  const applyModels = useCallback((models: string[]) => {
+    setAvailableModels(models)
+    setModelsError(null)
+    const { selectedModel } = formDataRef.current
+    if (!selectedModel && models.length > 0) {
+      setFormData((prev) => ({ ...prev, selectedModel: models[0] }))
+    }
+  }, [])
+
+  const applyModelsError = useCallback((message: string) => {
+    setAvailableModels([])
+    setModelsError(message)
+  }, [])
+
   const fetchProviders = useCallback(async () => {
     if (!isAuthenticated) return
 
@@ -142,19 +156,13 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
         if (sequence !== probeSequenceRef.current) return
 
         if (result.success) {
-          setAvailableModels(result.models ?? [])
-          setModelsError(null)
-          if (!data.selectedModel && result.models && result.models.length > 0) {
-            setFormData((prev) => ({ ...prev, selectedModel: result.models![0] }))
-          }
+          applyModels(result.models ?? [])
         } else {
-          setAvailableModels([])
-          setModelsError(result.error || '加载模型列表失败')
+          applyModelsError(result.error || '加载模型列表失败')
         }
       } catch (err) {
         if (sequence !== probeSequenceRef.current) return
-        setAvailableModels([])
-        setModelsError(err instanceof Error ? err.message : '加载模型列表失败')
+        applyModelsError(err instanceof Error ? err.message : '加载模型列表失败')
       } finally {
         if (sequence === probeSequenceRef.current) {
           setModelsLoading(false)
@@ -165,7 +173,15 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
     return () => {
       clearTimeout(timeoutId)
     }
-  }, [isModalOpen, editingProvider, formData.providerType, formData.apiKey, formData.baseUrl])
+  }, [
+    isModalOpen,
+    editingProvider,
+    formData.providerType,
+    formData.apiKey,
+    formData.baseUrl,
+    applyModels,
+    applyModelsError,
+  ])
 
   const handleOpenAddModal = () => {
     setEditingProvider(null)
@@ -194,7 +210,9 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
 
     const cachedModels = provider.models
     if (cachedModels && cachedModels.length > 0) {
-      const modelIds = cachedModels.map((m) => (typeof m === 'string' ? m : (m.modelId as string) || '')).filter(Boolean)
+      const modelIds = cachedModels
+        .map((m) => (typeof m === 'string' ? m : (m.modelId as string) || ''))
+        .filter(Boolean)
       setAvailableModels(modelIds)
       return
     }
@@ -203,15 +221,12 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
     try {
       const result = await refreshProviderModels(provider.providerId)
       if (result.success) {
-        setAvailableModels(result.models ?? [])
-        setModelsError(null)
+        applyModels(result.models ?? [])
       } else {
-        setAvailableModels([])
-        setModelsError(result.error || '加载模型列表失败')
+        applyModelsError(result.error || '加载模型列表失败')
       }
     } catch (err) {
-      setAvailableModels([])
-      setModelsError(err instanceof Error ? err.message : '加载模型列表失败')
+      applyModelsError(err instanceof Error ? err.message : '加载模型列表失败')
     } finally {
       setModelsLoading(false)
     }
@@ -314,11 +329,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
       const result = await testProvider(providerId)
       setTestResult({ providerId, result })
       if (result.success) {
-        setAvailableModels(result.models ?? [])
-        setModelsError(null)
-        if (!formData.selectedModel && result.models && result.models.length > 0) {
-          setFormData((prev) => ({ ...prev, selectedModel: result.models![0] }))
-        }
+        applyModels(result.models ?? [])
       }
     } catch (err) {
       const message = err instanceof ApiClientError ? err.message : '测试连接失败'
@@ -817,16 +828,12 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
                         try {
                           const result = await refreshProviderModels(editingProvider.providerId)
                           if (result.success) {
-                            setAvailableModels(result.models ?? [])
-                            setModelsError(null)
-                            if (!formData.selectedModel && result.models && result.models.length > 0) {
-                              setFormData((prev) => ({ ...prev, selectedModel: result.models![0] }))
-                            }
+                            applyModels(result.models ?? [])
                           } else {
-                            setModelsError(result.error || '加载模型列表失败')
+                            applyModelsError(result.error || '加载模型列表失败')
                           }
                         } catch (err) {
-                          setModelsError(err instanceof Error ? err.message : '加载模型列表失败')
+                          applyModelsError(err instanceof Error ? err.message : '加载模型列表失败')
                         } finally {
                           setModelsLoading(false)
                         }
@@ -839,9 +846,7 @@ const ProviderManager: React.FC<ProviderManagerProps> = ({ isAuthenticated }) =>
                   </button>
                 </div>
                 {modelsError && <span className="form-error">{modelsError}</span>}
-                {!modelsError && (
-                  <span className="form-hint">可选，留空则使用提供商默认模型</span>
-                )}
+                {!modelsError && <span className="form-hint">可选，留空则使用提供商默认模型</span>}
               </div>
 
               {formErrors.submit && <div className="form-submit-error">{formErrors.submit}</div>}
