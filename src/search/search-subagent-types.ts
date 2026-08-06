@@ -6,6 +6,14 @@
  */
 
 import type { WebSearchResultItem } from './types.js'
+import type { SearchRoundStopReason } from './search-round-evaluator.js'
+
+/**
+ * Round stop reason union, defined canonically by the pure round evaluator
+ * (`SEARCH_ROUND_STOP_REASONS` as const). Re-exported here so observability
+ * consumers share ONE literal union instead of duplicating it.
+ */
+export type { SearchRoundStopReason }
 
 /**
  * Search intent classification for query planning.
@@ -34,6 +42,81 @@ export interface SearchQueryPlan {
 
   /** Critical context that is missing and may affect result quality */
   missingCriticalContext: string[]
+}
+
+/**
+ * Typed search plan hints propagated from the parent `SearchQueryPlan` into a
+ * search child task. Persisted inside `task_spec_json` (no schema migration);
+ * parsed back at the persisted-task boundary with backward-compatible fallback
+ * for old task specs (objective as originalQuestion, general intent, no
+ * optional fields). Generic kernel adapter paths ignore the field entirely.
+ */
+export interface SearchPlanHints {
+  /** The original user question before transformation. */
+  originalQuestion: string
+  /** Classified intent of the search. */
+  intent: SearchIntent
+  /** Whether the query requires fresh/recent results (mirrors `SearchQueryPlan.requiresFreshness`). */
+  freshness?: boolean
+  /** Optional locale for location-aware searches. */
+  locale?: string
+  /** Critical context missing from the question (replan hint / public partial signal only). */
+  missingCriticalContext?: readonly string[]
+}
+
+const SEARCH_INTENTS: readonly SearchIntent[] = ['weather', 'news', 'technical', 'product', 'local', 'general']
+
+/** Loose persisted shape of `SearchPlanHints` — every field is validated independently. */
+interface SearchPlanHintsCandidate {
+  originalQuestion?: unknown
+  intent?: unknown
+  freshness?: unknown
+  locale?: unknown
+  missingCriticalContext?: unknown
+}
+
+function isHintsCandidate(value: unknown): value is SearchPlanHintsCandidate {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isSearchIntent(value: unknown): value is SearchIntent {
+  return typeof value === 'string' && SEARCH_INTENTS.includes(value as SearchIntent)
+}
+
+/**
+ * Typed parser/normalizer for persisted search plan hints at the persisted-task
+ * boundary. Old/missing/malformed payloads never throw: `originalQuestion`
+ * falls back to the task objective, `intent` to 'general', and invalid optional
+ * fields are omitted.
+ *
+ * @param raw - The value persisted in `task_spec_json.searchPlanHints` (unknown at runtime).
+ * @param objective - The child task objective used as the originalQuestion fallback.
+ */
+export function parseSearchPlanHints(raw: unknown, objective = ''): SearchPlanHints {
+  const source = isHintsCandidate(raw) ? raw : undefined
+
+  const originalQuestion =
+    source !== undefined && typeof source.originalQuestion === 'string' && source.originalQuestion.trim().length > 0
+      ? source.originalQuestion
+      : objective
+
+  const intent = source !== undefined && isSearchIntent(source.intent) ? source.intent : 'general'
+
+  const hints: SearchPlanHints = { originalQuestion, intent }
+
+  if (source !== undefined && typeof source.freshness === 'boolean') {
+    hints.freshness = source.freshness
+  }
+  if (source !== undefined && typeof source.locale === 'string' && source.locale.length > 0) {
+    hints.locale = source.locale
+  }
+  if (source !== undefined && Array.isArray(source.missingCriticalContext)) {
+    hints.missingCriticalContext = source.missingCriticalContext.filter(
+      (entry): entry is string => typeof entry === 'string',
+    )
+  }
+
+  return hints
 }
 
 /**
@@ -90,6 +173,16 @@ export interface SearchSubagentMetadata {
   agentProfile?: string
   /** Optional child-session task ID when the search ran inside a resumable child session (additive). */
   taskId?: string
+  /** Number of completed search rounds (multi-round executions only; absent for default one-round). */
+  roundCount?: number
+  /** Number of replan (round >= 2) phase-1 calls (multi-round executions only). */
+  replanCount?: number
+  /** Number of LLM complete() invocations scheduled, including forced->auto attempts. */
+  llmCallCount?: number
+  /** Why the search loop stopped (multi-round executions only). */
+  stopReason?: SearchRoundStopReason
+  /** True when the round/completion budget was exhausted (multi-round executions only). */
+  budgetExhausted?: boolean
 }
 
 /**

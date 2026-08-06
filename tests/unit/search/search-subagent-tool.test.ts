@@ -728,4 +728,153 @@ describe('SearchSubagentTool', () => {
       expect(toolResult.queryPlan).toBeDefined()
     })
   })
+
+  describe('Multi-round internal counters propagate to public metadata', () => {
+    it('reports round/replan/search/LLM counts and stop reason without executedQueries', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'Merged answer',
+            toolResult: {
+              query: 'weather in Tokyo today',
+              results: [
+                { title: 'Tokyo Weather', url: 'https://weather.com/tokyo', snippet: 'Current temperature is 22°C' },
+              ],
+              total: 1,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 150,
+              executedQueries: ['weather in Tokyo today', 'Tokyo forecast tomorrow'],
+              roundCount: 2,
+              replanCount: 1,
+              searchCallCount: 2,
+              llmCallCount: 4,
+              stopReason: 'max_rounds',
+            },
+          }),
+        },
+      })
+
+      const input: SearchSubagentToolInput = {
+        originalQuestion: 'weather in Tokyo today',
+        intent: 'weather',
+      }
+
+      const result = await handleSearchSubagentTool(deps, input)
+
+      expect(result.success).toBe(true)
+      const toolResult = result.data as SearchSubagentToolResult
+
+      expect(toolResult.metadata.searchCallCount).toBe(2)
+      expect(toolResult.metadata.roundCount).toBe(2)
+      expect(toolResult.metadata.replanCount).toBe(1)
+      expect(toolResult.metadata.llmCallCount).toBe(4)
+      expect(toolResult.metadata.stopReason).toBe('max_rounds')
+      expect(toolResult.metadata).not.toHaveProperty('executedQueries')
+      expect(toolResult).not.toHaveProperty('executedQueries')
+      expect(toolResult).not.toHaveProperty('finalAnswer')
+      expect(toolResult).not.toHaveProperty('userVisibleResponse')
+    })
+
+    it('reports searchCallCount=2 with duplicate-URL rounds while resultCount equals selected unique sources', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'Merged answer',
+            toolResult: {
+              query: 'test query',
+              results: [
+                { title: 'Result 1', url: 'https://example.com/page1', snippet: 'Snippet 1' },
+                { title: 'Result 2', url: 'https://example.com/page1', snippet: 'Duplicate snippet' },
+                { title: 'Result 3', url: 'https://example.org/page2', snippet: 'Snippet 2' },
+              ],
+              total: 3,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 100,
+              executedQueries: ['q1', 'q2'],
+              roundCount: 2,
+              replanCount: 1,
+              searchCallCount: 2,
+              llmCallCount: 4,
+              stopReason: 'sufficient_evidence',
+            },
+          }),
+        },
+      })
+
+      const result = await handleSearchSubagentTool(deps, { originalQuestion: 'test query' })
+
+      expect(result.success).toBe(true)
+      const toolResult = result.data as SearchSubagentToolResult
+
+      expect(toolResult.metadata.searchCallCount).toBe(2)
+      expect(toolResult.results).toHaveLength(2)
+      expect(toolResult.metadata.resultCount).toBe(2)
+      expect(toolResult.metadata.uniqueSourceCount).toBe(2)
+    })
+
+    it('tolerates mocked legacy metadata without new counter fields', async () => {
+      const { handleSearchSubagentTool } = await import('../../../src/search/search-subagent-tool.js')
+
+      const deps = createMockDeps({
+        searchSubagent: {
+          execute: vi.fn().mockResolvedValue({
+            success: true,
+            answer: 'Legacy answer',
+            toolResult: {
+              query: 'test query',
+              results: [
+                {
+                  title: 'Result',
+                  url: 'https://example.com/page',
+                  snippet: 'This is a sufficiently long snippet for extraction.',
+                },
+              ],
+              total: 1,
+              provider: 'searxng',
+              endpointHost: 'localhost:8888',
+            },
+            metadata: {
+              providerId: 'test-provider',
+              model: 'test-model',
+              querySource: 'search_subagent',
+              durationMs: 50,
+            },
+          }),
+        },
+      })
+
+      const result = await handleSearchSubagentTool(deps, { originalQuestion: 'test query' })
+
+      expect(result.success).toBe(true)
+      const toolResult = result.data as SearchSubagentToolResult
+
+      expect(toolResult.metadata.searchCallCount).toBe(1)
+      expect(toolResult.metadata.roundCount).toBeUndefined()
+      expect(toolResult.metadata.replanCount).toBeUndefined()
+      expect(toolResult.metadata.llmCallCount).toBeUndefined()
+      expect(toolResult.metadata.stopReason).toBeUndefined()
+      expect(toolResult.metadata.budgetExhausted).toBeUndefined()
+      expect(toolResult.metadata.resultCount).toBe(1)
+      expect(toolResult.metadata.uniqueSourceCount).toBe(1)
+      expect(toolResult.metadata.evidenceSufficiency).toBe('sufficient')
+    })
+  })
 })

@@ -2,13 +2,24 @@
  * Search Subagent
  * Dedicated synchronous service for web search with forced tool choice.
  * Uses ModelInputBuilder for both LLM calls with shared Segment A cache.
+ *
+ * This module is the named-export facade: it keeps the public contracts, the
+ * `createSearchSubagent` factory, and delegates the two phases to the extracted
+ * `search-query-phase.ts` (phase 1: forced web_search tool_choice -> auto retry
+ * -> input fallback) and `search-answer-phase.ts` (phase 2: evidence-context +
+ * structured_json answer).
  */
 
-import type { LLMRequest, ToolDefinition } from '../llm/types'
-import type { WebSearchResult } from './types'
+import type { LLMRequest } from '../llm/types.js'
+import type { WebSearchResult } from './types.js'
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
-import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js'
-import { extractToolsForRequest } from '../kernel/model-input/model-input-builder.js'
+import type { SearchRoundPolicy } from './search-round-budget.js'
+import type { SearchRoundReplanReason, SearchRoundStopReason } from './search-round-evaluator.js'
+import { ONE_ROUND_SEARCH_POLICY } from './search-round-budget.js'
+import type { SearchPlanHints } from './search-subagent-types.js'
+import { runQueryPhase } from './search-query-phase.js'
+import { runAnswerPhase } from './search-answer-phase.js'
+import { runMultiRoundSearch } from './search-multi-round-controller.js'
 
 /**
  * Search subagent configuration
@@ -64,6 +75,13 @@ export interface SearchSubagentConfig {
   mainLlmModel?: string
 
   /**
+   * Optional round budget policy. Defaults to `ONE_ROUND_SEARCH_POLICY`; the
+   * multi-round policy is accepted here and only wired into execution by the
+   * multi-round controller.
+   */
+  roundPolicy?: SearchRoundPolicy
+
+  /**
    * Optional phase observer for observability (e.g. the Todo 16 search child
    * runner records the phases on the child timeline). Fires at the three
    * two-phase milestones; never alters the execution flow or result.
@@ -76,12 +94,27 @@ export interface SearchSubagentConfig {
  * specialized search child runner to persist a child-timeline phase record.
  * `phase1` is observed only after a usable search query was determined;
  * `backend_search` fires right after the direct search backend execution;
- * `phase2` fires once the structured_json answer build succeeded.
+ * `phase2` fires once the structured_json answer build succeeded. The
+ * multi-round controller emits `evaluation` (round decision) and `replan`
+ * (next phase-1 round build) phases additively with round/reason/count fields;
+ * the default one-round path never emits them.
  */
 export interface SearchPhaseObservation {
-  phase: 'phase1' | 'backend_search' | 'phase2'
+  phase: 'phase1' | 'backend_search' | 'phase2' | 'evaluation' | 'replan'
   query?: string
   querySource?: 'llm_tool_call' | 'input_fallback'
+  /** 1-based round index this observation belongs to (multi-round executions only). */
+  round?: number
+  /** Why the search loop stopped; present on `evaluation` observations with a stop decision. */
+  stopReason?: SearchRoundStopReason
+  /** Why the next round was replanned; present on `evaluation` observations with a continue decision. */
+  replanReason?: SearchRoundReplanReason
+  /** Completed rounds at observation time (additive counters). */
+  roundCount?: number
+  /** Backend invocations scheduled at observation time (additive counters). */
+  searchCallCount?: number
+  /** LLM complete() invocations scheduled at observation time (additive counters). */
+  llmCallCount?: number
 }
 
 /**
@@ -96,6 +129,58 @@ export interface SearchSubagentInput {
 
   /** Session ID */
   sessionId: string
+
+  /**
+   * Typed plan hints propagated from the parent `SearchQueryPlan` (multi-round
+   * replan context: original question, intent, freshness, locale, missing
+   * context). Absent for legacy/direct invocations.
+   */
+  searchPlanHints?: SearchPlanHints
+
+  /**
+   * Optional total budget in ms for this execution. The search child runner
+   * passes its timeout; the multi-round controller derives the round/completion
+   * deadlines from it. Defaults to the search child wait budget.
+   */
+  timeoutMs?: number
+
+  /** Optional external cancellation signal honored before/after every await. */
+  signal?: AbortSignal
+}
+
+/**
+ * Base metadata every successful search execution reports.
+ */
+export interface SearchSubagentSuccessMetadata {
+  providerId: string
+  model: string
+  querySource: 'search_subagent'
+  durationMs: number
+  segmentAHash?: string
+}
+
+/**
+ * Internal execution metadata produced by `SearchSubagent.execute()`. Additive
+ * and fully optional so the default one-round path stays byte-compatible:
+ * `stopReason`/`budgetExhausted` are only set by multi-round executions that
+ * hit a stop decision or budget event. `executedQueries` is internal-only and
+ * must never be copied into the public `SearchSubagentMetadata`.
+ */
+export interface SearchSubagentExecutionMetadata extends SearchSubagentSuccessMetadata {
+  /** Query strings actually executed against the backend, in order (internal only). */
+  executedQueries?: readonly string[]
+  /** Number of completed search rounds (single-round default: 1). */
+  roundCount?: number
+  /** Number of replan (round >= 2) phase-1 calls (single-round default: 0). */
+  replanCount?: number
+  /** Number of backend invocations scheduled (single-round default: 1). */
+  searchCallCount?: number
+  /** Number of LLM complete() invocations scheduled, including forced->auto attempts and late-abandoned calls. */
+  llmCallCount?: number
+  /** Why the search loop stopped; absent for a default one-round run without a budget event. */
+  stopReason?: SearchRoundStopReason
+  /** True when the round/completion budget was exhausted. */
+  budgetExhausted?: boolean
 }
 
 /**
@@ -105,21 +190,17 @@ export interface SearchSubagentSuccessResult {
   success: true
   answer: string
   toolResult: WebSearchResult
-  metadata: {
-    providerId: string
-    model: string
-    querySource: 'search_subagent'
-    durationMs: number
-    segmentAHash?: string
-  }
+  metadata: SearchSubagentExecutionMetadata
 }
 
 /**
- * Search subagent failure result
+ * Search subagent failure result. `SEARCH_TIMEOUT` is returned by the
+ * multi-round controller when the round deadline settles with zero evidence; it
+ * is recoverable and mapped by the search child runner without string guessing.
  */
 export interface SearchSubagentFailureResult {
   success: false
-  errorCode: 'SEARCH_MODEL_INCAPABLE' | 'INVALID_TOOL_CALL' | 'MODEL_UNAVAILABLE' | 'NO_TOOL_CALL'
+  errorCode: 'SEARCH_MODEL_INCAPABLE' | 'INVALID_TOOL_CALL' | 'MODEL_UNAVAILABLE' | 'NO_TOOL_CALL' | 'SEARCH_TIMEOUT'
   message: string
 }
 
@@ -133,67 +214,16 @@ export type SearchSubagentResult = SearchSubagentSuccessResult | SearchSubagentF
  */
 export interface SearchSubagent {
   execute: (input: SearchSubagentInput) => Promise<SearchSubagentResult>
-}
-
-/**
- * Web search tool schema
- */
-const WEB_SEARCH_TOOL: ToolDefinition = {
-  type: 'function',
-  function: {
-    name: 'web_search',
-    description: 'Search the public web for information',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Search query string',
-        },
-      },
-      required: ['query'],
-    },
-  },
-}
-
-/**
- * Tool plane projection for web_search tool
- */
-const WEB_SEARCH_TOOL_PROJECTION: ToolPlaneProjection = {
-  toolIds: ['web_search'],
-  tools: [WEB_SEARCH_TOOL],
-}
-
-/**
- * Build the tool result context as context items for Layer 7
- */
-function buildToolResultContext(
-  toolResult: WebSearchResult,
-  searchQuery: string,
-): Array<{
-  itemId: string
-  content: string
-  semanticType?: string
-}> {
-  return [
-    {
-      itemId: 'search-query',
-      content: `Search Query: ${searchQuery}`,
-      semanticType: 'search_context',
-    },
-    {
-      itemId: 'search-results',
-      content: `Search Results:\n${JSON.stringify(toolResult, null, 2)}`,
-      semanticType: 'tool_output',
-    },
-  ]
+  /** Effective round budget policy for this subagent (factory always sets it; defaults to one round). */
+  readonly roundPolicy?: SearchRoundPolicy
 }
 
 /**
  * Create a search subagent
  */
-export function createSearchSubagent(config: SearchSubagentConfig) {
+export function createSearchSubagent(config: SearchSubagentConfig): SearchSubagent {
   const { llmAdapter, webSearchExecutor, modelInputBuilder } = config
+  const roundPolicy = config.roundPolicy ?? ONE_ROUND_SEARCH_POLICY
 
   let cachedSegmentAHash: string | undefined
 
@@ -215,235 +245,87 @@ export function createSearchSubagent(config: SearchSubagentConfig) {
       }
     }
 
-    // ─── Phase 1: Tool Call (function_calling mode) ──────────────────────────────
-    const phase1BuildInput = {
-      mode: 'function_calling' as const,
-      agentType: 'subagent' as const,
-      agentProfile: 'search',
-      providerFamily,
-      toolProjection: WEB_SEARCH_TOOL_PROJECTION,
-      currentUserMessage: input.query,
-      currentDate: new Date().toISOString(),
-      sessionId: input.sessionId,
-      outputContract: 'output:search-evidence.schema',
+    // Multi-round executions (roundPolicy.maxRounds > 1) run the controlled
+    // controller; the default one-round path below stays byte-identical.
+    if (roundPolicy.maxRounds > 1) {
+      return runMultiRoundSearch(
+        {
+          llmAdapter,
+          webSearchExecutor,
+          modelInputBuilder,
+          searchLlmProviderId,
+          searchLlmModel,
+          providerFamily,
+          roundPolicy,
+          phaseObserver: config.phaseObserver,
+        },
+        input,
+      )
     }
 
-    let phase1Built: Awaited<ReturnType<ModelInputBuilder['build']>>
-    try {
-      phase1Built = await modelInputBuilder.build(phase1BuildInput)
-    } catch (error) {
+    // Count every LLM complete() invocation scheduled (forced->auto attempts and
+    // late-abandoned calls included — provider work was launched before the await).
+    let llmCallCount = 0
+    const countingLlmAdapter = {
+      ...llmAdapter,
+      complete: async (request: LLMRequest) => {
+        llmCallCount += 1
+        return llmAdapter.complete(request)
+      },
+    }
+
+    // ─── Phase 1: Tool Call (function_calling mode) ──────────────────────────────
+    const queryPhase = await runQueryPhase(
+      { llmAdapter: countingLlmAdapter, modelInputBuilder, searchLlmModel },
+      { input, providerFamily },
+    )
+    if (!queryPhase.ok) {
       return {
         success: false,
-        errorCode: 'MODEL_UNAVAILABLE',
-        message: error instanceof Error ? error.message : 'Failed to build LLM request',
+        errorCode: queryPhase.errorCode,
+        message: queryPhase.message,
       }
     }
 
-    cachedSegmentAHash = phase1Built.segmentHashes.segmentA
+    cachedSegmentAHash = queryPhase.segmentAHash
 
-    const tools = extractToolsForRequest(phase1BuildInput)
+    config.phaseObserver?.({ phase: 'phase1', query: queryPhase.searchQuery, querySource: queryPhase.querySource })
 
-    // Phase 1 strategy:
-    // 1) Prefer forced web_search tool_choice (when provider supports it)
-    // 2) Retry with toolChoice auto if forced request fails (some providers reject forced)
-    // 3) If still no toolCalls, fall back to searching with input.query
-    //    (caller already planned the query via SearchQueryPlanner)
-    const forcedToolChoice = { type: 'function' as const, function: { name: 'web_search' } }
-
-    type Phase1Response = {
-      id: string
-      model: string
-      content: string
-      toolCalls?: Array<{
-        id: string
-        type: 'function'
-        function: { name: string; arguments: string }
-      }>
-      finishReason: string
-    }
-
-    async function completePhase1(
-      toolChoice: LLMRequest['toolChoice'],
-    ): Promise<{ ok: true; response: Phase1Response } | { ok: false; message: string }> {
-      const request: LLMRequest = {
-        model: searchLlmModel,
-        messages: phase1Built.messages,
-        tools,
-        toolChoice,
-      }
-      try {
-        const result = await llmAdapter.complete(request)
-        if (!result.success || !result.response) {
-          return { ok: false, message: result.error?.message || 'Model request failed' }
-        }
-        return { ok: true, response: result.response }
-      } catch (error) {
-        return {
-          ok: false,
-          message: error instanceof Error ? error.message : 'Model unavailable',
-        }
-      }
-    }
-
-    let phase1Response: Phase1Response | undefined
-    let phase1Error: string | undefined
-
-    const forcedAttempt = await completePhase1(forcedToolChoice)
-    if (forcedAttempt.ok) {
-      phase1Response = forcedAttempt.response
-    } else {
-      phase1Error = forcedAttempt.message
-      const autoAttempt = await completePhase1('auto')
-      if (autoAttempt.ok) {
-        phase1Response = autoAttempt.response
-      } else {
-        phase1Error = autoAttempt.message
-      }
-    }
-
-    let searchQuery: string
-    let querySource: 'llm_tool_call' | 'input_fallback' = 'input_fallback'
-
-    if (phase1Response?.toolCalls && phase1Response.toolCalls.length > 0) {
-      const toolCall = phase1Response.toolCalls[0]
-      if (toolCall.function.name !== 'web_search') {
-        return {
-          success: false,
-          errorCode: 'INVALID_TOOL_CALL',
-          message: `Model called invalid tool: ${toolCall.function.name}`,
-        }
-      }
-      try {
-        const args = JSON.parse(toolCall.function.arguments) as { query?: unknown }
-        if (typeof args.query !== 'string' || args.query.trim().length === 0) {
-          return {
-            success: false,
-            errorCode: 'INVALID_TOOL_CALL',
-            message: 'Invalid web_search arguments: missing or empty query',
-          }
-        }
-        searchQuery = args.query.trim()
-        querySource = 'llm_tool_call'
-      } catch {
-        return {
-          success: false,
-          errorCode: 'INVALID_TOOL_CALL',
-          message: 'Invalid web_search arguments: failed to parse JSON',
-        }
-      }
-    } else {
-      const fallbackQuery = input.query.trim()
-      if (fallbackQuery.length === 0) {
-        return {
-          success: false,
-          errorCode: phase1Response ? 'NO_TOOL_CALL' : 'MODEL_UNAVAILABLE',
-          message: phase1Response
-            ? 'Model did not produce a tool call and input query is empty'
-            : phase1Error || 'Model request failed',
-        }
-      }
-      searchQuery = fallbackQuery
-      querySource = 'input_fallback'
-    }
-
-    void querySource
-
-    config.phaseObserver?.({ phase: 'phase1', query: searchQuery, querySource })
-
-    const toolResult = await webSearchExecutor({ query: searchQuery })
+    const toolResult = await webSearchExecutor({ query: queryPhase.searchQuery })
 
     config.phaseObserver?.({ phase: 'backend_search' })
 
     // ─── Phase 2: Answer Generation (structured_json mode) ────────────────────────
-    const toolResultContext = buildToolResultContext(toolResult, searchQuery)
-
-    const phase2BuildInput = {
-      mode: 'structured_json' as const,
-      agentType: 'subagent' as const,
-      agentProfile: 'search',
-      providerFamily,
-      currentUserMessage: input.query,
-      currentDate: new Date().toISOString(),
-      sessionId: input.sessionId,
-      outputContract: 'output:search-evidence.schema',
-      contextBundle: {
-        orderedItems: toolResultContext,
+    const answerResult = await runAnswerPhase(
+      { llmAdapter: countingLlmAdapter, modelInputBuilder, searchLlmModel, phaseObserver: config.phaseObserver },
+      {
+        input,
+        providerFamily,
+        searchLlmProviderId,
+        toolResult,
+        searchQuery: queryPhase.searchQuery,
+        cachedSegmentAHash,
+        startTime,
       },
-    }
+    )
 
-    let phase2Built
-    try {
-      phase2Built = await modelInputBuilder.build(phase2BuildInput)
-    } catch {
-      return {
-        success: true,
-        answer: 'Search completed but answer generation failed.',
-        toolResult,
-        metadata: {
-          providerId: searchLlmProviderId,
-          model: searchLlmModel,
-          querySource: 'search_subagent',
-          durationMs: Date.now() - startTime,
-          segmentAHash: cachedSegmentAHash,
-        },
-      }
-    }
-
-    config.phaseObserver?.({ phase: 'phase2' })
-
-    const segmentAMatched = phase2Built.segmentHashes.segmentA === cachedSegmentAHash
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[SearchSubagent] Segment A cache check:', {
-        phase1SegmentA: cachedSegmentAHash?.substring(0, 8),
-        phase2SegmentA: phase2Built.segmentHashes.segmentA.substring(0, 8),
-        matched: segmentAMatched,
-      })
-    }
-
-    const answerRequest: LLMRequest = {
-      model: searchLlmModel,
-      messages: phase2Built.messages,
-    }
-
-    let answerResult
-    try {
-      answerResult = await llmAdapter.complete(answerRequest)
-    } catch {
-      return {
-        success: true,
-        answer: 'Search completed but answer generation failed.',
-        toolResult,
-        metadata: {
-          providerId: searchLlmProviderId,
-          model: searchLlmModel,
-          querySource: 'search_subagent',
-          durationMs: Date.now() - startTime,
-          segmentAHash: cachedSegmentAHash,
-        },
-      }
-    }
-
-    const answer =
-      answerResult.success && answerResult.response
-        ? answerResult.response.content
-        : 'Search completed but answer generation failed.'
-
+    // Default single-round execution counters. stopReason/budgetExhausted stay
+    // absent here — they are only emitted by multi-round executions (todo 8).
     return {
-      success: true,
-      answer,
-      toolResult,
+      ...answerResult,
       metadata: {
-        providerId: searchLlmProviderId,
-        model: searchLlmModel,
-        querySource: 'search_subagent',
-        durationMs: Date.now() - startTime,
-        segmentAHash: cachedSegmentAHash,
+        ...answerResult.metadata,
+        executedQueries: [queryPhase.searchQuery],
+        roundCount: 1,
+        replanCount: 0,
+        searchCallCount: 1,
+        llmCallCount,
       },
     }
   }
 
   return {
     execute,
+    roundPolicy,
   }
 }
