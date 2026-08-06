@@ -3,11 +3,13 @@ import type {
   SearchSubagentInput,
   SearchSubagentResult,
   SearchSubagentSuccessResult,
+  SearchSubagentExecutionMetadata,
 } from './search-subagent.js'
 import type { WebSearchResultItem } from './types.js'
 import type {
   SearchQueryPlan,
   SearchIntent,
+  SearchPlanHints,
   ExtractedFact,
   SearchWarning,
   SearchSubagentToolResult,
@@ -203,6 +205,13 @@ async function runSearchChildSession(
 
   let launch
   try {
+    const searchPlanHints: SearchPlanHints = {
+      originalQuestion: plan.originalQuestion,
+      intent: plan.intent,
+      freshness: plan.requiresFreshness,
+      missingCriticalContext: plan.missingCriticalContext,
+      ...(plan.locale !== undefined ? { locale: plan.locale } : {}),
+    }
     launch = runtime.launchTask({
       parentContext,
       taskSpec: {
@@ -215,6 +224,7 @@ async function runSearchChildSession(
         timeoutMs: remainingMs,
         prompt:
           'You are a search assistant. Search the web for the given question and synthesize a concise answer. Only the web_search tool is available.',
+        searchPlanHints,
       },
       depth,
       launchesInParentTurn: launches,
@@ -297,7 +307,7 @@ function buildSearchToolResult(
   const cropped = selectSearchResults(sorted)
   const extractedFacts = deps.resultNormalizer.extractFacts(cropped)
   const warnings = checkFreshnessWarning(plan, cropped)
-  const metadata = buildSearchMetadata(durationMs, cropped, extractedFacts, warnings, plan)
+  const metadata = buildSearchMetadata(durationMs, cropped, extractedFacts, warnings, plan, searchResult.metadata)
   if (taskId !== undefined) metadata.taskId = taskId
 
   return createSuccessResult<SearchSubagentToolResult>(
@@ -332,16 +342,34 @@ function buildSearchMetadata(
   facts: readonly ExtractedFact[],
   warnings: readonly SearchWarning[],
   plan: SearchQueryPlan,
+  internalExecution?: SearchSubagentExecutionMetadata,
 ): SearchSubagentMetadata {
-  return {
+  const metadata: SearchSubagentMetadata = {
     durationMs,
     resultCount: results.length,
     uniqueSourceCount: countUniqueSources(results),
     rankingVersion: SEARCH_RESULT_RANKING_VERSION,
     sourceQualityVersion: SOURCE_QUALITY_SCORING_VERSION,
     evidenceSufficiency: determineEvidenceSufficiency(results, facts, warnings, plan),
-    searchCallCount: 1,
+    searchCallCount: internalExecution?.searchCallCount ?? 1,
   }
+
+  // Multi-round executions only: the default one-round path never emits
+  // stopReason/budgetExhausted and stays at roundCount 1, so copying is gated
+  // on a real multi-round run. executedQueries stays internal-only.
+  const isMultiRound =
+    (internalExecution?.roundCount ?? 1) > 1 ||
+    internalExecution?.stopReason !== undefined ||
+    internalExecution?.budgetExhausted === true
+  if (!isMultiRound) return metadata
+
+  if (internalExecution?.roundCount !== undefined) metadata.roundCount = internalExecution.roundCount
+  if (internalExecution?.replanCount !== undefined) metadata.replanCount = internalExecution.replanCount
+  if (internalExecution?.llmCallCount !== undefined) metadata.llmCallCount = internalExecution.llmCallCount
+  if (internalExecution?.stopReason !== undefined) metadata.stopReason = internalExecution.stopReason
+  if (internalExecution?.budgetExhausted === true) metadata.budgetExhausted = true
+
+  return metadata
 }
 
 export { DefaultSearchQueryPlanner }

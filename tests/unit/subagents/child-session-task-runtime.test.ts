@@ -45,7 +45,11 @@ import {
   SUBAGENT_DEPTH_EXCEEDED,
   SUBAGENT_LAUNCH_LIMIT_EXCEEDED,
   SUBAGENT_PROFILE_UNKNOWN,
+  SEARCH_CHILD_PROFILE_ID,
 } from '../../../src/subagents/child-task-policy.js'
+import type { SearchChildRunInput } from '../../../src/search/search-child-runner.js'
+import type { SearchPlanHints } from '../../../src/search/search-subagent-types.js'
+import type { SubagentResult } from '../../../src/subagents/types.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -135,6 +139,26 @@ class FakeKernelAdapter implements KernelAdapter {
   }
 
   get lastCapture() {
+    return this.captured[this.captured.length - 1]
+  }
+}
+
+class FakeSearchRunner {
+  captured: SearchChildRunInput[] = []
+
+  run = async (input: SearchChildRunInput): Promise<SubagentResult> => {
+    this.captured.push(input)
+    return {
+      status: 'completed',
+      response: `Search answer for ${input.query}`,
+      toolCalls: [{ toolCallId: 'search-1', toolName: 'web_search', params: { query: input.query } }],
+      iterationsUsed: 2,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    }
+  }
+
+  get lastInput(): SearchChildRunInput | undefined {
     return this.captured[this.captured.length - 1]
   }
 }
@@ -231,6 +255,8 @@ function createHarness() {
     },
   ])
 
+  const searchRunner = new FakeSearchRunner()
+
   const runtime = createChildSessionTaskRuntime({
     sessionStore,
     runStore,
@@ -241,6 +267,7 @@ function createHarness() {
     envelopeRegistry,
     defaultMaxIterations: 5,
     defaultTimeoutMs: 30000,
+    searchRunner: searchRunner.run,
   })
 
   return {
@@ -252,6 +279,7 @@ function createHarness() {
     toolRegistry,
     envelopeRegistry,
     kernel,
+    searchRunner,
     runtime,
   }
 }
@@ -672,5 +700,181 @@ describe('ChildSessionTaskRuntime — buildChildContextBundle pure assembly', ()
     expect(text).toContain('wd_test')
     expect(text).toContain('document_processor')
     expect(text).not.toContain(PARENT_TRANSCRIPT_SENTINEL)
+  })
+})
+
+describe('ChildSessionTaskRuntime — search plan hints contract', () => {
+  let h: ReturnType<typeof createHarness>
+
+  const HINTS: SearchPlanHints = {
+    originalQuestion: 'what is the weather in Tokyo today',
+    intent: 'weather',
+    freshness: true,
+    locale: 'en-US',
+    missingCriticalContext: ['location'],
+  }
+
+  beforeEach(() => {
+    h = createHarness()
+  })
+
+  function makeSearchChildSpec(overrides?: Partial<ChildTaskSpec>): ChildTaskSpec {
+    return {
+      objective: 'what is the weather in Tokyo today',
+      profileId: SEARCH_CHILD_PROFILE_ID,
+      tools: ['web_search'],
+      prompt: 'Search assistant platform instruction.',
+      parentSessionId: 'sess_parent',
+      launchMode: 'foreground',
+      ...overrides,
+    }
+  }
+
+  function searchLaunchInput(overrides?: Partial<ChildTaskLaunchInput>): ChildTaskLaunchInput {
+    return {
+      parentContext: makeParentContext('user_A', 'sess_parent'),
+      taskSpec: makeSearchChildSpec({ searchPlanHints: HINTS }),
+      depth: 1,
+      launchesInParentTurn: 0,
+      ...overrides,
+    }
+  }
+
+  function injectSearchRunRow(subagentRunId: string, childSessionId: string, taskSpecJson: string): void {
+    h.runStore.create({
+      subagentRunId,
+      userId: 'user_A',
+      sessionId: childSessionId,
+      childSessionId,
+      taskId: childSessionId,
+      agentType: 'subagent',
+      agentProfile: SEARCH_CHILD_PROFILE_ID,
+      status: 'queued',
+      taskSpecJson,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  it('persists searchPlanHints verbatim in task_spec_json for a fresh search launch', () => {
+    const launch = h.runtime.launchTask(searchLaunchInput())
+
+    const run = h.runStore.getById(launch.subagentRunId)!
+    const spec = JSON.parse(run.taskSpecJson) as { searchPlanHints?: SearchPlanHints }
+    expect(spec.searchPlanHints).toEqual(HINTS)
+  })
+
+  it('hands normalized hints to the search runner for a fresh search child', async () => {
+    const launch = h.runtime.launchTask(searchLaunchInput())
+    const result = await h.runtime.executeRun(launch.subagentRunId)
+
+    expect(result.status).toBe('completed')
+    expect(h.searchRunner.captured).toHaveLength(1)
+    expect(h.searchRunner.lastInput!.query).toBe('what is the weather in Tokyo today')
+    expect(h.searchRunner.lastInput!.searchPlanHints).toEqual(HINTS)
+  })
+
+  it('old task specs without hints fall back to objective + general intent at the runner boundary', async () => {
+    const launch = h.runtime.launchTask(searchLaunchInput({ taskSpec: makeSearchChildSpec() }))
+    const result = await h.runtime.executeRun(launch.subagentRunId)
+
+    expect(result.status).toBe('completed')
+    const hints = h.searchRunner.lastInput!.searchPlanHints
+    expect(hints).toEqual({ originalQuestion: 'what is the weather in Tokyo today', intent: 'general' })
+    expect(hints).not.toHaveProperty('freshness')
+    expect(hints).not.toHaveProperty('locale')
+    expect(hints).not.toHaveProperty('missingCriticalContext')
+  })
+
+  it('malformed persisted hints fall back safely field-by-field with no throw', async () => {
+    const child = h.sessionStore.createChildSession({
+      sessionId: 'sess_malformed_search',
+      userId: 'user_A',
+      parentSessionId: 'sess_parent',
+      agentProfile: SEARCH_CHILD_PROFILE_ID,
+      taskId: 'sess_malformed_search',
+      launchMode: 'foreground',
+    })
+    injectSearchRunRow(
+      'subagent-malformed-1',
+      child.sessionId,
+      JSON.stringify({
+        objective: 'persisted planned query',
+        profileId: SEARCH_CHILD_PROFILE_ID,
+        tools: ['web_search'],
+        parentSessionId: 'sess_parent',
+        launchMode: 'foreground',
+        searchPlanHints: {
+          originalQuestion: 42,
+          intent: 'banana',
+          freshness: 'yes',
+          locale: 7,
+          missingCriticalContext: 'nope',
+        },
+      }),
+    )
+
+    const result = await h.runtime.executeRun('subagent-malformed-1')
+    expect(result.status).toBe('completed')
+    expect(h.searchRunner.captured).toHaveLength(1)
+    expect(h.searchRunner.lastInput!.searchPlanHints).toEqual({
+      originalQuestion: 'persisted planned query',
+      intent: 'general',
+    })
+  })
+
+  it('taskId resume works with and without hints (each attempt carries its own spec)', async () => {
+    const first = h.runtime.launchTask(searchLaunchInput())
+    await h.runtime.executeRun(first.subagentRunId)
+
+    const resumedWith = h.runtime.launchTask(
+      searchLaunchInput({
+        launchesInParentTurn: 1,
+        taskId: first.taskId,
+        taskSpec: makeSearchChildSpec({
+          objective: 'second query',
+          searchPlanHints: { originalQuestion: 'second query', intent: 'news' },
+        }),
+      }),
+    )
+    await h.runtime.executeRun(resumedWith.subagentRunId)
+    expect(resumedWith.isResume).toBe(true)
+    const resumedRun = h.runStore.getById(resumedWith.subagentRunId)!
+    expect(JSON.parse(resumedRun.taskSpecJson).searchPlanHints).toEqual({
+      originalQuestion: 'second query',
+      intent: 'news',
+    })
+    expect(h.searchRunner.lastInput!.searchPlanHints).toEqual({
+      originalQuestion: 'second query',
+      intent: 'news',
+    })
+
+    const resumedPlain = h.runtime.launchTask(
+      searchLaunchInput({
+        launchesInParentTurn: 2,
+        taskId: first.taskId,
+        taskSpec: makeSearchChildSpec({ objective: 'third query' }),
+      }),
+    )
+    await h.runtime.executeRun(resumedPlain.subagentRunId)
+    expect(h.searchRunner.lastInput!.searchPlanHints).toEqual({
+      originalQuestion: 'third query',
+      intent: 'general',
+    })
+  })
+
+  it('generic (non-search) child tasks ignore searchPlanHints entirely', async () => {
+    const input: ChildTaskLaunchInput = {
+      parentContext: makeParentContext('user_A', 'sess_parent'),
+      taskSpec: makeChildSpec({ searchPlanHints: HINTS }),
+      depth: 1,
+      launchesInParentTurn: 0,
+    }
+    const launch = h.runtime.launchTask(input)
+    const result = await h.runtime.executeRun(launch.subagentRunId)
+
+    expect(result.status).toBe('completed')
+    expect(h.kernel.captured).toHaveLength(1)
+    expect(h.searchRunner.captured).toHaveLength(0)
   })
 })

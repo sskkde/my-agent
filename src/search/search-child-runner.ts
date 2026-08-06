@@ -28,8 +28,9 @@
 import type { SubagentResult } from '../subagents/types.js'
 import type { SubagentTranscriptStore } from '../storage/subagent-transcript-store.js'
 import { sanitizeErrorMessage } from '../tools/error-sanitizer.js'
-import type { SearchSubagent, SearchSubagentSuccessResult } from './search-subagent.js'
+import type { SearchSubagent, SearchSubagentInput, SearchSubagentSuccessResult } from './search-subagent.js'
 import type { SearchPhaseObservation } from './search-subagent.js'
+import type { SearchPlanHints } from './search-subagent-types.js'
 import type { WebSearchResult } from './types.js'
 
 export const SEARCH_TIMEOUT = 'SEARCH_TIMEOUT'
@@ -70,19 +71,24 @@ export function createSearchPhaseRecorder(transcriptStore: SubagentTranscriptSto
 
   const record: SearchChildRecorder['record'] = (eventType, content) => {
     if (!active) return
-    transcriptStore.append(
-      {
-        id: `transcript-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        subagentRunId: active.subagentRunId,
-        eventType,
-        contentJson: JSON.stringify(content),
-        createdAt: new Date().toISOString(),
-        tenantId: active.tenantId,
-        sessionId: active.childSessionId,
-        userId: active.userId,
-      },
-      active.tenantId,
-    )
+    try {
+      transcriptStore.append(
+        {
+          id: `transcript-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          subagentRunId: active.subagentRunId,
+          eventType,
+          contentJson: JSON.stringify(content),
+          createdAt: new Date().toISOString(),
+          tenantId: active.tenantId,
+          sessionId: active.childSessionId,
+          userId: active.userId,
+        },
+        active.tenantId,
+      )
+    } catch {
+      // Best-effort timeline persistence — an observability failure must not
+      // fail the child run (project anti-pattern #11).
+    }
   }
 
   return {
@@ -92,6 +98,12 @@ export function createSearchPhaseRecorder(transcriptStore: SubagentTranscriptSto
         phase: observation.phase,
         query: observation.query,
         querySource: observation.querySource,
+        ...(observation.round !== undefined ? { round: observation.round } : {}),
+        ...(observation.stopReason !== undefined ? { stopReason: observation.stopReason } : {}),
+        ...(observation.replanReason !== undefined ? { replanReason: observation.replanReason } : {}),
+        ...(observation.roundCount !== undefined ? { roundCount: observation.roundCount } : {}),
+        ...(observation.searchCallCount !== undefined ? { searchCallCount: observation.searchCallCount } : {}),
+        ...(observation.llmCallCount !== undefined ? { llmCallCount: observation.llmCallCount } : {}),
       })
     },
     record,
@@ -115,6 +127,8 @@ export interface SearchChildRunInput {
   tenantId: string
   /** The effective search query (the child task objective). */
   query: string
+  /** Typed plan hints normalized at the persisted-task boundary (absent for legacy specs). */
+  searchPlanHints?: SearchPlanHints
   /** Optional timeout budget - the runner resolves SEARCH_TIMEOUT when exceeded. */
   timeoutMs?: number
   signal?: AbortSignal
@@ -158,11 +172,15 @@ export function createSearchChildSessionRunner(deps: SearchChildRunnerDeps): Sea
 
       let searchResult
       try {
-        searchResult = await withRunTimeout(
-          searchSubagent.execute({ query, userId, sessionId: childSessionId }),
-          input.timeoutMs,
-          input.signal,
-        )
+        const executeInput: SearchSubagentInput & { searchPlanHints?: SearchPlanHints } = {
+          query,
+          userId,
+          sessionId: childSessionId,
+          ...(input.searchPlanHints !== undefined ? { searchPlanHints: input.searchPlanHints } : {}),
+          ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
+          ...(input.signal !== undefined ? { signal: input.signal } : {}),
+        }
+        searchResult = await withRunTimeout(searchSubagent.execute(executeInput), input.timeoutMs, input.signal)
       } catch (error) {
         if (input.signal?.aborted) return cancelledResult()
         if (error instanceof SearchRunTimeoutError) {
@@ -195,11 +213,21 @@ export function createSearchChildSessionRunner(deps: SearchChildRunnerDeps): Sea
       }
 
       const completedAt = new Date().toISOString()
+      const executedQueries = searchResult.metadata.executedQueries
+      const toolCalls: SubagentResult['toolCalls'] =
+        executedQueries && executedQueries.length > 0
+          ? executedQueries.map((executedQuery, index) => ({
+              toolCallId: `search-${Date.now()}-${index + 1}`,
+              toolName: 'web_search',
+              params: { query: executedQuery },
+            }))
+          : [{ toolCallId: `search-${Date.now()}`, toolName: 'web_search', params: { query } }]
+      const iterationsUsed = searchResult.metadata.llmCallCount ?? 2
       const result: SubagentResult = {
         status: 'completed',
         response: searchResult.answer,
-        toolCalls: [{ toolCallId: `search-${Date.now()}`, toolName: 'web_search', params: { query } }],
-        iterationsUsed: 2,
+        toolCalls,
+        iterationsUsed,
         startedAt,
         completedAt,
         structuredResult: searchResult,
@@ -209,6 +237,13 @@ export function createSearchChildSessionRunner(deps: SearchChildRunnerDeps): Sea
         providerId: searchResult.metadata.providerId,
         model: searchResult.metadata.model,
         querySource: searchResult.metadata.querySource,
+        ...(searchResult.metadata.roundCount !== undefined ? { roundCount: searchResult.metadata.roundCount } : {}),
+        ...(searchResult.metadata.searchCallCount !== undefined
+          ? { searchCallCount: searchResult.metadata.searchCallCount }
+          : {}),
+        ...(searchResult.metadata.llmCallCount !== undefined
+          ? { llmCallCount: searchResult.metadata.llmCallCount }
+          : {}),
       })
       return result
     } finally {

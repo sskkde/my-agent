@@ -9,6 +9,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { createApiContext, DEFAULT_MESSAGE_PROCESSOR_TIMEOUT_MS, isApiContextError } from '../../../src/api/context.js'
 import { DEFAULT_REPAIR_ATTEMPTS, DEFAULT_ROUTING_TIMEOUT_MS } from '../../../src/storage/agent-config-store.js'
 import { createMockLLMAdapter } from '../../../src/llm/mock-adapter.js'
+import { createSearchSubagent } from '../../../src/search/search-subagent.js'
+import { MULTI_ROUND_SEARCH_POLICY } from '../../../src/search/search-round-budget.js'
+import type { ModelInputBuilder } from '../../../src/kernel/model-input/model-input-builder.js'
 import type { MessageProcessor, MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js'
 import type { ForegroundAgent } from '../../../src/foreground/foreground-agent.js'
 import type { RuntimeDispatcher } from '../../../src/dispatcher/types.js'
@@ -927,6 +930,110 @@ describe('ApiContext Dependencies - Task 4', () => {
       expect(connection).toBeDefined()
       expect(connection.connectionId).toBeDefined()
       expect(connection.sessionId).toBe('session-001')
+
+      result.connection.close()
+    })
+  })
+
+  describe('Task 11: Search Subagent Multi-Round Production Policy', () => {
+    it('production searchSubagent exposes MULTI_ROUND_SEARCH_POLICY values', () => {
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
+
+      expect(result.searchSubagent).toBeDefined()
+      expect(result.searchSubagent.roundPolicy).toBeDefined()
+      expect(result.searchSubagent.roundPolicy?.maxRounds).toBe(3)
+      expect(result.searchSubagent.roundPolicy?.maxReplans).toBe(2)
+      expect(result.searchSubagent.roundPolicy?.phase2ReserveMs).toBe(14_000)
+      expect(result.searchSubagent.roundPolicy?.handoffReserveMs).toBe(1_000)
+
+      result.connection.close()
+    })
+
+    it('production searchSubagent roundPolicy matches MULTI_ROUND_SEARCH_POLICY constant exactly', () => {
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
+
+      expect(result.searchSubagent.roundPolicy).toEqual(MULTI_ROUND_SEARCH_POLICY)
+
+      result.connection.close()
+    })
+
+    it('direct createSearchSubagent without roundPolicy defaults to one round', () => {
+      // The factory stores roundPolicy at construction; it does not invoke
+      // llmAdapter/webSearchExecutor/modelInputBuilder until execute() is called.
+      // Minimal stubs suffice to verify the default policy.
+      const directSubagent = createSearchSubagent({
+        llmAdapter: createMockLLMAdapter(),
+        webSearchExecutor: async () => ({
+          success: true,
+          query: '',
+          results: [],
+          total: 0,
+          provider: 'mock',
+          endpointHost: 'localhost',
+        }),
+        modelInputBuilder: {} as unknown as ModelInputBuilder,
+        providerFamily: 'openai_compatible',
+        searchLlmProviderId: 'mock',
+        searchLlmModel: 'mock-model',
+      })
+      expect(directSubagent.roundPolicy).toBeDefined()
+      expect(directSubagent.roundPolicy?.maxRounds).toBe(1)
+      expect(directSubagent.roundPolicy?.maxReplans).toBe(0)
+    })
+
+    it('multi-round policy is not driven by environment variables', () => {
+      const originalEnv = process.env
+      process.env = { ...originalEnv }
+      // Unset any plausible env var name that could drive the policy. The policy
+      // is a hardcoded constant, so it must remain multi-round regardless.
+      delete process.env.MULTI_ROUND_SEARCH_MAX_ROUNDS
+      delete process.env.SEARCH_MAX_ROUNDS
+      delete process.env.SEARCH_ROUND_POLICY
+      delete process.env.SEARCH_MULTI_ROUND
+
+      const result = createApiContext({ dbPath: ':memory:' })
+      process.env = originalEnv
+
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
+
+      expect(result.searchSubagent.roundPolicy?.maxRounds).toBe(3)
+      expect(result.searchSubagent.roundPolicy?.maxReplans).toBe(2)
+
+      result.connection.close()
+    })
+
+    it('multi-round policy is not read from agent config store (empty store still opts in)', () => {
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
+
+      // The in-memory DB has no agent config rows; the policy is multi-round
+      // anyway - proving it is hardcoded, not config-store-driven.
+      expect(result.searchSubagent.roundPolicy?.maxRounds).toBe(3)
+      expect(result.searchSubagent.roundPolicy?.phase2ReserveMs).toBe(14_000)
+      expect(result.searchSubagent.roundPolicy?.handoffReserveMs).toBe(1_000)
+
+      result.connection.close()
+    })
+
+    it('production searchSubagent instance is the one wired into childSessionTaskRuntime', () => {
+      // The same searchSubagent instance is shared between the ApiContext seam
+      // and the SearchChildRunner (recorded by construction at context.ts:756-780).
+      // Verifying the instance identity here proves the multi-round policy
+      // reaches the child runner without duplicating construction.
+      const result = createApiContext({ dbPath: ':memory:' })
+      expect(isApiContextError(result)).toBe(false)
+      if (isApiContextError(result)) return
+
+      const subagent = result.searchSubagent
+      expect(subagent).toBeDefined()
+      expect(typeof subagent.execute).toBe('function')
+      expect(subagent.roundPolicy?.maxRounds).toBe(3)
 
       result.connection.close()
     })

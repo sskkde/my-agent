@@ -138,6 +138,8 @@ import { createCloakBrowserProvider, type CloakBrowserProvider } from '../search
 import { BrowserSessionManager, toBrowserSessionId } from '../search/browser/browser-session-manager.js'
 import { BrowserFrameStream } from '../search/browser/browser-frame-stream.js'
 import { createSearchSubagent } from '../search/search-subagent.js'
+import { MULTI_ROUND_SEARCH_POLICY } from '../search/search-round-budget.js'
+import type { SearchSubagent } from '../search/search-subagent.js'
 import { executeWebSearch } from '../tools/builtins/web-search.js'
 import {
   registerAllForegroundTools,
@@ -231,6 +233,13 @@ export interface ApiContext {
   webSearchBrowserProvider?: CloakBrowserProvider
   browserSessionManager?: BrowserSessionManager
   browserFrameStream?: BrowserFrameStream
+  /**
+   * Production search subagent constructed with `MULTI_ROUND_SEARCH_POLICY`
+   * (Todo 11). The same instance is shared with `SearchChildRunner` and the
+   * `searchSubagentDeps` tool wiring. Direct `createSearchSubagent` calls
+   * without `roundPolicy` keep the default one-round policy.
+   */
+  searchSubagent: SearchSubagent
 }
 
 export interface ApiContextOptions {
@@ -773,6 +782,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       resolvedSearchLlm?.model ??
       '',
     phaseObserver: searchPhaseRecorder.observe,
+    roundPolicy: MULTI_ROUND_SEARCH_POLICY,
   })
   const searchChildRunner = createSearchChildSessionRunner({
     searchSubagent,
@@ -1217,6 +1227,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     webSearchBrowserProvider,
     browserSessionManager,
     browserFrameStream,
+    searchSubagent,
   }
 }
 

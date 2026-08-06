@@ -27,7 +27,11 @@ import {
   type LaunchSubagentDeps,
 } from '../../../src/foreground/tools/subagent-launch-tool.js'
 import { SEARCH_SUBAGENT_TOOL_ID, type SearchSubagentToolDeps } from '../../../src/search/search-subagent-tool.js'
-import { assertSearchScope } from '../../../src/search/search-subagent-types.js'
+import {
+  assertSearchScope,
+  parseSearchPlanHints,
+  type SearchPlanHints,
+} from '../../../src/search/search-subagent-types.js'
 import { buildForegroundToolProjection } from '../../../src/foreground/tool-projection-mapper.js'
 import { buildObservationSummary } from '../../../src/kernel/observation-summary-builder.js'
 import { INLINE_THRESHOLD } from '../../../src/tools/tool-result-reference.js'
@@ -518,5 +522,79 @@ describe('child-task contract: bounded-result policy', () => {
     const first = applyBoundedResultPolicy(input)
     const second = applyBoundedResultPolicy(input)
     expect(second).toEqual(first)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 8. Search plan hints — typed child-task contract with backward-compatible parsing
+// ---------------------------------------------------------------------------
+describe('child-task contract: search plan hints', () => {
+  it('round-trips a full typed hints payload unchanged', () => {
+    const hints: SearchPlanHints = {
+      originalQuestion: 'weather in Tokyo',
+      intent: 'weather',
+      freshness: true,
+      locale: 'en-US',
+      missingCriticalContext: ['location'],
+    }
+    expect(parseSearchPlanHints(hints, 'objective-fallback')).toEqual(hints)
+  })
+
+  it('falls back to objective as originalQuestion and general intent when hints are absent', () => {
+    const parsed = parseSearchPlanHints(undefined, 'planned query text')
+    expect(parsed).toEqual({ originalQuestion: 'planned query text', intent: 'general' })
+    // no optional fields leaked by the fallback
+    expect(parsed).not.toHaveProperty('freshness')
+    expect(parsed).not.toHaveProperty('locale')
+    expect(parsed).not.toHaveProperty('missingCriticalContext')
+  })
+
+  it('treats null and non-object payloads as missing hints', () => {
+    expect(parseSearchPlanHints(null, 'q1')).toEqual({ originalQuestion: 'q1', intent: 'general' })
+    expect(parseSearchPlanHints('weather', 'q1')).toEqual({ originalQuestion: 'q1', intent: 'general' })
+    expect(parseSearchPlanHints(42, 'q1')).toEqual({ originalQuestion: 'q1', intent: 'general' })
+  })
+
+  it('falls back field-by-field for malformed persisted values', () => {
+    const parsed = parseSearchPlanHints(
+      {
+        originalQuestion: 42,
+        intent: 'banana',
+        freshness: 'yes',
+        locale: 7,
+        missingCriticalContext: 'nope',
+      },
+      'objective text',
+    )
+    expect(parsed).toEqual({ originalQuestion: 'objective text', intent: 'general' })
+  })
+
+  it('keeps valid fields and repairs only the malformed ones', () => {
+    const parsed = parseSearchPlanHints(
+      {
+        originalQuestion: '',
+        intent: 'news',
+        freshness: false,
+        locale: '',
+        missingCriticalContext: [42, 'location', true],
+      },
+      'objective text',
+    )
+    expect(parsed).toEqual({
+      originalQuestion: 'objective text',
+      intent: 'news',
+      freshness: false,
+      missingCriticalContext: ['location'],
+    })
+  })
+
+  it('accepts every SearchIntent literal', () => {
+    for (const intent of ['weather', 'news', 'technical', 'product', 'local', 'general'] as const) {
+      expect(parseSearchPlanHints({ intent }, 'q').intent).toBe(intent)
+    }
+  })
+
+  it('defaults objective to an empty string when not supplied', () => {
+    expect(parseSearchPlanHints(undefined)).toEqual({ originalQuestion: '', intent: 'general' })
   })
 })

@@ -53,6 +53,7 @@ import type { ToolRegistry } from '../tools/types.js'
 import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
 import type { KernelRunResult } from '../kernel/types.js'
 import type { SearchChildRunner } from '../search/search-child-runner.js'
+import { parseSearchPlanHints } from '../search/search-subagent-types.js'
 
 // ---------------------------------------------------------------------------
 // Typed runtime errors (rejection before execution)
@@ -663,6 +664,7 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
           userId: run.userId,
           tenantId: run.tenantId,
           query: run.taskSpec.objective,
+          searchPlanHints: parseSearchPlanHints(run.taskSpec.searchPlanHints, run.taskSpec.objective),
           timeoutMs,
           signal: this.buildRunSignal(subagentRunId, signal),
         })

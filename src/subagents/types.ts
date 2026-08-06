@@ -3,6 +3,7 @@ import type { KernelRunResult } from '../kernel/types.js'
 import type { SubagentRunStore } from '../storage/subagent-run-store.js'
 import type { SubagentTranscriptStore } from '../storage/subagent-transcript-store.js'
 import type { SubagentDefinition } from './registry.js'
+import type { SearchPlanHints } from '../search/search-subagent-types.js'
 
 export type SubagentRunState = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 
@@ -13,6 +14,13 @@ export interface SubagentTaskSpec {
   timeoutMs?: number
   /** Profile label (e.g. 'document_processor'), NOT a runtime boundary. See AgentType for lifecycle types. */
   agentType?: string
+  /**
+   * Typed search plan hints for search child tasks, persisted inside
+   * `task_spec_json`. Generic kernel adapter paths ignore the field entirely;
+   * only the specialized search runner consumes it (parsed back with
+   * backward-compatible fallback).
+   */
+  searchPlanHints?: SearchPlanHints
 }
 
 export interface SubagentResult {
