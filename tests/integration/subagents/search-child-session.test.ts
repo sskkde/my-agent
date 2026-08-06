@@ -1207,11 +1207,15 @@ describe('search_subagent runs inside a search child session (Todo 16)', () => {
         expect(functionCallingBuilds[0]!.contextBundle).toBeUndefined()
         const replanItems = functionCallingBuilds[1]!.contextBundle?.orderedItems ?? []
         expect(replanItems.map((item) => item.itemId)).toEqual([
+          'search-round-progress',
           'original-question',
           'prior-queries',
           'search-round-feedback',
           'top-results',
         ])
+        const roundProgress = replanItems.find((item) => item.itemId === 'search-round-progress')!.content
+        expect(roundProgress).toContain('Round 2 of 3')
+        expect(roundProgress).toContain('max replans remaining: 1')
         const priorQueries = replanItems.find((item) => item.itemId === 'prior-queries')!.content
         expect(priorQueries).toContain('tokyo weather today')
         const feedback = replanItems.find((item) => item.itemId === 'search-round-feedback')!.content

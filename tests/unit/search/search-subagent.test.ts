@@ -2516,7 +2516,13 @@ describe('SearchSubagent contract tests', () => {
       // Round 1 has no dynamic feedback; round 2 renders it in Segment D only.
       expect(round1Build.contextBundle).toBeUndefined()
       const replanItems = round2Build.contextBundle?.orderedItems?.map((item) => item.itemId) ?? []
-      expect(replanItems).toEqual(['original-question', 'prior-queries', 'search-round-feedback', 'top-results'])
+      expect(replanItems).toEqual([
+        'search-round-progress',
+        'original-question',
+        'prior-queries',
+        'search-round-feedback',
+        'top-results',
+      ])
     })
 
     it('a backend success:false is terminal and never blindly retries', async () => {
