@@ -658,7 +658,9 @@ describe('ApiContext Dependencies - Task 4', () => {
   describe('MessageProcessor Integration', () => {
     it('default processing path sends non-empty seven-layer model input to LLM', async () => {
       const llmAdapter = createMockLLMAdapter()
-      const completeSpy = vi.spyOn(llmAdapter, 'complete')
+      // Kernel prefers streaming when no tools are projected; the stream
+      // receives the same seven-layer request as complete().
+      const streamSpy = vi.spyOn(llmAdapter, 'stream')
 
       const result = createApiContext({
         dbPath: ':memory:',
@@ -685,9 +687,9 @@ describe('ApiContext Dependencies - Task 4', () => {
       })
 
       expect(output.success).toBe(true)
-      expect(completeSpy).toHaveBeenCalled()
+      expect(streamSpy).toHaveBeenCalled()
 
-      const request = completeSpy.mock.calls[0][0]
+      const request = streamSpy.mock.calls[0][0]
       expect(request.messages.length).toBeGreaterThan(0)
       expect(request.messages[0].role).toBe('system')
       expect(request.messages[0].content).toContain('Platform Base Template')
@@ -764,7 +766,9 @@ describe('ApiContext Dependencies - Task 4', () => {
 
       expect(plannerResult.plannerRunId).toBeDefined()
       expect(plannerResult.planId).toBeDefined()
-      expect(plannerResult.status).toBe('initializing')
+      // createPlannerRun bootstraps the run into PLANNING (INITIALIZING→PLANNING
+      // transition) so resumePlannerRun can be invoked immediately after create.
+      expect(plannerResult.status).toBe('planning')
 
       result.connection.close()
     })
