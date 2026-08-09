@@ -39,6 +39,8 @@ function createMockBackgroundRunStore(): BackgroundRunStore {
     linkChildTask: vi.fn(),
     saveNotification: vi.fn(),
     markNotificationDelivered: vi.fn(),
+    claimNotification: vi.fn(() => true),
+    unclaimNotification: vi.fn(),
     getPendingNotifications: vi.fn(() => []),
     getByUserAndStatus: vi.fn(() => []),
     getBySessionAndStatus: vi.fn(() => []),

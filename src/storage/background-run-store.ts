@@ -67,6 +67,12 @@ export interface BackgroundRunStore {
   ): void
   /** Mark a persisted notification as delivered to the parent turn. */
   markNotificationDelivered(backgroundRunId: string, deliveredAt: string): void
+  /**
+   * Atomically claim a pending notification (exactly-once per run): only the winning caller gets `true`.
+   */
+  claimNotification(backgroundRunId: string, claimedAt: string): boolean
+  /** Roll a claim back so the notification stays pending for collect or a later trigger. */
+  unclaimNotification(backgroundRunId: string): void
   /** Runs with a persisted, not-yet-delivered notification (optionally for one parent session). */
   getPendingNotifications(sessionId?: string): BackgroundRun[]
 }
@@ -462,6 +468,30 @@ class BackgroundRunStoreImpl implements BackgroundRunStore {
        SET notification_delivered_at = ?, updated_at = ?
        WHERE background_run_id = ?`,
       [deliveredAt, now, backgroundRunId],
+    )
+  }
+
+  claimNotification(backgroundRunId: string, claimedAt: string): boolean {
+    try {
+      this.connection.exec(
+        `UPDATE background_runs
+         SET notification_delivered_at = ?
+         WHERE background_run_id = ? AND notification_delivered_at IS NULL`,
+        [claimedAt, backgroundRunId],
+      )
+      const result = this.connection.query<{ changes: number }>('SELECT changes() as changes')
+      return (result[0]?.changes ?? 0) > 0
+    } catch {
+      return false
+    }
+  }
+
+  unclaimNotification(backgroundRunId: string): void {
+    this.connection.exec(
+      `UPDATE background_runs
+       SET notification_delivered_at = NULL
+       WHERE background_run_id = ?`,
+      [backgroundRunId],
     )
   }
 

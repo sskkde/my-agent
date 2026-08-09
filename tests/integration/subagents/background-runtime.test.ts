@@ -187,6 +187,20 @@ function createMockBackgroundRunStore(): MockBackgroundRunStore {
         run.updatedAt = new Date().toISOString()
       }
     }),
+    claimNotification: vi.fn((id, claimedAt) => {
+      const run = runs.get(id)
+      if (!run || run.notificationDeliveredAt !== undefined) return false
+      run.notificationDeliveredAt = claimedAt
+      run.updatedAt = new Date().toISOString()
+      return true
+    }),
+    unclaimNotification: vi.fn((id) => {
+      const run = runs.get(id)
+      if (run) {
+        run.notificationDeliveredAt = undefined
+        run.updatedAt = new Date().toISOString()
+      }
+    }),
     getPendingNotifications: vi.fn((sessionId?: string) =>
       Array.from(runs.values()).filter(
         (r) => r.notificationType && !r.notificationDeliveredAt && (!sessionId || r.sessionId === sessionId),
