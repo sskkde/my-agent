@@ -65,7 +65,13 @@ import { createDingTalkAdapter } from '../connectors/messaging/providers/dingtal
 import { createMockTransport } from '../connectors/messaging/mock-transport.js'
 import { createHttpMessagingTransport } from '../connectors/messaging/http-transport.js'
 import { createMessagingChannelBridge } from '../connectors/messaging/channel-bridge.js'
-import type { MessagingAdapter, MessagingProviderId, MessagingTransport, DeliveryTarget, OutboundTextMessage } from '../connectors/messaging/types.js'
+import type {
+  MessagingAdapter,
+  MessagingProviderId,
+  MessagingTransport,
+  DeliveryTarget,
+  OutboundTextMessage,
+} from '../connectors/messaging/types.js'
 
 const errorLogRedactor = createModelInputRedactor()
 
@@ -254,7 +260,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
         body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
       })
       if (!response.ok) throw new Error(`Feishu token failed: ${response.status}`)
-      const data = await response.json() as { tenant_access_token?: string }
+      const data = (await response.json()) as { tenant_access_token?: string }
       if (!data.tenant_access_token) throw new Error('Feishu token missing')
       return data.tenant_access_token
     }
@@ -267,7 +273,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
         body: JSON.stringify({ appId, clientSecret: appSecret }),
       })
       if (!response.ok) throw new Error(`QQ token failed: ${response.status}`)
-      const data = await response.json() as { access_token?: string }
+      const data = (await response.json()) as { access_token?: string }
       if (!data.access_token) throw new Error('QQ token missing')
       return data.access_token
     }
@@ -280,7 +286,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
         body: JSON.stringify({ appKey, appSecret }),
       })
       if (!response.ok) throw new Error(`DingTalk token failed: ${response.status}`)
-      const data = await response.json() as { accessToken?: string }
+      const data = (await response.json()) as { accessToken?: string }
       if (!data.accessToken) throw new Error('DingTalk token missing')
       return data.accessToken
     }
@@ -291,7 +297,10 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     ): MessagingTransport => {
       if (useMockMessaging) {
         return createMockTransport({
-          sendText: async () => ({ success: false, error: { code: 'NOT_IMPLEMENTED', message: 'Messaging mock mode', recoverable: true } }),
+          sendText: async () => ({
+            success: false,
+            error: { code: 'NOT_IMPLEMENTED', message: 'Messaging mock mode', recoverable: true },
+          }),
           verifyWebhook: async () => true,
         })
       }
@@ -301,7 +310,9 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
           return createHttpMessagingTransport({
             baseUrl: 'https://open.feishu.cn',
             getAuthHeaders: async () => {
-              const token = await getFeishuTenantToken(config as unknown as import('../connectors/messaging/providers/feishu.js').FeishuConfig)
+              const token = await getFeishuTenantToken(
+                config as unknown as import('../connectors/messaging/providers/feishu.js').FeishuConfig,
+              )
               return { Authorization: `Bearer ${token}` }
             },
             buildRequest: async (_target: DeliveryTarget, message: OutboundTextMessage) => ({
@@ -316,7 +327,8 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
             }),
           })
         case 'telegram': {
-          const botToken = (config as unknown as import('../connectors/messaging/providers/telegram.js').TelegramConfig).botToken
+          const botToken = (config as unknown as import('../connectors/messaging/providers/telegram.js').TelegramConfig)
+            .botToken
           return createHttpMessagingTransport({
             baseUrl: 'https://api.telegram.org',
             getAuthHeaders: async () => ({}),
@@ -335,14 +347,17 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
           return createHttpMessagingTransport({
             baseUrl: 'https://api.sgroup.qq.com',
             getAuthHeaders: async () => {
-              const token = await getQQAccessToken(config as unknown as import('../connectors/messaging/providers/qq.js').QQConfig)
+              const token = await getQQAccessToken(
+                config as unknown as import('../connectors/messaging/providers/qq.js').QQConfig,
+              )
               return { Authorization: `QQBot ${token}` }
             },
             buildRequest: async (target: DeliveryTarget, message: OutboundTextMessage) => {
               const targetType = target.metadata?.targetType as string | undefined
-              const path = targetType === 'group'
-                ? `/v2/groups/${message.targetConversationId}/messages`
-                : `/v2/users/${message.targetConversationId}/messages`
+              const path =
+                targetType === 'group'
+                  ? `/v2/groups/${message.targetConversationId}/messages`
+                  : `/v2/users/${message.targetConversationId}/messages`
               return { path, method: 'POST', body: { content: message.text, msg_type: 0 } }
             },
           })
@@ -350,20 +365,31 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
           return createHttpMessagingTransport({
             baseUrl: 'https://api.dingtalk.com',
             getAuthHeaders: async () => {
-              const token = await getDingTalkAccessToken(config as unknown as import('../connectors/messaging/providers/dingtalk.js').DingTalkConfig)
+              const token = await getDingTalkAccessToken(
+                config as unknown as import('../connectors/messaging/providers/dingtalk.js').DingTalkConfig,
+              )
               return { 'x-acs-dingtalk-access-token': token }
             },
             buildRequest: async (target: DeliveryTarget, message: OutboundTextMessage) => {
               const isGroup = target.metadata?.isGroup === true
-              const path = isGroup
-                ? `/v1.0/robot/groupMessages/send`
-                : `/v1.0/robot/oToMessages/batchSend`
+              const path = isGroup ? `/v1.0/robot/groupMessages/send` : `/v1.0/robot/oToMessages/batchSend`
               return {
                 path,
                 method: 'POST',
                 body: isGroup
-                  ? { msgParam: JSON.stringify({ content: message.text }), msgType: 'text', openConversationId: message.targetConversationId }
-                  : { msgParam: JSON.stringify({ content: message.text }), msgType: 'text', robotCode: (config as unknown as import('../connectors/messaging/providers/dingtalk.js').DingTalkConfig).robotCode, userIds: [message.targetUserId] },
+                  ? {
+                      msgParam: JSON.stringify({ content: message.text }),
+                      msgType: 'text',
+                      openConversationId: message.targetConversationId,
+                    }
+                  : {
+                      msgParam: JSON.stringify({ content: message.text }),
+                      msgType: 'text',
+                      robotCode: (
+                        config as unknown as import('../connectors/messaging/providers/dingtalk.js').DingTalkConfig
+                      ).robotCode,
+                      userIds: [message.targetUserId],
+                    },
               }
             },
           })
@@ -383,7 +409,10 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
           })
         default:
           return createMockTransport({
-            sendText: async () => ({ success: false, error: { code: 'UNKNOWN_PROVIDER', message: `No transport for ${provider}`, recoverable: false } }),
+            sendText: async () => ({
+              success: false,
+              error: { code: 'UNKNOWN_PROVIDER', message: `No transport for ${provider}`, recoverable: false },
+            }),
             verifyWebhook: async () => true,
           })
       }

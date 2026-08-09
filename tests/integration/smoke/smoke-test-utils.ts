@@ -189,7 +189,9 @@ export async function createSmokeHarness(options: {
       ...baseCtx.stores,
       eventStore: createSafeEventStore(baseCtx.stores.eventStore),
     },
-    foregroundAgent: options.foregroundDecision ? createStubbedForegroundAgent(options.foregroundDecision, baseCtx.stores) : undefined,
+    foregroundAgent: options.foregroundDecision
+      ? createStubbedForegroundAgent(options.foregroundDecision, baseCtx.stores)
+      : undefined,
     timelineBroadcaster: baseCtx.timelineBroadcaster,
     channelRegistry: baseCtx.channelRegistry,
     llmAdapter: createMockLlmAdapter({ enableToolCall: options.enableToolCall }),

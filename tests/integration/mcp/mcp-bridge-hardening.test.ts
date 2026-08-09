@@ -308,7 +308,8 @@ describe('MCP Bridge Hardening - Permission, Audit, and Runtime Isolation', () =
       const bridge = new McpToolBridge({
         sessionManager,
         timeoutMs: 10,
-        getTransport: () => slowTransport as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
+        getTransport: () =>
+          slowTransport as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
       })
 
       const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
@@ -364,10 +365,11 @@ describe('MCP Bridge Hardening - Permission, Audit, and Runtime Isolation', () =
       const bridge = new McpToolBridge({
         sessionManager,
         timeoutMs: 5000,
-        getTransport: () => ({
-          listTools: () => setup.transport.listTools(),
-          callTool: () => callPromise,
-        }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
+        getTransport: () =>
+          ({
+            listTools: () => setup.transport.listTools(),
+            callTool: () => callPromise,
+          }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
       })
 
       const controller = new AbortController()
@@ -463,12 +465,13 @@ describe('MCP Bridge Hardening - Permission, Audit, and Runtime Isolation', () =
 
       const bridge = new McpToolBridge({
         sessionManager,
-        getTransport: () => ({
-          listTools: () => setup.transport.listTools(),
-          callTool: () => {
-            throw new Error('connection reset')
-          },
-        }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
+        getTransport: () =>
+          ({
+            listTools: () => setup.transport.listTools(),
+            callTool: () => {
+              throw new Error('connection reset')
+            },
+          }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
       })
 
       const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
@@ -529,12 +532,13 @@ describe('MCP Bridge Hardening - Permission, Audit, and Runtime Isolation', () =
         sessionManager,
         auditRecorder,
         defaultUserId: 'test-user',
-        getTransport: () => ({
-          listTools: () => setup.transport.listTools(),
-          callTool: () => {
-            throw new Error('boom')
-          },
-        }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
+        getTransport: () =>
+          ({
+            listTools: () => setup.transport.listTools(),
+            callTool: () => {
+              throw new Error('boom')
+            },
+          }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
       })
 
       const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_pptx_generate', {
@@ -589,10 +593,11 @@ describe('MCP Bridge Hardening - Permission, Audit, and Runtime Isolation', () =
         auditRecorder,
         timeoutMs: 10,
         defaultUserId: 'test-user',
-        getTransport: () => ({
-          listTools: () => setup.transport.listTools(),
-          callTool: () => new Promise((resolve) => setTimeout(() => resolve({ data: 'late' }), 200)),
-        }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
+        getTransport: () =>
+          ({
+            listTools: () => setup.transport.listTools(),
+            callTool: () => new Promise((resolve) => setTimeout(() => resolve({ data: 'late' }), 200)),
+          }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
       })
 
       await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
@@ -692,14 +697,15 @@ describe('MCP Bridge Hardening - Permission, Audit, and Runtime Isolation', () =
 
       const bridge = new McpToolBridge({
         sessionManager,
-        getTransport: () => ({
-          listTools: () => setup.transport.listTools(),
-          callTool: () =>
-            Promise.resolve({
-              isError: true,
-              error: { code: 'file_not_found', message: 'File does not exist' },
-            }),
-        }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
+        getTransport: () =>
+          ({
+            listTools: () => setup.transport.listTools(),
+            callTool: () =>
+              Promise.resolve({
+                isError: true,
+                error: { code: 'file_not_found', message: 'File does not exist' },
+              }),
+          }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
       })
 
       const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
@@ -720,10 +726,11 @@ describe('MCP Bridge Hardening - Permission, Audit, and Runtime Isolation', () =
 
       const bridge = new McpToolBridge({
         sessionManager,
-        getTransport: () => ({
-          listTools: () => setup.transport.listTools(),
-          callTool: () => Promise.resolve({ isError: true }),
-        }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
+        getTransport: () =>
+          ({
+            listTools: () => setup.transport.listTools(),
+            callTool: () => Promise.resolve({ isError: true }),
+          }) as unknown as import('../../../src/connectors/mcp/mcp-tool-bridge.js').McpToolTransport,
       })
 
       const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {

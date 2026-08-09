@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type {
-  CompactExecutor,
-  CompactExecutorInput,
-  CompactExecutorResult,
-} from '../../../src/kernel/types.js'
+import type { CompactExecutor, CompactExecutorInput, CompactExecutorResult } from '../../../src/kernel/types.js'
 import { makeBaseConfig } from '../../helpers/kernel-compact.js'
 
 // ─── Type Contract Tests ──────────────────────────────────────────────────────

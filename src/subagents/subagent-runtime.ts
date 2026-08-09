@@ -332,9 +332,7 @@ export class SubagentRuntimeImpl implements SubagentRuntime {
     const status = this.mapKernelStatusToSubagentStatus(kernelResult.finalStatus)
 
     const error =
-      status === 'cancelled'
-        ? { code: 'CANCELLED', message: 'Subagent execution was cancelled' }
-        : kernelResult.error
+      status === 'cancelled' ? { code: 'CANCELLED', message: 'Subagent execution was cancelled' } : kernelResult.error
 
     return {
       status,

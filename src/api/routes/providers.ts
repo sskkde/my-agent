@@ -7,10 +7,7 @@ import type { ProviderType, ProviderConfigSanitized } from '../../storage/provid
 import { randomUUID } from 'crypto'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
 import { isKnownProviderType, getProviderCatalogEntry } from '../../llm/catalog/provider-catalog.js'
-import {
-  fetchRemoteProviderModels,
-  type RemoteModelsResult,
-} from '../../llm/remote-models.js'
+import { fetchRemoteProviderModels, type RemoteModelsResult } from '../../llm/remote-models.js'
 
 function sanitizeProviderForResponse(provider: ProviderConfigSanitized): ProviderSummary {
   return {

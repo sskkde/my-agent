@@ -9,14 +9,18 @@ function makeFakeTraceStore(): TraceStore {
   const traces = new Map<string, unknown>()
   const spans = new Map<string, RuntimeSpan>()
   return {
-    createTrace: (ctx: unknown) => { traces.set((ctx as { traceId: string }).traceId, ctx) },
+    createTrace: (ctx: unknown) => {
+      traces.set((ctx as { traceId: string }).traceId, ctx)
+    },
     getTrace: () => null,
     updateTraceStatus: () => {},
     findTracesByCorrelation: () => [],
     findTracesByUser: () => [],
     findTracesBySession: () => [],
     findTraces: () => [],
-    createSpan: (span: RuntimeSpan) => { spans.set(span.spanId, span) },
+    createSpan: (span: RuntimeSpan) => {
+      spans.set(span.spanId, span)
+    },
     getSpan: (spanId: string) => spans.get(spanId) ?? null,
     updateSpan: () => {},
     endSpan: () => {},
@@ -76,7 +80,9 @@ describe('Agent taxonomy metadata in observability', () => {
       capturedSpans = []
       traceStore = {
         ...makeFakeTraceStore(),
-        createSpan: (span: RuntimeSpan) => { capturedSpans.push(span) },
+        createSpan: (span: RuntimeSpan) => {
+          capturedSpans.push(span)
+        },
       }
       collector = createTracingCollector({
         traceStore,

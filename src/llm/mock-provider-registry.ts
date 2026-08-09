@@ -116,11 +116,7 @@ class MockProviderRegistry {
     return this.consumeNextResponse(request)
   }
 
-  recordInteraction(
-    request: LLMRequest,
-    response: MockResponseConfig,
-    durationMs: number,
-  ): MockInteraction {
+  recordInteraction(request: LLMRequest, response: MockResponseConfig, durationMs: number): MockInteraction {
     const interaction: MockInteraction = {
       id: `mock-int-${++this.interactionCounter}-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -197,10 +193,7 @@ export function getMockProviderRegistry(): MockProviderRegistry {
   return registryInstance
 }
 
-export function buildMockLLMResponse(
-  config: MockResponseConfig,
-  requestModel: string,
-): LLMResponse {
+export function buildMockLLMResponse(config: MockResponseConfig, requestModel: string): LLMResponse {
   return {
     id: `mock-resp-${Date.now()}`,
     model: requestModel,
@@ -221,11 +214,7 @@ export function buildMockLLMResponse(
   }
 }
 
-export function buildMockLLMResult(
-  config: MockResponseConfig,
-  requestModel: string,
-  providerId: string,
-): LLMResult {
+export function buildMockLLMResult(config: MockResponseConfig, requestModel: string, providerId: string): LLMResult {
   return {
     success: true,
     response: buildMockLLMResponse(config, requestModel),

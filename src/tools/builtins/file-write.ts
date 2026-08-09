@@ -20,10 +20,7 @@ export interface FileWriteResult {
 }
 
 export function createFileWriteTool(): ToolDefinition {
-  const handler: ToolHandler = async (
-    params: unknown,
-    context: ToolExecutionContext,
-  ): Promise<ToolExecutionResult> => {
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
     const typedParams = params as FileWriteParams
 
     if (!typedParams.filePath) {
@@ -51,10 +48,10 @@ export function createFileWriteTool(): ToolDefinition {
     const workspaceRoot = context.workDirRoot ?? getWorkspaceRoot()
 
     // Validate path safety
-	    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, {
-	      allowNew: true,
-	      enforceWorkdirBoundary: Boolean(context.workDirRoot),
-	    })
+    const safetyResult = validateWritePathSafety(typedParams.filePath, workspaceRoot, {
+      allowNew: true,
+      enforceWorkdirBoundary: Boolean(context.workDirRoot),
+    })
 
     if (!safetyResult.safe) {
       return {

@@ -193,9 +193,7 @@ export function buildContextBundleFromForegroundState(
     input.attachmentIds && input.attachmentIds.length > 0 && attachmentResolver
       ? buildAttachmentContextItems(attachmentResolver(input.attachmentIds))
       : []
-  const workdirContextItems: ContextItem[] = input.workDirName
-    ? buildWorkdirContextItems(input.workDirName)
-    : []
+  const workdirContextItems: ContextItem[] = input.workDirName ? buildWorkdirContextItems(input.workDirName) : []
   const orderedItems: ContextItem[] = [
     ...buildOrderedItems(input),
     ...workdirContextItems,
@@ -220,9 +218,10 @@ export function buildContextBundleFromForegroundState(
     planView: undefined,
     workflowStepView: undefined,
     tokenEstimate: totalTokens,
-    compactHints: tokenBudget !== undefined
-      ? generateForegroundCompactHints([...pinnedItems, ...orderedItems], tokenBudget)
-      : undefined,
+    compactHints:
+      tokenBudget !== undefined
+        ? generateForegroundCompactHints([...pinnedItems, ...orderedItems], tokenBudget)
+        : undefined,
     ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
     ...(input.workDirId ? { workDirId: input.workDirId } : {}),
   }

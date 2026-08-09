@@ -18,13 +18,7 @@ import type {
 describe('Messaging type contracts', () => {
   describe('MessagingProviderId', () => {
     it('should accept all known provider ids', () => {
-      const providers: MessagingProviderId[] = [
-        'feishu',
-        'telegram',
-        'dingtalk',
-        'qq',
-        'wechat',
-      ]
+      const providers: MessagingProviderId[] = ['feishu', 'telegram', 'dingtalk', 'qq', 'wechat']
       expect(providers).toHaveLength(5)
     })
   })
@@ -142,16 +136,12 @@ describe('Messaging type contracts', () => {
         text: 'test',
         targetConversationId: 'conv-1',
       }
-      await expect(transport.sendText(target, msg)).rejects.toThrow(
-        'MockMessagingTransport: real network blocked',
-      )
+      await expect(transport.sendText(target, msg)).rejects.toThrow('MockMessagingTransport: real network blocked')
     })
 
     it('should throw when verifyWebhook is called without override', async () => {
       const transport = createMockTransport()
-      await expect(
-        transport.verifyWebhook({}, {}, {}),
-      ).rejects.toThrow('MockMessagingTransport: real network blocked')
+      await expect(transport.verifyWebhook({}, {}, {})).rejects.toThrow('MockMessagingTransport: real network blocked')
     })
   })
 })

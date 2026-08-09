@@ -71,8 +71,7 @@ export const PER_TOOL_TIMEOUT_MS: Record<string, number> = {
 
 export class AgentKernel {
   /** Early tool_call live map from the latest streaming LLM call (scheme 1). */
-  private pendingEarlyToolLive?:
-    Map<number, { eventId: string; provisionalToolCallId: string; name: string }>
+  private pendingEarlyToolLive?: Map<number, { eventId: string; provisionalToolCallId: string; name: string }>
 
   private config: KernelConfig
   private lastBuiltModelInput?: import('./model-input/model-input-types.js').BuiltModelInput
@@ -158,7 +157,15 @@ export class AgentKernel {
           } else if (streamTimedOut) {
             this.flushPairingGuard(pairingGuard, state, 'timeout', input)
             state.status = 'failed'
-            return this.buildResult(state, 'failed', { code: 'KERNEL_ERROR', message: 'LLM stream timeout' }, undefined, undefined, input, aggregatedUsage)
+            return this.buildResult(
+              state,
+              'failed',
+              { code: 'KERNEL_ERROR', message: 'LLM stream timeout' },
+              undefined,
+              undefined,
+              input,
+              aggregatedUsage,
+            )
           } else {
             const fallbackResult = await this.callLLMWithTimeout(llmRequest, remainingTimeout, input.signal)
             if (
@@ -182,10 +189,18 @@ export class AgentKernel {
             code: llmResult.error.code,
             message: llmResult.error.message,
           })
-          return this.buildResult(state, 'failed', {
-            code: llmResult.error.code,
-            message: llmResult.error.message,
-          }, undefined, undefined, input, aggregatedUsage)
+          return this.buildResult(
+            state,
+            'failed',
+            {
+              code: llmResult.error.code,
+              message: llmResult.error.message,
+            },
+            undefined,
+            undefined,
+            input,
+            aggregatedUsage,
+          )
         }
 
         this.config.modelInputSnapshotStore?.record({
@@ -309,7 +324,15 @@ export class AgentKernel {
                 if (shouldStop) {
                   this.flushPairingGuard(pairingGuard, state, 'internal_handler_stop', input)
                   state.status = 'completed'
-                  return this.buildResult(state, 'completed', undefined, undefined, stopStructuredResult, input, aggregatedUsage)
+                  return this.buildResult(
+                    state,
+                    'completed',
+                    undefined,
+                    undefined,
+                    stopStructuredResult,
+                    input,
+                    aggregatedUsage,
+                  )
                 }
               } catch (handlerError) {
                 const toolResult: ToolUseResult = {
@@ -407,10 +430,18 @@ export class AgentKernel {
               message: finalContentValidation.message,
               details: finalContentValidation.details,
             })
-            return this.buildResult(state, 'failed', {
-              code: finalContentValidation.code,
-              message: finalContentValidation.message,
-            }, undefined, undefined, input, aggregatedUsage)
+            return this.buildResult(
+              state,
+              'failed',
+              {
+                code: finalContentValidation.code,
+                message: finalContentValidation.message,
+              },
+              undefined,
+              undefined,
+              input,
+              aggregatedUsage,
+            )
           }
 
           state.status = 'completed'
@@ -447,10 +478,18 @@ export class AgentKernel {
       state.status = 'failed'
       const streamingErrorMatch = errorMessage.match(/^STREAMING_ERROR: (.+)$/)
       this.commitTranscript(state, 'error', { message: errorMessage })
-      return this.buildResult(state, 'failed', {
-        code: streamingErrorMatch ? 'STREAMING_ERROR' : 'KERNEL_ERROR',
-        message: streamingErrorMatch ? streamingErrorMatch[1] : errorMessage,
-      }, undefined, undefined, input, aggregatedUsage)
+      return this.buildResult(
+        state,
+        'failed',
+        {
+          code: streamingErrorMatch ? 'STREAMING_ERROR' : 'KERNEL_ERROR',
+          message: streamingErrorMatch ? streamingErrorMatch[1] : errorMessage,
+        },
+        undefined,
+        undefined,
+        input,
+        aggregatedUsage,
+      )
     }
   }
 
@@ -520,8 +559,8 @@ export class AgentKernel {
           contextBundle: contextBundleData,
           transcript: transcriptMessages,
           currentDate: new Date().toISOString(),
-        sessionId: input.sessionId,
-           runId: input.runId ?? input.contextBundle.runId,
+          sessionId: input.sessionId,
+          runId: input.runId ?? input.contextBundle.runId,
           toolProjection: input.toolProjection ?? this.config.toolProjection ?? { toolIds: [], tools: [] },
           ...(effectiveSkillProjection ? { skillProjection: effectiveSkillProjection } : {}),
           outputContract: 'output:default-chat.schema',
@@ -609,9 +648,7 @@ export class AgentKernel {
     }
 
     // Exclude tool results that were compacted away
-    const activeResultToolCallIds = new Set(
-      [...resultToolCallIds].filter((id) => !state.compactedToolCallIds.has(id)),
-    )
+    const activeResultToolCallIds = new Set([...resultToolCallIds].filter((id) => !state.compactedToolCallIds.has(id)))
 
     for (const entry of state.transcript) {
       if (entry.type === 'llm_response') {
@@ -686,11 +723,7 @@ export class AgentKernel {
     })
 
     try {
-      return await Promise.race([
-        this.config.llmAdapter.complete(request),
-        timeoutPromise,
-        abortPromise,
-      ])
+      return await Promise.race([this.config.llmAdapter.complete(request), timeoutPromise, abortPromise])
     } finally {
       if (abortListener) {
         signal.removeEventListener('abort', abortListener)
@@ -737,10 +770,7 @@ export class AgentKernel {
     // Scheme 1: reuse a stable eventId for early + formal broadcasts so the UI upserts
     // one card instead of appending a second tool_call.
     const earlyToolPartial = new Map<number, { id?: string; name?: string }>()
-    const earlyToolLive = new Map<
-      number,
-      { eventId: string; provisionalToolCallId: string; name: string }
-    >()
+    const earlyToolLive = new Map<number, { eventId: string; provisionalToolCallId: string; name: string }>()
 
     const broadcastTextDelta = (delta: string, isFinal: boolean): void => {
       if (!broadcaster || !sessionId || delta.length === 0) return
@@ -831,9 +861,7 @@ export class AgentKernel {
       })
     }
 
-    const maybeAnnounceEarlyTool = (
-      chunk: Extract<LLMStreamChunk, { kind: 'tool_call_delta' }>,
-    ): void => {
+    const maybeAnnounceEarlyTool = (chunk: Extract<LLMStreamChunk, { kind: 'tool_call_delta' }>): void => {
       if (!broadcaster?.broadcast || !sessionId) return
       const prev = earlyToolPartial.get(chunk.index) ?? {}
       if (chunk.id) prev.id = chunk.id
@@ -1023,9 +1051,9 @@ export class AgentKernel {
     return { requests, invalidArgs }
   }
 
-  private safeParseParams(args: string):
-    { success: true; value: Record<string, unknown> } | { success: false; error: string }
-  {
+  private safeParseParams(
+    args: string,
+  ): { success: true; value: Record<string, unknown> } | { success: false; error: string } {
     try {
       const parsed = JSON.parse(args)
       return { success: true, value: parsed as Record<string, unknown> }
@@ -1497,12 +1525,7 @@ export class AgentKernel {
     }
   }
 
-
-  private broadcastToolCallRunning(
-    input: KernelRunInput,
-    toolRequest: ToolUseRequest,
-    toolCallIndex?: number,
-  ): void {
+  private broadcastToolCallRunning(input: KernelRunInput, toolRequest: ToolUseRequest, toolCallIndex?: number): void {
     const broadcaster = this.config.timelineBroadcaster
     const sessionId = input.sessionId
     if (!broadcaster?.broadcast || !sessionId) return
@@ -1510,15 +1533,11 @@ export class AgentKernel {
     // Scheme 1: prefer reusing the early announcement eventId when it already locked the
     // real toolCallId (or any provisional id). Clients upsert by eventId; when early used a
     // provisional id, frontend also merges by (turnId, toolCallIndex).
-    const early =
-      toolCallIndex !== undefined ? this.pendingEarlyToolLive?.get(toolCallIndex) : undefined
+    const early = toolCallIndex !== undefined ? this.pendingEarlyToolLive?.get(toolCallIndex) : undefined
     const formalEventId = buildToolCallEventId(turnId, toolRequest.toolCallId)
     // Reuse early eventId only when it already equals formal (real id known during stream).
     // Otherwise broadcast formal id and let the client replace the early card by toolCallIndex.
-    const eventId =
-      early && early.provisionalToolCallId === toolRequest.toolCallId
-        ? early.eventId
-        : formalEventId
+    const eventId = early && early.provisionalToolCallId === toolRequest.toolCallId ? early.eventId : formalEventId
     broadcaster.broadcast(sessionId, {
       eventId,
       eventType: 'tool_call',
@@ -1580,7 +1599,9 @@ export class AgentKernel {
 
   private validateFinalContentIfNeeded(
     content: string,
-  ): { ok: true; structuredResult?: unknown } | { ok: false; code: string; message: string; details: readonly string[] } {
+  ):
+    | { ok: true; structuredResult?: unknown }
+    | { ok: false; code: string; message: string; details: readonly string[] } {
     const validation = validateOutputContractContent({
       contractId: this.lastBuiltModelInput?.metadata.outputContract,
       mode: this.lastBuiltModelInput?.metadata.mode ?? 'function_calling',

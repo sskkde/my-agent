@@ -14,7 +14,11 @@ function createPlan(overrides: Partial<SearchQueryPlan> = {}): SearchQueryPlan {
   }
 }
 
-function createResult(url: string, title = 'React docs', snippet = 'React documentation explains useEffect.'): WebSearchResultItem {
+function createResult(
+  url: string,
+  title = 'React docs',
+  snippet = 'React documentation explains useEffect.',
+): WebSearchResultItem {
   return { title, url, snippet }
 }
 
@@ -55,7 +59,11 @@ describe('source quality scoring', () => {
   it('boosts dated results for freshness-sensitive plans', () => {
     // Given: two news results where one has an explicit date
     const plan = createPlan({ intent: 'news', requiresFreshness: true })
-    const dated = createResult('https://reuters.com/world/ai-news', 'AI News', 'Published on 2026-06-20 with new details.')
+    const dated = createResult(
+      'https://reuters.com/world/ai-news',
+      'AI News',
+      'Published on 2026-06-20 with new details.',
+    )
     const undated = createResult('https://reuters.com/world/ai-news-older', 'AI News', 'New details were announced.')
 
     // When: source quality is scored
@@ -73,6 +81,8 @@ describe('source quality scoring', () => {
 
     // When/Then: scoring remains deterministic and safe
     expect(() => scoreSourceQuality(malformed, plan)).not.toThrow()
-    expect(scoreSourceQuality(malformed, plan)).toBeLessThan(scoreSourceQuality(createResult('https://react.dev'), plan))
+    expect(scoreSourceQuality(malformed, plan)).toBeLessThan(
+      scoreSourceQuality(createResult('https://react.dev'), plan),
+    )
   })
 })

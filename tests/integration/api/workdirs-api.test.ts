@@ -403,10 +403,9 @@ describe('Workdirs API', () => {
     })
 
     it('should reject path traversal in file read', async () => {
-      const response = await fetch(
-        `${baseUrl}/api/v1/workdirs/${workdirId}/files?path=../../../etc/passwd`,
-        { headers: { Cookie: authCookie } },
-      )
+      const response = await fetch(`${baseUrl}/api/v1/workdirs/${workdirId}/files?path=../../../etc/passwd`, {
+        headers: { Cookie: authCookie },
+      })
       expect(response.status).toBe(400)
     })
 

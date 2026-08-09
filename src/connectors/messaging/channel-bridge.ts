@@ -3,23 +3,10 @@
  * channels in the ChannelRegistry. Inactive/draft instances are ignored.
  */
 
-import type {
-  ChannelRegistry,
-  ChannelHandler,
-  DeliveryResult,
-} from '../../gateway/channel-registry.js'
+import type { ChannelRegistry, ChannelHandler, DeliveryResult } from '../../gateway/channel-registry.js'
 import type { OutboundEnvelope } from '../../gateway/types.js'
-import type {
-  ConnectorStore,
-  ConnectorInstance,
-  ConnectorDefinition,
-} from '../../storage/connector-store.js'
-import type {
-  MessagingAdapter,
-  MessagingProviderId,
-  DeliveryTarget,
-  OutboundTextMessage,
-} from './types.js'
+import type { ConnectorStore, ConnectorInstance, ConnectorDefinition } from '../../storage/connector-store.js'
+import type { MessagingAdapter, MessagingProviderId, DeliveryTarget, OutboundTextMessage } from './types.js'
 import { redactSecrets } from './secret-redaction.js'
 
 /**
@@ -59,9 +46,7 @@ export class MessagingChannelBridge {
     const activeInstances = this.connectorStore.findInstancesByStatus('active')
 
     for (const instance of activeInstances) {
-      const definition = this.connectorStore.findDefinitionById(
-        instance.connectorDefinitionId,
-      )
+      const definition = this.connectorStore.findDefinitionById(instance.connectorDefinitionId)
 
       if (!definition || definition.connectorType !== 'messaging') {
         continue
@@ -97,8 +82,7 @@ export class MessagingChannelBridge {
     return {
       deliver(envelope: OutboundEnvelope): Promise<DeliveryResult> {
         const conversationId =
-          (envelope.metadata?.externalConversationId as string | undefined) ??
-          envelope.recipient.sessionId
+          (envelope.metadata?.externalConversationId as string | undefined) ?? envelope.recipient.sessionId
 
         const target: DeliveryTarget = {
           provider,
@@ -119,14 +103,13 @@ export class MessagingChannelBridge {
             error: transportResult.error
               ? {
                   code: transportResult.error.code,
-                  message: typeof redactSecrets(transportResult.error.message) === 'string'
-                    ? (redactSecrets(transportResult.error.message) as string)
-                    : transportResult.error.message,
+                  message:
+                    typeof redactSecrets(transportResult.error.message) === 'string'
+                      ? (redactSecrets(transportResult.error.message) as string)
+                      : transportResult.error.message,
                 }
               : undefined,
-            metadata: transportResult.rateLimitInfo
-              ? { rateLimitInfo: transportResult.rateLimitInfo }
-              : undefined,
+            metadata: transportResult.rateLimitInfo ? { rateLimitInfo: transportResult.rateLimitInfo } : undefined,
           }),
         )
       },
@@ -137,8 +120,6 @@ export class MessagingChannelBridge {
 /**
  * Factory function for creating a MessagingChannelBridge.
  */
-export function createMessagingChannelBridge(
-  deps: MessagingChannelBridgeDeps,
-): MessagingChannelBridge {
+export function createMessagingChannelBridge(deps: MessagingChannelBridgeDeps): MessagingChannelBridge {
   return new MessagingChannelBridge(deps)
 }

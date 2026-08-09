@@ -686,10 +686,7 @@ describe('Multi-Provider LLM Adapter Integration', () => {
 
       await adapter.complete(createTestRequest())
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://custom-ollama:11434/v1/chat/completions',
-        expect.any(Object),
-      )
+      expect(mockFetch).toHaveBeenCalledWith('http://custom-ollama:11434/v1/chat/completions', expect.any(Object))
 
       delete process.env.OLLAMA_BASE_URL
     })

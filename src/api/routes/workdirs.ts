@@ -77,7 +77,11 @@ function existingFileSize(filePath: string): number {
   return stats.isFile() ? stats.size : 0
 }
 
-function enforceWorkdirWriteQuota(workdirPath: string, targetPath: string, nextBytes: number): { ok: true } | { ok: false; message: string } {
+function enforceWorkdirWriteQuota(
+  workdirPath: string,
+  targetPath: string,
+  nextBytes: number,
+): { ok: true } | { ok: false; message: string } {
   const usage = calculateWorkdirUsage(workdirPath)
   const currentBytes = existingFileSize(targetPath)
   if (!fs.existsSync(targetPath) && usage.files >= WORKDIR_MAX_FILES) {
@@ -161,25 +165,22 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
   const sessionStore: SessionStore = context.stores.sessionStore
 
   // GET /api/v1/workdirs - List user's workdirs
-  server.get(
-    '/api/v1/workdirs',
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      if (!request.requirePermission(ResourceType.workdirs, Action.read)) {
-        return reply
-      }
+  server.get('/api/v1/workdirs', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.workdirs, Action.read)) {
+      return reply
+    }
 
-      const userId = resolveUserId(request)
-      if (!userId) {
-        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
-      }
+    const userId = resolveUserId(request)
+    if (!userId) {
+      return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
+    }
 
-      const tenantId = resolveTenantId(request)
-      const workdirs = workdirStore.listByUser(userId, tenantId)
-      const items = workdirs.map(toWorkdirResponse)
+    const tenantId = resolveTenantId(request)
+    const workdirs = workdirStore.listByUser(userId, tenantId)
+    const items = workdirs.map(toWorkdirResponse)
 
-      return reply.code(200).send(success({ workdirs: items, total: items.length }, request.requestId))
-    },
-  )
+    return reply.code(200).send(success({ workdirs: items, total: items.length }, request.requestId))
+  })
 
   // POST /api/v1/workdirs - Create new workdir
   server.post<{ Body: { name: string } }>(
@@ -344,7 +345,9 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
       try {
         workdirService.setActiveWorkdir(sessionId, workdirId, userId, tenantId)
         const workdir = workdirService.getActiveWorkdir(sessionId, userId, tenantId)
-        return reply.code(200).send(success({ workdir: workdir ? toWorkdirResponse(workdir) : null }, request.requestId))
+        return reply
+          .code(200)
+          .send(success({ workdir: workdir ? toWorkdirResponse(workdir) : null }, request.requestId))
       } catch (error) {
         if (error instanceof WorkdirServiceError) {
           const { status, code } = mapServiceError(error)
@@ -468,10 +471,20 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
       try {
         const stat = await fs.promises.stat(validation.canonicalPath)
         if (stat.isDirectory()) {
-          return reply.code(400).send(envelopeError('BAD_REQUEST', 'Path is a directory, not a file', request.requestId))
+          return reply
+            .code(400)
+            .send(envelopeError('BAD_REQUEST', 'Path is a directory, not a file', request.requestId))
         }
         if (stat.size > WORKDIR_TEXT_READ_MAX_BYTES) {
-          return reply.code(413).send(envelopeError('QUOTA_EXCEEDED', `File exceeds maximum text read size of ${WORKDIR_TEXT_READ_MAX_BYTES} bytes`, request.requestId))
+          return reply
+            .code(413)
+            .send(
+              envelopeError(
+                'QUOTA_EXCEEDED',
+                `File exceeds maximum text read size of ${WORKDIR_TEXT_READ_MAX_BYTES} bytes`,
+                request.requestId,
+              ),
+            )
         }
 
         const content = await fs.promises.readFile(validation.canonicalPath, 'utf-8')
@@ -521,13 +534,15 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
       }
 
       if (Buffer.byteLength(content, 'utf-8') > WORKDIR_MAX_FILE_BYTES) {
-        return reply.code(413).send(
-          envelopeError(
-            'QUOTA_EXCEEDED',
-            `File content exceeds maximum size of ${WORKDIR_MAX_FILE_BYTES} bytes`,
-            request.requestId,
-          ),
-        )
+        return reply
+          .code(413)
+          .send(
+            envelopeError(
+              'QUOTA_EXCEEDED',
+              `File content exceeds maximum size of ${WORKDIR_MAX_FILE_BYTES} bytes`,
+              request.requestId,
+            ),
+          )
       }
 
       const tenantId = resolveTenantId(request)
@@ -575,10 +590,7 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
   // POST /api/v1/workdirs/:workdirId/dirs - Create directory
   server.post<{ Params: { workdirId: string }; Body: { path: string } }>(
     '/api/v1/workdirs/:workdirId/dirs',
-    async (
-      request: FastifyRequest<{ Params: { workdirId: string }; Body: { path: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request: FastifyRequest<{ Params: { workdirId: string }; Body: { path: string } }>, reply: FastifyReply) => {
       if (!request.requirePermission(ResourceType.workdirs, Action.create)) {
         return reply
       }
@@ -639,13 +651,16 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
     ) => {
       if (!request.requirePermission(ResourceType.workdirs, Action.delete)) return reply
       const userId = resolveUserId(request)
-      if (!userId) return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
+      if (!userId)
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       const { path: filePath, recursive } = request.query
-      if (!filePath) return reply.code(400).send(envelopeError('BAD_REQUEST', 'path query parameter is required', request.requestId))
+      if (!filePath)
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'path query parameter is required', request.requestId))
       const workdir = workdirStore.getById(request.params.workdirId, userId, resolveTenantId(request))
       if (!workdir) return reply.code(404).send(envelopeError('NOT_FOUND', 'Workdir not found', request.requestId))
       const validation = validateWorkdirPath(path.join(workdir.path, filePath), workdir.path)
-      if (!validation.ok) return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', validation.error.message, request.requestId))
+      if (!validation.ok)
+        return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', validation.error.message, request.requestId))
       try {
         const stat = fs.statSync(validation.canonicalPath)
         if (stat.isDirectory()) {
@@ -677,15 +692,19 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
     ) => {
       if (!request.requirePermission(ResourceType.workdirs, Action.update)) return reply
       const userId = resolveUserId(request)
-      if (!userId) return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
+      if (!userId)
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       const { fromPath, toPath } = request.body
-      if (!fromPath || !toPath) return reply.code(400).send(envelopeError('BAD_REQUEST', 'fromPath and toPath are required', request.requestId))
+      if (!fromPath || !toPath)
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'fromPath and toPath are required', request.requestId))
       const workdir = workdirStore.getById(request.params.workdirId, userId, resolveTenantId(request))
       if (!workdir) return reply.code(404).send(envelopeError('NOT_FOUND', 'Workdir not found', request.requestId))
       const source = validateWorkdirPath(path.join(workdir.path, fromPath), workdir.path)
-      if (!source.ok) return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', source.error.message, request.requestId))
+      if (!source.ok)
+        return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', source.error.message, request.requestId))
       const target = validateWorkdirWritePath(path.join(workdir.path, toPath), workdir.path)
-      if (!target.ok) return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', target.error.message, request.requestId))
+      if (!target.ok)
+        return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', target.error.message, request.requestId))
       try {
         if (fs.existsSync(target.canonicalPath)) {
           return reply.code(409).send(envelopeError('CONFLICT', 'Target path already exists', request.requestId))
@@ -694,7 +713,9 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
         if (!fs.existsSync(targetParent)) fs.mkdirSync(targetParent, { recursive: true })
         fs.renameSync(source.canonicalPath, target.canonicalPath)
         const stat = fs.statSync(target.canonicalPath)
-        return reply.code(200).send(success({ fromPath, path: toPath, type: stat.isDirectory() ? 'directory' : 'file' }, request.requestId))
+        return reply
+          .code(200)
+          .send(success({ fromPath, path: toPath, type: stat.isDirectory() ? 'directory' : 'file' }, request.requestId))
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           return reply.code(404).send(envelopeError('NOT_FOUND', 'Source path not found', request.requestId))
@@ -714,18 +735,30 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
     ) => {
       if (!request.requirePermission(ResourceType.workdirs, Action.read)) return reply
       const userId = resolveUserId(request)
-      if (!userId) return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
+      if (!userId)
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       const filePath = request.query.path
-      if (!filePath) return reply.code(400).send(envelopeError('BAD_REQUEST', 'path query parameter is required', request.requestId))
+      if (!filePath)
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'path query parameter is required', request.requestId))
       const workdir = workdirStore.getById(request.params.workdirId, userId, resolveTenantId(request))
       if (!workdir) return reply.code(404).send(envelopeError('NOT_FOUND', 'Workdir not found', request.requestId))
       const validation = validateWorkdirPath(path.join(workdir.path, filePath), workdir.path)
-      if (!validation.ok) return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', validation.error.message, request.requestId))
+      if (!validation.ok)
+        return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', validation.error.message, request.requestId))
       try {
         const stat = fs.statSync(validation.canonicalPath)
-        if (!stat.isFile()) return reply.code(400).send(envelopeError('BAD_REQUEST', 'Path is not a file', request.requestId))
+        if (!stat.isFile())
+          return reply.code(400).send(envelopeError('BAD_REQUEST', 'Path is not a file', request.requestId))
         if (stat.size > WORKDIR_MAX_FILE_BYTES) {
-          return reply.code(413).send(envelopeError('QUOTA_EXCEEDED', `File exceeds maximum download size of ${WORKDIR_MAX_FILE_BYTES} bytes`, request.requestId))
+          return reply
+            .code(413)
+            .send(
+              envelopeError(
+                'QUOTA_EXCEEDED',
+                `File exceeds maximum download size of ${WORKDIR_MAX_FILE_BYTES} bytes`,
+                request.requestId,
+              ),
+            )
         }
         return reply
           .header('Content-Type', 'application/octet-stream')
@@ -748,18 +781,28 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
     ) => {
       if (!request.requirePermission(ResourceType.workdirs, Action.create)) return reply
       const userId = resolveUserId(request)
-      if (!userId) return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
+      if (!userId)
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Authentication required', request.requestId))
       const { path: uploadPath, content } = request.body
       if (!uploadPath || content === undefined || content === null) {
         return reply.code(400).send(envelopeError('BAD_REQUEST', 'path and content are required', request.requestId))
       }
       if (Buffer.byteLength(content, 'utf-8') > WORKDIR_MAX_FILE_BYTES) {
-        return reply.code(413).send(envelopeError('QUOTA_EXCEEDED', `File content exceeds maximum size of ${WORKDIR_MAX_FILE_BYTES} bytes`, request.requestId))
+        return reply
+          .code(413)
+          .send(
+            envelopeError(
+              'QUOTA_EXCEEDED',
+              `File content exceeds maximum size of ${WORKDIR_MAX_FILE_BYTES} bytes`,
+              request.requestId,
+            ),
+          )
       }
       const workdir = workdirStore.getById(request.params.workdirId, userId, resolveTenantId(request))
       if (!workdir) return reply.code(404).send(envelopeError('NOT_FOUND', 'Workdir not found', request.requestId))
       const validation = validateWorkdirWritePath(path.join(workdir.path, uploadPath), workdir.path)
-      if (!validation.ok) return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', validation.error.message, request.requestId))
+      if (!validation.ok)
+        return reply.code(400).send(envelopeError('PATH_VALIDATION_ERROR', validation.error.message, request.requestId))
       try {
         if (fs.existsSync(validation.canonicalPath)) {
           return reply.code(409).send(envelopeError('CONFLICT', 'File already exists', request.requestId))
@@ -773,7 +816,14 @@ export async function registerWorkdirRoutes(server: FastifyInstance, context: Ap
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
         fs.writeFileSync(validation.canonicalPath, content, { encoding: 'utf-8', flag: 'wx' })
         const stat = fs.statSync(validation.canonicalPath)
-        return reply.code(201).send(success({ path: uploadPath, sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() }, request.requestId))
+        return reply
+          .code(201)
+          .send(
+            success(
+              { path: uploadPath, sizeBytes: stat.size, modifiedAt: stat.mtime.toISOString() },
+              request.requestId,
+            ),
+          )
       } catch (error) {
         const mapped = filesystemErrorResponse(error)
         if (mapped) return reply.code(mapped.status).send(envelopeError(mapped.code, mapped.message, request.requestId))

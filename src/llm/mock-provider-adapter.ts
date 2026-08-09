@@ -81,8 +81,7 @@ export class MockProvider implements LLMProvider {
     this._stats.successfulRequests++
     this._stats.lastRequestTime = Date.now()
     this._stats.averageLatencyMs =
-      (this._stats.averageLatencyMs * (this._stats.totalRequests - 1) + durationMs) /
-      this._stats.totalRequests
+      (this._stats.averageLatencyMs * (this._stats.totalRequests - 1) + durationMs) / this._stats.totalRequests
 
     return result
   }
@@ -144,7 +143,6 @@ export class MockProvider implements LLMProvider {
     this._stats.successfulRequests++
     this._stats.lastRequestTime = Date.now()
     this._stats.averageLatencyMs =
-      (this._stats.averageLatencyMs * (this._stats.totalRequests - 1) + durationMs) /
-      this._stats.totalRequests
+      (this._stats.averageLatencyMs * (this._stats.totalRequests - 1) + durationMs) / this._stats.totalRequests
   }
 }

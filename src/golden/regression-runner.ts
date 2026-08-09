@@ -24,10 +24,7 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4)
 }
 
-export async function runGoldenCase(
-  goldenCase: GoldenCase,
-  options: RunGoldenCaseOptions,
-): Promise<GoldenCaseResult> {
+export async function runGoldenCase(goldenCase: GoldenCase, options: RunGoldenCaseOptions): Promise<GoldenCaseResult> {
   const { builder } = options
   const { input, expectations } = goldenCase
   const diffs: GoldenCaseDiff[] = []
@@ -48,19 +45,19 @@ export async function runGoldenCase(
     return {
       caseId: goldenCase.id,
       passed: false,
-      diffs: [{
-        path: 'builder.build()',
-        expected: 'successful build',
-        actual: error instanceof Error ? error.message : String(error),
-        message: 'ModelInputBuilder.build() threw an exception',
-      }],
+      diffs: [
+        {
+          path: 'builder.build()',
+          expected: 'successful build',
+          actual: error instanceof Error ? error.message : String(error),
+          message: 'ModelInputBuilder.build() threw an exception',
+        },
+      ],
     }
   }
 
   if (expectations.expectedTools) {
-    const missing = expectations.expectedTools.filter(
-      (t) => !(input.toolProjection?.toolIds ?? []).includes(t),
-    )
+    const missing = expectations.expectedTools.filter((t) => !(input.toolProjection?.toolIds ?? []).includes(t))
     if (missing.length > 0) {
       diffs.push({
         path: 'expectedTools',
@@ -72,9 +69,7 @@ export async function runGoldenCase(
   }
 
   if (expectations.forbiddenTools) {
-    const present = expectations.forbiddenTools.filter(
-      (t) => (input.toolProjection?.toolIds ?? []).includes(t),
-    )
+    const present = expectations.forbiddenTools.filter((t) => (input.toolProjection?.toolIds ?? []).includes(t))
     if (present.length > 0) {
       diffs.push({
         path: 'forbiddenTools',

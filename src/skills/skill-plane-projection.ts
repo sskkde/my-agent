@@ -81,9 +81,7 @@ function estimateTokens(text: string): number {
  * @param params - Projection parameters.
  * @returns A SkillPlaneProjection ready for the renderer.
  */
-export async function buildSkillPlaneProjection(
-  params: SkillPlaneProjectionParams,
-): Promise<SkillPlaneProjection> {
+export async function buildSkillPlaneProjection(params: SkillPlaneProjectionParams): Promise<SkillPlaneProjection> {
   const {
     agentType,
     registry,
@@ -116,9 +114,7 @@ export async function buildSkillPlaneProjection(
   const effectiveSkills = allSkills.filter((s) => effectiveSet.has(s.skillId))
 
   // Step 4: Build summaries (always present in both modes)
-  const skillSummaries = effectiveSkills.length > 0
-    ? buildSkillSummaries(effectiveSkills)
-    : undefined
+  const skillSummaries = effectiveSkills.length > 0 ? buildSkillSummaries(effectiveSkills) : undefined
 
   // Step 5: In summary mode, return lightweight projection (no documents)
   if (mode === 'summary') {
@@ -131,11 +127,7 @@ export async function buildSkillPlaneProjection(
   }
 
   // Step 6: In documents mode, lazy-load full documents with budget enforcement
-  const skillDocuments = await loadDocumentsWithBudget(
-    effectiveSkills,
-    documentLoader,
-    tokenBudget,
-  )
+  const skillDocuments = await loadDocumentsWithBudget(effectiveSkills, documentLoader, tokenBudget)
 
   return {
     skillIds: effectiveIds,

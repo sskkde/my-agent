@@ -50,7 +50,7 @@ function createFakeManager(opts: FakeManagerOptions = {}): BrowserSessionManager
       contentCallCount += 1
       // First content call returns the initial pageContent; subsequent calls
       // (after release) return the retry content if provided.
-      return Promise.resolve(contentCallCount === 1 ? pageContent : (retryContent || pageContent))
+      return Promise.resolve(contentCallCount === 1 ? pageContent : retryContent || pageContent)
     }),
     close: vi.fn().mockResolvedValue(undefined),
   }
@@ -62,9 +62,7 @@ function createFakeManager(opts: FakeManagerOptions = {}): BrowserSessionManager
       url: null,
       lastActivityAt: new Date().toISOString(),
     })),
-    requestTakeover: vi.fn().mockResolvedValue(
-      opts.takeoverResult ?? { success: true, lease: undefined },
-    ),
+    requestTakeover: vi.fn().mockResolvedValue(opts.takeoverResult ?? { success: true, lease: undefined }),
     requestHandoff: vi.fn().mockImplementation(() => {
       // Default: succeed and transition to handoff_requested. Tests that need
       // to drive the poll loop set ownership to human_controlled here.
@@ -141,9 +139,7 @@ describe('web-search-browser-handoff', () => {
       const successHtml = await loadHtmlFixture('duckduckgo-browser-success.html')
       const manager = createFakeManager({ pageContent: successHtml })
 
-      const { searchWithDuckDuckGoBrowser } = await import(
-        '../../../src/search/browser/duckduckgo-provider.js'
-      )
+      const { searchWithDuckDuckGoBrowser } = await import('../../../src/search/browser/duckduckgo-provider.js')
 
       const result: BrowserSearchResult = await searchWithDuckDuckGoBrowser({
         query: 'test query',
@@ -168,9 +164,7 @@ describe('web-search-browser-handoff', () => {
         initialOwnership: 'agent_controlled',
       })
 
-      const { searchWithDuckDuckGoBrowser } = await import(
-        '../../../src/search/browser/duckduckgo-provider.js'
-      )
+      const { searchWithDuckDuckGoBrowser } = await import('../../../src/search/browser/duckduckgo-provider.js')
 
       // Drive the poll: after requestHandoff, simulate the human taking over
       // (via requestTakeover on the API) then releasing back to
@@ -218,9 +212,7 @@ describe('web-search-browser-handoff', () => {
         return { success: true }
       })
 
-      const { searchWithDuckDuckGoBrowser } = await import(
-        '../../../src/search/browser/duckduckgo-provider.js'
-      )
+      const { searchWithDuckDuckGoBrowser } = await import('../../../src/search/browser/duckduckgo-provider.js')
 
       const resultPromise = searchWithDuckDuckGoBrowser({
         query: 'test query',
@@ -252,9 +244,7 @@ describe('web-search-browser-handoff', () => {
         return { success: true }
       })
 
-      const { searchWithDuckDuckGoBrowser } = await import(
-        '../../../src/search/browser/duckduckgo-provider.js'
-      )
+      const { searchWithDuckDuckGoBrowser } = await import('../../../src/search/browser/duckduckgo-provider.js')
 
       const resultPromise = searchWithDuckDuckGoBrowser({
         query: 'test query',
@@ -288,9 +278,7 @@ describe('web-search-browser-handoff', () => {
         close: vi.fn().mockResolvedValue(undefined),
       }
 
-      const { searchWithDuckDuckGoBrowser } = await import(
-        '../../../src/search/browser/duckduckgo-provider.js'
-      )
+      const { searchWithDuckDuckGoBrowser } = await import('../../../src/search/browser/duckduckgo-provider.js')
 
       const result = await searchWithDuckDuckGoBrowser({
         query: 'test query',
@@ -309,9 +297,7 @@ describe('web-search-browser-handoff', () => {
         handoffResult: { success: false, error: 'LEASE_CONFLICT' },
       })
 
-      const { searchWithDuckDuckGoBrowser } = await import(
-        '../../../src/search/browser/duckduckgo-provider.js'
-      )
+      const { searchWithDuckDuckGoBrowser } = await import('../../../src/search/browser/duckduckgo-provider.js')
 
       const result = await searchWithDuckDuckGoBrowser({
         query: 'test query',

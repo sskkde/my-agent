@@ -224,9 +224,7 @@ describe('registerAMapMcpTools', () => {
     })
 
     expect(getAmapTools(registry)).toHaveLength(0)
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('AMAP_MAPS_API_KEY is not set'),
-    )
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('AMAP_MAPS_API_KEY is not set'))
 
     warnSpy.mockRestore()
   })
@@ -241,9 +239,7 @@ describe('registerAMapMcpTools', () => {
     })
 
     expect(getAmapTools(registry)).toHaveLength(0)
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('AMAP_MAPS_API_KEY is not set'),
-    )
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('AMAP_MAPS_API_KEY is not set'))
 
     warnSpy.mockRestore()
   })
@@ -268,11 +264,7 @@ describe('registerAMapMcpTools', () => {
 
     // Tool names follow mcp_amap-maps_<tool> pattern (sanitized)
     const toolNames = amapTools.map((t) => t.name).sort()
-    expect(toolNames).toEqual([
-      'mcp_amap-maps_geocode',
-      'mcp_amap-maps_poi_search',
-      'mcp_amap-maps_route_plan',
-    ])
+    expect(toolNames).toEqual(['mcp_amap-maps_geocode', 'mcp_amap-maps_poi_search', 'mcp_amap-maps_route_plan'])
 
     // Each tool has expected metadata
     for (const tool of amapTools) {
@@ -431,10 +423,9 @@ describe('registerAMapMcpTools', () => {
       transportOverride: mockTransport,
     })
 
-    const rows = connection.query<{ base_url: string }>(
-      'SELECT base_url FROM mcp_servers WHERE server_id = ?',
-      ['amap-maps'],
-    )
+    const rows = connection.query<{ base_url: string }>('SELECT base_url FROM mcp_servers WHERE server_id = ?', [
+      'amap-maps',
+    ])
     expect(rows[0]!.base_url).toBe(customEndpoint)
   })
 })

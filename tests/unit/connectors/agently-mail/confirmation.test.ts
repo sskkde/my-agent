@@ -5,9 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  AgentlyMailConfirmationManager,
-} from '../../../../src/connectors/agently-mail/confirmation.js'
+import { AgentlyMailConfirmationManager } from '../../../../src/connectors/agently-mail/confirmation.js'
 import type { AgentlyCliRunResult } from '../../../../src/connectors/agently-mail/cli-runner.js'
 import type { AgentlyCliRunnerOptions } from '../../../../src/connectors/agently-mail/cli-runner.js'
 import type { AgentlyMailOperation } from '../../../../src/connectors/agently-mail/types.js'
@@ -68,7 +66,9 @@ function ctkStdout(token: string): string {
 describe('AgentlyMailConfirmationManager — stage 1', () => {
   let manager: AgentlyMailConfirmationManager
 
-  beforeEach(() => { manager = new AgentlyMailConfirmationManager() })
+  beforeEach(() => {
+    manager = new AgentlyMailConfirmationManager()
+  })
 
   // ── isConfirmationRequired ─────────────────────────────────────────────────
 
@@ -105,9 +105,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
         cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }),
       )
 
-      const result = await manager.startConfirmation(
-        'send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       expect(result.response.status).toBe('failed')
       expect(result.response.error?.code).toBe('REQUIRES_CONFIRMATION')
@@ -128,17 +126,13 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
         }),
       )
 
-      const result = await manager.startConfirmation(
-        'send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       expect(result.token).toBe(CTK_TOKEN)
     })
 
     it('should store pending confirmation in the map', async () => {
-      const { runner } = createMockRunner(
-        cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }),
-      )
+      const { runner } = createMockRunner(cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }))
 
       await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
@@ -157,9 +151,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
         }),
       )
 
-      const result = await manager.startConfirmation(
-        'send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       expect(result.response.status).toBe('failed')
       expect(result.response.error?.code).toBe('MISSING_CONFIRMATION_TOKEN')
@@ -175,9 +167,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
         }),
       )
 
-      const result = await manager.startConfirmation(
-        'send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       expect(result.response.status).toBe('success')
       expect(result.token).toBeUndefined()
@@ -186,22 +176,16 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
     it('should skip confirmation for non-write operations', async () => {
       const { runner, calls } = createMockRunner(cliRunResult())
 
-      const result = await manager.startConfirmation(
-        'list_messages', {}, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('list_messages', {}, runner, INSTANCE_ID, REQUEST_ID)
 
       expect(result.response.status).toBe('success')
       expect(calls).toHaveLength(0)
     })
 
     it('should work for trash_message', async () => {
-      const { runner } = createMockRunner(
-        cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }),
-      )
+      const { runner } = createMockRunner(cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }))
 
-      const result = await manager.startConfirmation(
-        'trash_message', TRASH_PARAMS, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('trash_message', TRASH_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       expect(result.token).toBe(CTK_TOKEN)
       expect(result.response.error?.code).toBe('REQUIRES_CONFIRMATION')
@@ -213,9 +197,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
       )
 
       const options: AgentlyCliRunnerOptions = { timeoutMs: 60_000 }
-      await manager.startConfirmation(
-        'send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID, options,
-      )
+      await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID, options)
 
       expect(calls[0].options).toBe(options)
     })
@@ -230,9 +212,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
         }),
       )
 
-      const result = await manager.startConfirmation(
-        'send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       expect((result.response.metadata as Record<string, unknown>).summary).toBe(summary)
     })
@@ -246,9 +226,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
         }),
       )
 
-      const result = await manager.startConfirmation(
-        'send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID,
-      )
+      const result = await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       const summary = (result.response.metadata as Record<string, unknown>).summary as string
       expect(summary).toContain('[REDACTED]')
@@ -260,9 +238,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
 
   describe('cancelConfirmation', () => {
     it('should remove a pending confirmation', async () => {
-      const { runner } = createMockRunner(
-        cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }),
-      )
+      const { runner } = createMockRunner(cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }))
       await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       const removed = manager.cancelConfirmation(CTK_TOKEN)
@@ -279,9 +255,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
 
   describe('purgeExpired', () => {
     it('should remove expired entries', async () => {
-      const { runner } = createMockRunner(
-        cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }),
-      )
+      const { runner } = createMockRunner(cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }))
       await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       const pending = manager.pendingConfirmations.get(CTK_TOKEN)!
@@ -292,9 +266,7 @@ describe('AgentlyMailConfirmationManager — stage 1', () => {
     })
 
     it('should not remove non-expired entries', async () => {
-      const { runner } = createMockRunner(
-        cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }),
-      )
+      const { runner } = createMockRunner(cliRunResult({ exitCode: 8, stdout: ctkStdout(CTK_TOKEN), stderr: '' }))
       await manager.startConfirmation('send_message', SEND_PARAMS, runner, INSTANCE_ID, REQUEST_ID)
 
       expect(manager.purgeExpired()).toBe(0)

@@ -7,11 +7,7 @@ interface CapturedCall {
   init: RequestInit
 }
 
-function createMockFetch(
-  response: object,
-  status = 200,
-  captures: CapturedCall[],
-): typeof fetch {
+function createMockFetch(response: object, status = 200, captures: CapturedCall[]): typeof fetch {
   return vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
     captures.push({ url: String(url), init: init ?? {} })
     return {
@@ -24,10 +20,7 @@ function createMockFetch(
   })
 }
 
-function createStreamMockFetch(
-  chunks: string[],
-  captures: CapturedCall[],
-): typeof fetch {
+function createStreamMockFetch(chunks: string[], captures: CapturedCall[]): typeof fetch {
   const encoder = new TextEncoder()
   return vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
     captures.push({ url: String(url), init: init ?? {} })
@@ -71,9 +64,7 @@ describe('OllamaAdapter OpenAI-compatible path', () => {
         {
           id: 'chatcmpl-1',
           model: 'llama3',
-          choices: [
-            { message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' },
-          ],
+          choices: [{ message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' }],
           usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
         },
         200,
@@ -179,9 +170,7 @@ describe('OllamaAdapter OpenAI-compatible path', () => {
       const body = JSON.parse(String(captures[0].init.body)) as Record<string, unknown>
       expect(body).toHaveProperty('tools')
       expect(Array.isArray(body.tools)).toBe(true)
-      expect((body.tools as Array<{ function: { name: string } }>)[0].function.name).toBe(
-        'get_weather',
-      )
+      expect((body.tools as Array<{ function: { name: string } }>)[0].function.name).toBe('get_weather')
     })
 
     it('always sends an Authorization: Bearer header (placeholder for local)', async () => {
@@ -190,9 +179,7 @@ describe('OllamaAdapter OpenAI-compatible path', () => {
         {
           id: 'chatcmpl-3',
           model: 'llama3',
-          choices: [
-            { message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' },
-          ],
+          choices: [{ message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' }],
         },
         200,
         captures,
@@ -228,9 +215,7 @@ describe('OllamaAdapter OpenAI-compatible path', () => {
         {
           id: 'chatcmpl-4',
           model: 'llama3',
-          choices: [
-            { message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' },
-          ],
+          choices: [{ message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' }],
         },
         200,
         captures,
@@ -268,9 +253,7 @@ describe('OllamaAdapter OpenAI-compatible path', () => {
         {
           id: 'chatcmpl-5',
           model: 'llama3',
-          choices: [
-            { message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' },
-          ],
+          choices: [{ message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' }],
         },
         200,
         captures,

@@ -269,10 +269,9 @@ describe('Browser Handoff Full-Flow E2E', () => {
       // manager does only this one transition in `requestHandoff`; the
       // subsequent transition to `human_controlled` happens when the human
       // calls /takeover). The API status should be `handoff_requested`.
-      const statusResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/status`,
-        { headers: { Cookie: fixture.authCookie } },
-      )
+      const statusResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/status`, {
+        headers: { Cookie: fixture.authCookie },
+      })
       expect(statusResponse.status).toBe(200)
       const statusBody = (await statusResponse.json()) as {
         ok: boolean
@@ -283,18 +282,13 @@ describe('Browser Handoff Full-Flow E2E', () => {
 
       // Step 5: Verify the frame stream SSE is accessible and returns a
       // snapshot event as the first SSE message.
-      const sseResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/frame/stream`,
-        { headers: { Cookie: fixture.authCookie } },
-      )
+      const sseResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/frame/stream`, {
+        headers: { Cookie: fixture.authCookie },
+      })
       expect(sseResponse.status).toBe(200)
       expect(sseResponse.headers.get('content-type')).toContain('text/event-stream')
 
-      const sseText = await readSseUntil(
-        sseResponse,
-        (text) => text.includes('"type":"snapshot"'),
-        3000,
-      )
+      const sseText = await readSseUntil(sseResponse, (text) => text.includes('"type":"snapshot"'), 3000)
       expect(sseText).toContain('"type":"snapshot"')
       expect(sseText).toContain('data:')
 
@@ -302,10 +296,10 @@ describe('Browser Handoff Full-Flow E2E', () => {
       // `handoff_requested` without a lease. The real user now takes over via
       // POST /takeover, which transitions to `human_controlled` and grants the
       // lease to the user.
-      const takeoverResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/takeover`,
-        { method: 'POST', headers: { Cookie: fixture.authCookie } },
-      )
+      const takeoverResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/takeover`, {
+        method: 'POST',
+        headers: { Cookie: fixture.authCookie },
+      })
       expect(takeoverResponse.status).toBe(200)
       const takeoverBody = (await takeoverResponse.json()) as {
         ok: boolean
@@ -316,14 +310,11 @@ describe('Browser Handoff Full-Flow E2E', () => {
       expect(takeoverBody.data.previousState).toBe('handoff_requested')
 
       // Step 7: User sends input via POST /input (click) → 200 success.
-      const inputResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/input`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Cookie: fixture.authCookie },
-          body: JSON.stringify({ action: 'click', payload: { x: 0.5, y: 0.5 } }),
-        },
-      )
+      const inputResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/input`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: fixture.authCookie },
+        body: JSON.stringify({ action: 'click', payload: { x: 0.5, y: 0.5 } }),
+      })
       expect(inputResponse.status).toBe(200)
       const inputBody = (await inputResponse.json()) as {
         ok: boolean
@@ -333,10 +324,10 @@ describe('Browser Handoff Full-Flow E2E', () => {
       expect(inputBody.data.success).toBe(true)
 
       // Step 8: User releases via POST /release → state becomes agent_controlled.
-      const releaseResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/release`,
-        { method: 'POST', headers: { Cookie: fixture.authCookie } },
-      )
+      const releaseResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/release`, {
+        method: 'POST',
+        headers: { Cookie: fixture.authCookie },
+      })
       expect(releaseResponse.status).toBe(200)
       const releaseBody = (await releaseResponse.json()) as {
         ok: boolean
@@ -354,9 +345,7 @@ describe('Browser Handoff Full-Flow E2E', () => {
       // Step 10: Verify the agent search resumed and returned results.
       expect(searchResult.success).toBe(true)
       expect(searchResult.results).toHaveLength(2)
-      expect(searchResult.results?.[0].title).toBe(
-        'SearXNG: A privacy-respecting metasearch engine',
-      )
+      expect(searchResult.results?.[0].title).toBe('SearXNG: A privacy-respecting metasearch engine')
       expect(searchResult.provider).toBe('duckduckgo-browser')
     })
   })
@@ -434,14 +423,11 @@ describe('Browser Handoff Full-Flow E2E', () => {
       await createBrowserSession(fixture, sessionId)
 
       // User tries to send input without a takeover → 403.
-      const inputResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/input`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Cookie: fixture.authCookie },
-          body: JSON.stringify({ action: 'click', payload: { x: 0.5, y: 0.5 } }),
-        },
-      )
+      const inputResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/input`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: fixture.authCookie },
+        body: JSON.stringify({ action: 'click', payload: { x: 0.5, y: 0.5 } }),
+      })
       expect(inputResponse.status).toBe(403)
       const inputBody = (await inputResponse.json()) as {
         ok: boolean
@@ -453,10 +439,9 @@ describe('Browser Handoff Full-Flow E2E', () => {
       // Verify the chat/session is not broken by the denied input: the
       // session status endpoint still works and the browser session is still
       // in `agent_controlled` state.
-      const statusResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/status`,
-        { headers: { Cookie: fixture.authCookie } },
-      )
+      const statusResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/status`, {
+        headers: { Cookie: fixture.authCookie },
+      })
       expect(statusResponse.status).toBe(200)
       const statusBody = (await statusResponse.json()) as {
         ok: boolean
@@ -467,10 +452,10 @@ describe('Browser Handoff Full-Flow E2E', () => {
 
       // Verify a subsequent takeover still works — the denied input did not
       // corrupt the lease state machine.
-      const takeoverResponse = await fetch(
-        `${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/takeover`,
-        { method: 'POST', headers: { Cookie: fixture.authCookie } },
-      )
+      const takeoverResponse = await fetch(`${fixture.baseUrl}/api/v1/sessions/${sessionId}/browser/takeover`, {
+        method: 'POST',
+        headers: { Cookie: fixture.authCookie },
+      })
       expect(takeoverResponse.status).toBe(200)
       const takeoverBody = (await takeoverResponse.json()) as {
         ok: boolean

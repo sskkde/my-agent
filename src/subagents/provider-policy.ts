@@ -303,11 +303,14 @@ export function resolveSubagentProvider(input: ResolveSubagentProviderInput): Re
     // Skip ollama providers in global fallback — they are typically
     // unreachable in containerized deployments and cause all subagent
     // LLM calls to fail.
-    const globalProvider = providerConfigStore.getByUser(userId ?? '').find(
-      (p) => p.providerId === globalConfig.providerId && p.enabled,
-    )
+    const globalProvider = providerConfigStore
+      .getByUser(userId ?? '')
+      .find((p) => p.providerId === globalConfig.providerId && p.enabled)
     const isOllama = globalProvider?.providerType === 'ollama'
-    if (!isOllama && candidateMatchesPolicy(globalConfig.providerId, globalConfig.model, policy, providerConfigStore, userId)) {
+    if (
+      !isOllama &&
+      candidateMatchesPolicy(globalConfig.providerId, globalConfig.model, policy, providerConfigStore, userId)
+    ) {
       return {
         providerId: globalConfig.providerId,
         model: globalConfig.model,

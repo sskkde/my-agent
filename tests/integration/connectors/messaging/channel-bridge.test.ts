@@ -143,11 +143,7 @@ interface MockStoreData {
 }
 
 function createMockConnectorStore(data: MockStoreData): ConnectorStore {
-  const allInstances = [
-    ...data.activeInstances,
-    ...data.inactiveInstances,
-    ...data.draftInstances,
-  ]
+  const allInstances = [...data.activeInstances, ...data.inactiveInstances, ...data.draftInstances]
 
   return {
     findInstancesByStatus(status: ConnectorStatus): ConnectorInstance[] {
@@ -194,10 +190,7 @@ interface RecordedOutboundCall {
 }
 
 function createMockAdapter(overrides?: {
-  sendOutbound?: (
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ) => Promise<MessagingTransportResult>
+  sendOutbound?: (target: DeliveryTarget, message: OutboundTextMessage) => Promise<MessagingTransportResult>
 }): MessagingAdapter & { getCalls(): RecordedOutboundCall[] } {
   const calls: RecordedOutboundCall[] = []
 
@@ -210,10 +203,7 @@ function createMockAdapter(overrides?: {
 
   return {
     handleInbound: async (_event: InboundRawEvent): Promise<NormalizedInboundMessage | null> => null,
-    sendOutbound: async (
-      target: DeliveryTarget,
-      message: OutboundTextMessage,
-    ): Promise<MessagingTransportResult> => {
+    sendOutbound: async (target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> => {
       calls.push({ target: structuredClone(target), message: structuredClone(message) })
       return sendOutboundFn(target, message)
     },

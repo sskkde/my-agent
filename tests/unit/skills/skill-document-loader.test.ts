@@ -10,25 +10,13 @@ import {
   resolveSkillAlias,
   isDeprecatedAlias,
 } from '../../../src/skills/builtin/manifest.js'
-import {
-  SkillDocumentLoader,
-  createSkillDocumentLoader,
-} from '../../../src/skills/skill-document-loader.js'
+import { SkillDocumentLoader, createSkillDocumentLoader } from '../../../src/skills/skill-document-loader.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const BUILTIN_DOCS_PATH = join(
-  __dirname,
-  '..',
-  '..',
-  '..',
-  'src',
-  'skills',
-  'builtin',
-  'docs',
-)
+const BUILTIN_DOCS_PATH = join(__dirname, '..', '..', '..', 'src', 'skills', 'builtin', 'docs')
 
 function makeRegistryWithBuiltinSkills() {
   const registry = createSkillRegistry()
@@ -99,18 +87,14 @@ describe('Built-in skill manifest', () => {
     })
 
     it('deprecated aliases are disabled', () => {
-      const deprecated = ALL_BUILTIN_SKILL_DEFINITIONS.filter((s) =>
-        (s.tags ?? []).includes('deprecated'),
-      )
+      const deprecated = ALL_BUILTIN_SKILL_DEFINITIONS.filter((s) => (s.tags ?? []).includes('deprecated'))
       for (const skill of deprecated) {
         expect(skill.enabled).toBe(false)
       }
     })
 
     it('deprecated aliases have deprecated tag', () => {
-      const deprecated = ALL_BUILTIN_SKILL_DEFINITIONS.filter((s) =>
-        (s.tags ?? []).includes('deprecated'),
-      )
+      const deprecated = ALL_BUILTIN_SKILL_DEFINITIONS.filter((s) => (s.tags ?? []).includes('deprecated'))
       expect(deprecated.length).toBe(DEPRECATED_SKILL_ALIASES.size)
     })
   })
@@ -250,9 +234,7 @@ describe('SkillDocumentLoader', () => {
     })
 
     it('throws SkillDocumentLoaderError for unknown skill in registry mode', async () => {
-      await expect(loader.loadSkillDocument('nonexistent_skill')).rejects.toThrow(
-        /Skill not found in registry/,
-      )
+      await expect(loader.loadSkillDocument('nonexistent_skill')).rejects.toThrow(/Skill not found in registry/)
     })
 
     it('loads all 9 required documentation files', async () => {
@@ -308,19 +290,13 @@ describe('SkillDocumentLoader', () => {
     })
 
     it('throws for unknown skill in registry mode', () => {
-      expect(() => loader.loadSkillDocumentSync('nonexistent_skill')).toThrow(
-        /Skill not found in registry/,
-      )
+      expect(() => loader.loadSkillDocumentSync('nonexistent_skill')).toThrow(/Skill not found in registry/)
     })
   })
 
   describe('loadSkillDocuments (batch)', () => {
     it('loads multiple documents in a batch', async () => {
-      const results = await loader.loadSkillDocuments([
-        'artifact_workflow',
-        'memory_research',
-        'session_status',
-      ])
+      const results = await loader.loadSkillDocuments(['artifact_workflow', 'memory_research', 'session_status'])
 
       expect(results.size).toBe(3)
       expect(results.get('artifact_workflow')).toContain('Artifact Workflow')
@@ -329,10 +305,7 @@ describe('SkillDocumentLoader', () => {
     })
 
     it('skips skills that cannot be loaded', async () => {
-      const results = await loader.loadSkillDocuments([
-        'artifact_workflow',
-        'nonexistent_skill',
-      ])
+      const results = await loader.loadSkillDocuments(['artifact_workflow', 'nonexistent_skill'])
 
       expect(results.size).toBe(1)
       expect(results.has('nonexistent_skill')).toBe(false)
@@ -357,9 +330,7 @@ describe('SkillDocumentLoader', () => {
     })
 
     it('throws for unknown skill in registry mode', () => {
-      expect(() => loader.resolveDocumentPath('nonexistent')).toThrow(
-        /Skill not found in registry/,
-      )
+      expect(() => loader.resolveDocumentPath('nonexistent')).toThrow(/Skill not found in registry/)
     })
   })
 

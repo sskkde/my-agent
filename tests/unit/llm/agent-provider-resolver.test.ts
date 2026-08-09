@@ -695,7 +695,8 @@ describe('agent-provider-resolver', () => {
 
       process.env = envBackup
 
-      const candidateIds = result.type === 'success' ? (result as ProviderResolutionResult).candidates.map((c) => c.providerId) : []
+      const candidateIds =
+        result.type === 'success' ? (result as ProviderResolutionResult).candidates.map((c) => c.providerId) : []
       expect(candidateIds).not.toContain('dashscope')
     })
 
@@ -727,9 +728,7 @@ describe('agent-provider-resolver', () => {
       expect(result.type).toBe('success')
       const successResult = result as ProviderResolutionResult
       expect(successResult.selectedProviderId).toBe('openai')
-      const envCandidate = successResult.candidates.find(
-        (c) => c.providerId === 'openai' && c.source === 'env',
-      )
+      const envCandidate = successResult.candidates.find((c) => c.providerId === 'openai' && c.source === 'env')
       expect(envCandidate).toBeUndefined()
     })
   })

@@ -34,9 +34,7 @@ const TERMINAL_OWNERSHIP_STATES: readonly OwnershipState[] = ['closed', 'error']
  * Flow: agent_controlled → handoff_requested → human_controlled → resuming → agent_controlled
  * Terminal: closed, error (no outgoing transitions)
  */
-export const OWNERSHIP_TRANSITIONS: Readonly<
-  Record<OwnershipState, readonly OwnershipState[]>
-> = {
+export const OWNERSHIP_TRANSITIONS: Readonly<Record<OwnershipState, readonly OwnershipState[]>> = {
   agent_controlled: ['handoff_requested', 'closed', 'error'],
   handoff_requested: ['human_controlled', 'agent_controlled', 'closed', 'error'],
   human_controlled: ['resuming', 'closed', 'error'],
@@ -162,38 +160,21 @@ function createFailure(error: TransitionError): TransitionResult {
  * Uses the pure transition table {@link OWNERSHIP_TRANSITIONS} to determine
  * whether `to` is a valid next state from `from`.
  */
-export function validateBrowserSessionTransition(
-  from: OwnershipState,
-  to: OwnershipState,
-): TransitionResult {
+export function validateBrowserSessionTransition(from: OwnershipState, to: OwnershipState): TransitionResult {
   if (!OWNERSHIP_STATES.includes(from)) {
-    return createFailure(
-      createError('INVALID_SOURCE_STATE', `Invalid source state: ${from}`),
-    )
+    return createFailure(createError('INVALID_SOURCE_STATE', `Invalid source state: ${from}`))
   }
   if (!OWNERSHIP_STATES.includes(to)) {
-    return createFailure(
-      createError('INVALID_TARGET_STATE', `Invalid target state: ${to}`),
-    )
+    return createFailure(createError('INVALID_TARGET_STATE', `Invalid target state: ${to}`))
   }
 
   if (TERMINAL_OWNERSHIP_STATES.includes(from)) {
-    return createFailure(
-      createError(
-        'INVALID_FROM_TERMINAL',
-        `Cannot transition from terminal state ${from}`,
-      ),
-    )
+    return createFailure(createError('INVALID_FROM_TERMINAL', `Cannot transition from terminal state ${from}`))
   }
 
   const allowed = OWNERSHIP_TRANSITIONS[from]
   if (!allowed.includes(to)) {
-    return createFailure(
-      createError(
-        'TRANSITION_NOT_ALLOWED',
-        `Transition from ${from} to ${to} is not allowed`,
-      ),
-    )
+    return createFailure(createError('TRANSITION_NOT_ALLOWED', `Transition from ${from} to ${to} is not allowed`))
   }
 
   return createSuccess()

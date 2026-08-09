@@ -43,9 +43,7 @@ export function buildCompactPrompt(items: readonly ContextItem[]): string {
     return SYSTEM_INSTRUCTIONS
   }
 
-  const sourceBlocks = items
-    .map((item) => formatSourceBlock(item))
-    .join('\n\n')
+  const sourceBlocks = items.map((item) => formatSourceBlock(item)).join('\n\n')
 
   return `${SYSTEM_INSTRUCTIONS}\n\n## Source Items\n\n${sourceBlocks}`
 }

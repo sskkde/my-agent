@@ -14,48 +14,40 @@ describe('Skill Escalation - Background Agent', () => {
   const catalog = makeSkillCatalog()
 
   it('background agent cannot access write-category skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'background',
-      catalog,
-      envelopeRegistry,
-      ['artifact_workflow', 'memory_research'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('background', catalog, envelopeRegistry, [
+      'artifact_workflow',
+      'memory_research',
+    ])
 
     expect(effective).toContain('memory_research')
     expect(effective).not.toContain('artifact_workflow')
   })
 
   it('background agent cannot access automation-category skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'background',
-      catalog,
-      envelopeRegistry,
-      ['custom_automation', 'documentation_search'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('background', catalog, envelopeRegistry, [
+      'custom_automation',
+      'documentation_search',
+    ])
 
     expect(effective).toContain('documentation_search')
     expect(effective).not.toContain('custom_automation')
   })
 
   it('background agent cannot access admin-category skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'background',
-      catalog,
-      envelopeRegistry,
-      ['admin_config', 'session_status'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('background', catalog, envelopeRegistry, [
+      'admin_config',
+      'session_status',
+    ])
 
     expect(effective).toContain('session_status')
     expect(effective).not.toContain('admin_config')
   })
 
   it('background agent allows read MiniMax skills and denies write MiniMax skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'background',
-      catalog,
-      envelopeRegistry,
-      [...MINIMAX_SKILL_IDS, 'documentation_search'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('background', catalog, envelopeRegistry, [
+      ...MINIMAX_SKILL_IDS,
+      'documentation_search',
+    ])
 
     expect(effective).toContain('documentation_search')
     expect(effective).toContain('minimax-xlsx')
@@ -66,13 +58,7 @@ describe('Skill Escalation - Background Agent', () => {
 
   it('no combination of profile + config can override envelope for background', () => {
     const allIds = catalog.map((c) => c.id)
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'background',
-      catalog,
-      envelopeRegistry,
-      allIds,
-      allIds,
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('background', catalog, envelopeRegistry, allIds, allIds)
 
     expect(effective).toContain('memory_research')
     expect(effective).toContain('session_status')

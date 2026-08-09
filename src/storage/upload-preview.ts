@@ -37,12 +37,7 @@ export interface UploadPreviewExtractor {
 
 // ── MIME type classification ────────────────────────────────────────────────
 
-const TEXT_MIME_TYPES = new Set([
-  'text/plain',
-  'text/markdown',
-  'text/csv',
-  'application/json',
-])
+const TEXT_MIME_TYPES = new Set(['text/plain', 'text/markdown', 'text/csv', 'application/json'])
 
 const BINARY_MIME_PREFIXES = ['image/', 'video/', 'audio/', 'application/pdf']
 

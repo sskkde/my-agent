@@ -207,21 +207,21 @@ describe('Skill Boundary Security Tests', () => {
         providerFamily: 'openai',
         toolProjection: {
           toolIds: ['file_read'],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'file_read',
-              description: 'Read a file',
-              parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'file_read',
+                description: 'Read a file',
+                parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+              },
             },
-          }],
+          ],
         },
         skillProjection: {
           skillIds: ['evil-skill'],
           renderMode: 'documents',
-          skillDocuments: [
-            { skillId: 'evil-skill', name: 'Evil Skill', document: maliciousDocument },
-          ],
+          skillDocuments: [{ skillId: 'evil-skill', name: 'Evil Skill', document: maliciousDocument }],
         },
       })
       expect(tools).toBeDefined()
@@ -319,9 +319,7 @@ describe('Skill Boundary Security Tests', () => {
 
       // Real allowlist line is first; skill doc may also contain the string.
       const toolPlaneLines = result.segments.toolPlane.split('\n')
-      const toolIdLine = toolPlaneLines.find(
-        (line) => line.startsWith('Available Tool IDs:') && !line.includes('exec'),
-      )
+      const toolIdLine = toolPlaneLines.find((line) => line.startsWith('Available Tool IDs:') && !line.includes('exec'))
       expect(toolIdLine).toBeDefined()
       expect(toolIdLine).toBe('Available Tool IDs: file_read, web_search')
     })
@@ -453,9 +451,18 @@ describe('Skill Boundary Security Tests', () => {
     it('SkillDocumentEntry has no executable fields at compile time', () => {
       // SkillDocumentEntry only has: skillId, name, document
       // No handler, schema, command, script, execute, parameters
-      type HasHandler = 'handler' extends keyof import('../../../src/kernel/model-input/model-input-types.js').SkillDocumentEntry ? true : never
-      type HasSchema = 'schema' extends keyof import('../../../src/kernel/model-input/model-input-types.js').SkillDocumentEntry ? true : never
-      type HasCommand = 'command' extends keyof import('../../../src/kernel/model-input/model-input-types.js').SkillDocumentEntry ? true : never
+      type HasHandler =
+        'handler' extends keyof import('../../../src/kernel/model-input/model-input-types.js').SkillDocumentEntry
+          ? true
+          : never
+      type HasSchema =
+        'schema' extends keyof import('../../../src/kernel/model-input/model-input-types.js').SkillDocumentEntry
+          ? true
+          : never
+      type HasCommand =
+        'command' extends keyof import('../../../src/kernel/model-input/model-input-types.js').SkillDocumentEntry
+          ? true
+          : never
       const h: HasHandler = true as HasHandler
       const s: HasSchema = true as HasSchema
       const c: HasCommand = true as HasCommand
@@ -491,7 +498,8 @@ describe('Skill Boundary Security Tests', () => {
       const projection: SkillPlaneProjection = {
         skillIds: ['memory_research', 'session_status'],
         renderMode: 'summary',
-        skillSummaries: 'Available Skills:\n- memory_research (read): Memory guidance\n- session_status (read): Status guidance',
+        skillSummaries:
+          'Available Skills:\n- memory_research (read): Memory guidance\n- session_status (read): Status guidance',
       }
 
       const rendered = renderSummarySkillPlane(projection)
@@ -643,20 +651,23 @@ describe('Skill Boundary Security Tests', () => {
         mode: 'function_calling',
         agentKind: 'foreground',
         providerFamily: 'openai',
-        toolProjection: { toolIds: ['file_read'], tools: [{
-          type: 'function' as const,
-          function: {
-            name: 'file_read',
-            description: 'Read a file',
-            parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
-          },
-        }] },
+        toolProjection: {
+          toolIds: ['file_read'],
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'file_read',
+                description: 'Read a file',
+                parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+              },
+            },
+          ],
+        },
         skillProjection: {
           skillIds: ['pptx-generator'],
           renderMode: 'documents',
-          skillDocuments: [
-            { skillId: 'pptx-generator', name: 'PPTX Generator', document: maliciousDocument },
-          ],
+          skillDocuments: [{ skillId: 'pptx-generator', name: 'PPTX Generator', document: maliciousDocument }],
         },
       })
 
@@ -673,18 +684,21 @@ describe('Skill Boundary Security Tests', () => {
     it('registry accepts MiniMax skill definitions as documentation-only records', () => {
       const registry = makeSkillRegistry()
       for (const skillId of MINIMAX_SKILL_IDS) {
-        registry.register({
-          skillId,
-          name: skillId,
-          description: `Guidance for ${skillId}`,
-          category: 'write',
-          sensitivity: 'medium',
-          enabled: true,
-          source: 'builtin',
-          allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
-          defaultAgentProfiles: ['default'],
-          documentPath: `${skillId}.md`,
-        }, { overwriteExisting: true })
+        registry.register(
+          {
+            skillId,
+            name: skillId,
+            description: `Guidance for ${skillId}`,
+            category: 'write',
+            sensitivity: 'medium',
+            enabled: true,
+            source: 'builtin',
+            allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
+            defaultAgentProfiles: ['default'],
+            documentPath: `${skillId}.md`,
+          },
+          { overwriteExisting: true },
+        )
       }
 
       for (const skillId of MINIMAX_SKILL_IDS) {
@@ -766,11 +780,7 @@ describe('Skill Boundary Security Tests', () => {
       const envelopeRegistry = createAgentTypeSkillEnvelopeRegistry()
       const catalog = MINIMAX_SKILL_IDS.map((id) => ({ id, category: 'write' as const }))
 
-      const effective = computeEffectiveSkillIdsWithEnvelope(
-        'remote',
-        catalog,
-        envelopeRegistry,
-      )
+      const effective = computeEffectiveSkillIdsWithEnvelope('remote', catalog, envelopeRegistry)
 
       expect(effective).toEqual([])
     })

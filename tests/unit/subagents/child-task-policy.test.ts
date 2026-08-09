@@ -167,7 +167,12 @@ describe('resolveSessionVisibility / isInternalChildSession', () => {
 
   it('never classifies a child as foreground', () => {
     expect(resolveSessionVisibility(4)).toBe('internal')
-    const kinds = [resolveSessionVisibility(0), resolveSessionVisibility(1), resolveSessionVisibility(2), resolveSessionVisibility(3)]
+    const kinds = [
+      resolveSessionVisibility(0),
+      resolveSessionVisibility(1),
+      resolveSessionVisibility(2),
+      resolveSessionVisibility(3),
+    ]
     expect(kinds.filter((k) => k === 'foreground')).toHaveLength(1)
   })
 
@@ -193,10 +198,7 @@ describe('taskId identity rule (taskId === childSessionId)', () => {
   })
 
   it('rejects a taskId that differs from the childSessionId', () => {
-    expectPolicyError(
-      () => assertChildTaskIdMatchesSession('sess_parent_1', 'sess_child_abc'),
-      CHILD_TASK_ID_MISMATCH,
-    )
+    expectPolicyError(() => assertChildTaskIdMatchesSession('sess_parent_1', 'sess_child_abc'), CHILD_TASK_ID_MISMATCH)
   })
 })
 

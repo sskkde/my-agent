@@ -154,10 +154,7 @@ class WorkdirServiceImpl implements WorkdirService {
     // Check for name conflict among active workdirs
     const conflict = this.findByName(effectiveUserId, name, tenantId)
     if (conflict) {
-      throw new WorkdirServiceError(
-        'WORKDIR_NAME_CONFLICT',
-        `Workdir with name "${name}" already exists for this user`,
-      )
+      throw new WorkdirServiceError('WORKDIR_NAME_CONFLICT', `Workdir with name "${name}" already exists for this user`)
     }
 
     return this.createWorkdirWithFs(effectiveUserId, name, tenantId)
@@ -242,10 +239,7 @@ class WorkdirServiceImpl implements WorkdirService {
     // Validate workdir exists and belongs to user (not soft-deleted)
     const workdir = this.workdirStore.getById(workdirId, effectiveUserId, tenantId)
     if (!workdir) {
-      throw new WorkdirServiceError(
-        'WORKDIR_NOT_FOUND',
-        `Workdir ${workdirId} not found or is soft-deleted`,
-      )
+      throw new WorkdirServiceError('WORKDIR_NOT_FOUND', `Workdir ${workdirId} not found or is soft-deleted`)
     }
 
     const success = this.sessionStateStore.setActive(sessionId, workdirId, effectiveUserId, tenantId)

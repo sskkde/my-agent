@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type {
-  CompactExecutor,
-  CompactExecutorInput,
-  CompactExecutorResult,
-} from '../../../src/kernel/types.js'
+import type { CompactExecutor, CompactExecutorInput, CompactExecutorResult } from '../../../src/kernel/types.js'
 import type { ContextItem } from '../../../src/context/types.js'
 import { AgentKernel } from '../../../src/kernel/agent-kernel.js'
 import {

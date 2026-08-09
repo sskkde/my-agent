@@ -121,7 +121,11 @@ describe('StructuredDecisionTrace types', () => {
 
   it('all approvalStatus values are valid', () => {
     const statuses: RiskAssessmentRecord['approvalStatus'][] = [
-      'auto_approved', 'pending', 'approved', 'denied', 'not_required',
+      'auto_approved',
+      'pending',
+      'approved',
+      'denied',
+      'not_required',
     ]
     expect(statuses).toHaveLength(5)
   })

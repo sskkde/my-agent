@@ -144,9 +144,15 @@ describe('PromptProjectionResolver', () => {
       expect(result.personaProjection?.constraints).toContain('Honor output contract output:memory-candidate.schema')
       expect(result.personaProjection?.constraints).toContain('Stay within background agent boundaries')
       expect(result.toolSelectionPolicy?.heuristics).toContain('Active agent profile: memory.')
-      expect(result.toolSelectionPolicy?.heuristics).toContain('Use gemini provider-compatible tool and output behavior.')
-      expect(result.memoryPolicyProjection?.priorityRules).toContain('Launch source background_subagent is provenance only and does not expand memory access.')
-      expect(result.memoryPolicyProjection?.priorityRules).toContain('For memory agents, prefer extraction-relevant context and minimize user-facing detail.')
+      expect(result.toolSelectionPolicy?.heuristics).toContain(
+        'Use gemini provider-compatible tool and output behavior.',
+      )
+      expect(result.memoryPolicyProjection?.priorityRules).toContain(
+        'Launch source background_subagent is provenance only and does not expand memory access.',
+      )
+      expect(result.memoryPolicyProjection?.priorityRules).toContain(
+        'For memory agents, prefer extraction-relevant context and minimize user-facing detail.',
+      )
     })
 
     it('should match hardcoded fallback values', async () => {
@@ -168,8 +174,12 @@ describe('PromptProjectionResolver', () => {
         'Do not change output schemas',
         'Do not change tenant boundaries',
       ])
-      expect(result.toolSelectionPolicy?.heuristics).toBe('Prefer direct answers when reliable; read before write; choose the lowest-risk sufficient action.')
-      expect(result.memoryPolicyProjection?.useRules).toBe('Memory is private background context; do not mention it unless the user explicitly asks.')
+      expect(result.toolSelectionPolicy?.heuristics).toBe(
+        'Prefer direct answers when reliable; read before write; choose the lowest-risk sufficient action.',
+      )
+      expect(result.memoryPolicyProjection?.useRules).toBe(
+        'Memory is private background context; do not mention it unless the user explicitly asks.',
+      )
     })
   })
 
@@ -392,10 +402,60 @@ describe('PromptProjectionResolver', () => {
   describe('segment placement via ModelInputBuilder', () => {
     function makeBuilderForSegmentTest(): ModelInputBuilder {
       const templates: Map<string, PromptTemplateRecord> = new Map([
-        ['platform:base', { id: 'platform:base', version: '2026-05-23', path: 'platform/base.md', agentKind: '*', providerFamily: '*', layer: 1, content: 'Platform base.', description: 'Test' }],
-        ['platform:safety', { id: 'platform:safety', version: '2026-05-23', path: 'platform/safety.md', agentKind: '*', providerFamily: '*', layer: 1, content: 'Safety rules.', description: 'Test' }],
-        ['provider:openai', { id: 'provider:openai', version: '2026-05-23', path: 'provider/openai.md', agentKind: '*', providerFamily: 'openai', layer: 2, content: 'OpenAI config.', description: 'Test' }],
-        ['agentProfile:default_main', { id: 'agentProfile:default_main', version: '2026-05-23', path: 'agents/kernel.md', agentKind: 'kernel', providerFamily: '*', layer: 3, taxonomyLayer: 'agentProfile', agentProfile: 'default_main', content: 'Kernel instructions.', description: 'Test' }],
+        [
+          'platform:base',
+          {
+            id: 'platform:base',
+            version: '2026-05-23',
+            path: 'platform/base.md',
+            agentKind: '*',
+            providerFamily: '*',
+            layer: 1,
+            content: 'Platform base.',
+            description: 'Test',
+          },
+        ],
+        [
+          'platform:safety',
+          {
+            id: 'platform:safety',
+            version: '2026-05-23',
+            path: 'platform/safety.md',
+            agentKind: '*',
+            providerFamily: '*',
+            layer: 1,
+            content: 'Safety rules.',
+            description: 'Test',
+          },
+        ],
+        [
+          'provider:openai',
+          {
+            id: 'provider:openai',
+            version: '2026-05-23',
+            path: 'provider/openai.md',
+            agentKind: '*',
+            providerFamily: 'openai',
+            layer: 2,
+            content: 'OpenAI config.',
+            description: 'Test',
+          },
+        ],
+        [
+          'agentProfile:default_main',
+          {
+            id: 'agentProfile:default_main',
+            version: '2026-05-23',
+            path: 'agents/kernel.md',
+            agentKind: 'kernel',
+            providerFamily: '*',
+            layer: 3,
+            taxonomyLayer: 'agentProfile',
+            agentProfile: 'default_main',
+            content: 'Kernel instructions.',
+            description: 'Test',
+          },
+        ],
       ])
       const registry = new PromptTemplateRegistry(templates, '/nonexistent')
       const loader = new TemplateLoader('/nonexistent')

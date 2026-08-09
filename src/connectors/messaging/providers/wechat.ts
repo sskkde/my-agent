@@ -22,7 +22,6 @@ import type {
   MessagingProviderId,
 } from '../types.js'
 
-
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -82,9 +81,7 @@ export class WeChatAdapter implements MessagingAdapter {
   // Inbound
   // -------------------------------------------------------------------------
 
-  async handleInbound(
-    event: InboundRawEvent,
-  ): Promise<NormalizedInboundMessage | null> {
+  async handleInbound(event: InboundRawEvent): Promise<NormalizedInboundMessage | null> {
     const mode = this.config.mode ?? 'official'
 
     if (mode === 'ilink') {
@@ -97,10 +94,7 @@ export class WeChatAdapter implements MessagingAdapter {
   // Outbound
   // -------------------------------------------------------------------------
 
-  async sendOutbound(
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ): Promise<MessagingTransportResult> {
+  async sendOutbound(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> {
     return this.transport.sendText(target, message)
   }
 
@@ -108,10 +102,7 @@ export class WeChatAdapter implements MessagingAdapter {
   // Verification
   // -------------------------------------------------------------------------
 
-  async verifyInbound(
-    payload: unknown,
-    headers: Record<string, string>,
-  ): Promise<boolean> {
+  async verifyInbound(payload: unknown, headers: Record<string, string>): Promise<boolean> {
     const mode = this.config.mode ?? 'official'
 
     if (mode === 'ilink') {
@@ -138,9 +129,7 @@ export class WeChatAdapter implements MessagingAdapter {
   // Private: Official account XML handling
   // -------------------------------------------------------------------------
 
-  private handleOfficialInbound(
-    event: InboundRawEvent,
-  ): Promise<NormalizedInboundMessage | null> {
+  private handleOfficialInbound(event: InboundRawEvent): Promise<NormalizedInboundMessage | null> {
     const msg = this.parseXmlMessage(event.rawPayload)
     if (!msg) {
       return Promise.resolve(null)
@@ -159,9 +148,7 @@ export class WeChatAdapter implements MessagingAdapter {
       return Promise.resolve(null)
     }
 
-    const timestamp = msg.createTime
-      ? new Date(Number(msg.createTime) * 1000).toISOString()
-      : event.receivedAt
+    const timestamp = msg.createTime ? new Date(Number(msg.createTime) * 1000).toISOString() : event.receivedAt
 
     return Promise.resolve({
       provider: PROVIDER_ID,
@@ -177,16 +164,11 @@ export class WeChatAdapter implements MessagingAdapter {
     })
   }
 
-  private verifyOfficialInbound(
-    _payload: unknown,
-    headers: Record<string, string>,
-  ): boolean {
+  private verifyOfficialInbound(_payload: unknown, headers: Record<string, string>): boolean {
     // WeChat sends signature via query params; we expect them in headers
     // from the webhook framework layer.
-    const signature =
-      headers['signature'] ?? headers['Signature'] ?? undefined
-    const timestamp =
-      headers['timestamp'] ?? headers['Timestamp'] ?? undefined
+    const signature = headers['signature'] ?? headers['Signature'] ?? undefined
+    const timestamp = headers['timestamp'] ?? headers['Timestamp'] ?? undefined
     const nonce = headers['nonce'] ?? headers['Nonce'] ?? undefined
 
     if (!signature || !timestamp || !nonce) {
@@ -259,9 +241,7 @@ export class WeChatAdapter implements MessagingAdapter {
   // Private: iLink JSON handling
   // -------------------------------------------------------------------------
 
-  private handleILinkInbound(
-    event: InboundRawEvent,
-  ): Promise<NormalizedInboundMessage | null> {
+  private handleILinkInbound(event: InboundRawEvent): Promise<NormalizedInboundMessage | null> {
     const msg = this.parseILinkMessage(event.rawPayload)
     if (!msg) {
       return Promise.resolve(null)
@@ -279,9 +259,7 @@ export class WeChatAdapter implements MessagingAdapter {
       return Promise.resolve(null)
     }
 
-    const timestamp = msg.CreateTime
-      ? new Date(msg.CreateTime * 1000).toISOString()
-      : event.receivedAt
+    const timestamp = msg.CreateTime ? new Date(msg.CreateTime * 1000).toISOString() : event.receivedAt
 
     return Promise.resolve({
       provider: PROVIDER_ID,
@@ -297,10 +275,7 @@ export class WeChatAdapter implements MessagingAdapter {
     })
   }
 
-  private verifyILinkInbound(
-    _payload: unknown,
-    headers: Record<string, string>,
-  ): boolean {
+  private verifyILinkInbound(_payload: unknown, headers: Record<string, string>): boolean {
     // iLink verification uses the same SHA1 pattern
     const signature = headers['signature'] ?? headers['Signature']
     const timestamp = headers['timestamp'] ?? headers['Timestamp']
@@ -319,11 +294,7 @@ export class WeChatAdapter implements MessagingAdapter {
     }
 
     const obj = raw as Record<string, unknown>
-    if (
-      typeof obj.FromUserName !== 'string' ||
-      typeof obj.ToUserName !== 'string' ||
-      typeof obj.MsgType !== 'string'
-    ) {
+    if (typeof obj.FromUserName !== 'string' || typeof obj.ToUserName !== 'string' || typeof obj.MsgType !== 'string') {
       return null
     }
 
@@ -342,9 +313,6 @@ export class WeChatAdapter implements MessagingAdapter {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createWeChatAdapter(
-  config: WeChatConfig,
-  transport: MessagingTransport,
-): WeChatAdapter {
+export function createWeChatAdapter(config: WeChatConfig, transport: MessagingTransport): WeChatAdapter {
   return new WeChatAdapter(config, transport)
 }

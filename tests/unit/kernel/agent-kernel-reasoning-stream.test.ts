@@ -118,7 +118,10 @@ interface BroadcastCall {
 
 class FakeTimelineBroadcaster {
   private broadcasts: BroadcastCall[] = []
-  private timelineEvents: Array<{ sessionId: string; event: import('../../../src/api/types.js').ConsoleTimelineEvent }> = []
+  private timelineEvents: Array<{
+    sessionId: string
+    event: import('../../../src/api/types.js').ConsoleTimelineEvent
+  }> = []
 
   broadcastTokenStream(sessionId: string, token: TokenStreamPayload): void {
     this.broadcasts.push({ sessionId, token })
@@ -416,9 +419,9 @@ describe('AgentKernel reasoning stream broadcast (T4)', () => {
 
     await kernel.run(makeRunInput())
 
-    const thinkingEvents = fakeBroadcaster.getTimelineEvents().filter(
-      (entry) => entry.event.eventType === 'thinking_summary',
-    )
+    const thinkingEvents = fakeBroadcaster
+      .getTimelineEvents()
+      .filter((entry) => entry.event.eventType === 'thinking_summary')
 
     // One live block per reasoning delta, keyed by stable per-turn eventId
     expect(thinkingEvents.length).toBe(3)
@@ -442,9 +445,9 @@ describe('AgentKernel reasoning stream broadcast (T4)', () => {
 
     await kernel.run(makeRunInput())
 
-    const thinkingEvents = fakeBroadcaster.getTimelineEvents().filter(
-      (entry) => entry.event.eventType === 'thinking_summary',
-    )
+    const thinkingEvents = fakeBroadcaster
+      .getTimelineEvents()
+      .filter((entry) => entry.event.eventType === 'thinking_summary')
     expect(thinkingEvents.length).toBe(0)
   })
 })

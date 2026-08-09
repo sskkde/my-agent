@@ -47,9 +47,7 @@ class FakeLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'fake-provider' }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -79,10 +77,18 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider) }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId) }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId) }
-  getHealthyProviders(): LLMProvider[] { return this.providers }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(providerId: string, priority: number): void {
     const p = this.getProvider(providerId)
     if (p) p.updateConfig({ ...p.config, priority })
@@ -98,7 +104,12 @@ class FakeToolExecutor {
     sessionId?: string
     kernelRunId?: string
     permissionContext: { userId: string; permissions: string[] }
-  }): Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean }; resultPreview?: string }> {
+  }): Promise<{
+    success: boolean
+    data?: unknown
+    error?: { code: string; message: string; recoverable: boolean }
+    resultPreview?: string
+  }> {
     return { success: true, data: {}, resultPreview: '{}' }
   }
 }
@@ -106,8 +117,12 @@ class FakeToolExecutor {
 class FakeContextManager {
   private contextItems: ContextItem[] = []
 
-  addItem(item: ContextItem): void { this.contextItems.push(item) }
-  getItems(): ContextItem[] { return this.contextItems }
+  addItem(item: ContextItem): void {
+    this.contextItems.push(item)
+  }
+  getItems(): ContextItem[] {
+    return this.contextItems
+  }
 
   assembleBundle(): ContextBundle {
     return {
@@ -154,7 +169,11 @@ class FakeBatchDispatcher {
     const toolUses = ta?.toolDispatchRequest?.toolUses ?? []
 
     // Build per-tool results from toolUses
-    const results: Array<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean } }> = []
+    const results: Array<{
+      success: boolean
+      data?: unknown
+      error?: { code: string; message: string; recoverable: boolean }
+    }> = []
     for (const tu of toolUses) {
       results.push({ success: true, data: { toolCallId: tu.toolCallId, result: `result-${tu.toolCallId}` } })
     }
@@ -476,9 +495,8 @@ describe('Internal handler ordering (flush-buffer before internal; stop short-ci
     expect(toolResultEntries).toHaveLength(3)
 
     // ext-a result present
-    const extAResult = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-ext-a',
-    )!.content as { result: { toolCallId: string } }
+    const extAResult = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-ext-a')!
+      .content as { result: { toolCallId: string } }
     expect(extAResult.result).toBeDefined()
 
     // internal result present
@@ -488,9 +506,8 @@ describe('Internal handler ordering (flush-buffer before internal; stop short-ci
     expect(internalResult.result).toEqual({ passthrough: true })
 
     // ext-b result present
-    const extBResult = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-ext-b',
-    )!.content as { result: { toolCallId: string } }
+    const extBResult = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-ext-b')!
+      .content as { result: { toolCallId: string } }
     expect(extBResult.result).toBeDefined()
 
     // (c) All three tool_call entries present
@@ -540,9 +557,8 @@ describe('Internal handler ordering (flush-buffer before internal; stop short-ci
     expect(toolResultEntries).toHaveLength(2)
 
     // (c) crashed tool gets INTERNAL_HANDLER_ERROR
-    const crashEntry = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-crash',
-    )!.content as { error: { code: string; message: string; recoverable: boolean }; result: null }
+    const crashEntry = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-crash')!
+      .content as { error: { code: string; message: string; recoverable: boolean }; result: null }
     expect(crashEntry.error!.code).toBe('INTERNAL_HANDLER_ERROR')
     expect(crashEntry.error!.message).toContain('Something went wrong in handler')
     expect(crashEntry.error!.recoverable).toBe(true)

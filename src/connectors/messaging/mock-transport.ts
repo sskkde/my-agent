@@ -3,12 +3,7 @@
  * Blocks real network by default; records all sendText calls for assertion.
  */
 
-import type {
-  MessagingTransport,
-  MessagingTransportResult,
-  DeliveryTarget,
-  OutboundTextMessage,
-} from './types.js'
+import type { MessagingTransport, MessagingTransportResult, DeliveryTarget, OutboundTextMessage } from './types.js'
 
 /** Recorded call from MockMessagingTransport.sendText(). */
 export interface RecordedSendCall {
@@ -18,10 +13,7 @@ export interface RecordedSendCall {
 }
 
 export interface MockTransportOverrides {
-  sendText?: (
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ) => Promise<MessagingTransportResult>
+  sendText?: (target: DeliveryTarget, message: OutboundTextMessage) => Promise<MessagingTransportResult>
   verifyWebhook?: (
     payload: unknown,
     headers: Record<string, string>,
@@ -49,23 +41,16 @@ export class MockMessagingTransport implements MessagingTransport {
     this.sendTextFn =
       overrides?.sendText ??
       (() => {
-        throw new Error(
-          'MockMessagingTransport: real network blocked. Provide a sendText override.',
-        )
+        throw new Error('MockMessagingTransport: real network blocked. Provide a sendText override.')
       })
     this.verifyWebhookFn =
       overrides?.verifyWebhook ??
       (() => {
-        throw new Error(
-          'MockMessagingTransport: real network blocked. Provide a verifyWebhook override.',
-        )
+        throw new Error('MockMessagingTransport: real network blocked. Provide a verifyWebhook override.')
       })
   }
 
-  async sendText(
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ): Promise<MessagingTransportResult> {
+  async sendText(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> {
     this.calls.push({
       target: structuredClone(target),
       message: structuredClone(message),
@@ -97,8 +82,6 @@ export class MockMessagingTransport implements MessagingTransport {
  * Factory for creating mock transports with sensible defaults.
  * By default, all methods throw to block real network.
  */
-export function createMockTransport(
-  overrides?: MockTransportOverrides,
-): MockMessagingTransport {
+export function createMockTransport(overrides?: MockTransportOverrides): MockMessagingTransport {
   return new MockMessagingTransport(overrides)
 }

@@ -99,13 +99,7 @@ export class AgentlyMailConfirmationManager {
       if (!token) {
         // CLI should have returned a token but didn't — treat as error
         return {
-          response: normalizeAgentlyMailResponse(
-            result.stdout,
-            result.stderr,
-            result.exitCode,
-            requestId,
-            instanceId,
-          ),
+          response: normalizeAgentlyMailResponse(result.stdout, result.stderr, result.exitCode, requestId, instanceId),
         }
       }
 
@@ -143,13 +137,7 @@ export class AgentlyMailConfirmationManager {
 
     // Any other exit code — return normalized response as-is
     return {
-      response: normalizeAgentlyMailResponse(
-        result.stdout,
-        result.stderr,
-        result.exitCode,
-        requestId,
-        instanceId,
-      ),
+      response: normalizeAgentlyMailResponse(result.stdout, result.stderr, result.exitCode, requestId, instanceId),
     }
   }
 
@@ -219,13 +207,7 @@ export class AgentlyMailConfirmationManager {
     // Clean up pending confirmation regardless of outcome
     this.pendingConfirmations.delete(token)
 
-    return normalizeAgentlyMailResponse(
-      result.stdout,
-      result.stderr,
-      result.exitCode,
-      requestId,
-      instanceId,
-    )
+    return normalizeAgentlyMailResponse(result.stdout, result.stderr, result.exitCode, requestId, instanceId)
   }
 
   /**

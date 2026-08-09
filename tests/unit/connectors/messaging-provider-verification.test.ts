@@ -15,10 +15,7 @@ function dingtalkSignature(timestamp: string, secret: string): string {
 
 describe('messaging provider inbound verification', () => {
   it('rejects DingTalk inbound callbacks when signSecret is missing', async () => {
-    const adapter = createDingTalkAdapter(
-      { appKey: 'app-key', appSecret: 'app-secret', robotCode: 'robot' },
-      transport,
-    )
+    const adapter = createDingTalkAdapter({ appKey: 'app-key', appSecret: 'app-secret', robotCode: 'robot' }, transport)
 
     await expect(adapter.verifyInbound({}, {})).resolves.toBe(false)
   })
@@ -42,7 +39,9 @@ describe('messaging provider inbound verification', () => {
       transport,
     )
 
-    await expect(adapter.verifyInbound({}, { timestamp: String(Date.now()), sign: 'bad-signature' })).resolves.toBe(false)
+    await expect(adapter.verifyInbound({}, { timestamp: String(Date.now()), sign: 'bad-signature' })).resolves.toBe(
+      false,
+    )
   })
 
   it('rejects Feishu callbacks when encryptKey is configured because encrypted payloads are unsupported', async () => {

@@ -28,8 +28,7 @@ interface BrowserFake {
 }
 
 function createPageFake(screenshotImpl?: () => Promise<Buffer>): PageFake {
-  const defaultShot = (): Promise<Buffer> =>
-    Promise.resolve(Buffer.from('fake-jpeg-bytes'))
+  const defaultShot = (): Promise<Buffer> => Promise.resolve(Buffer.from('fake-jpeg-bytes'))
   return {
     on: vi.fn(),
     close: vi.fn().mockResolvedValue(undefined),
@@ -277,10 +276,7 @@ describe('BrowserFrameStream', () => {
     // Read the implementation source and assert it does not reference fs or storage.
     const fs = await import('node:fs')
     const path = await import('node:path')
-    const source = fs.readFileSync(
-      path.resolve('src/search/browser/browser-frame-stream.ts'),
-      'utf8',
-    )
+    const source = fs.readFileSync(path.resolve('src/search/browser/browser-frame-stream.ts'), 'utf8')
     expect(source).not.toMatch(/\bfrom\s+['"]node:fs['"]\b/)
     expect(source).not.toMatch(/\bfrom\s+['"].*storage['"]\b/)
     expect(source).not.toMatch(/\bwriteFile\b/)

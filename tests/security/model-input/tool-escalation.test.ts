@@ -734,7 +734,13 @@ describe('Tool Escalation Security Tests', () => {
     it('policy cannot expand beyond envelope', () => {
       const profileToolIds = ['file_read', 'web_search']
       const policyToolIds = ['file_read', 'web_search', 'exec', 'admin_config']
-      const effective = computeEffectiveToolIdsWithEnvelope('main', catalog, envelopeRegistry, profileToolIds, policyToolIds)
+      const effective = computeEffectiveToolIdsWithEnvelope(
+        'main',
+        catalog,
+        envelopeRegistry,
+        profileToolIds,
+        policyToolIds,
+      )
 
       expect(effective).toContain('file_read')
       expect(effective).toContain('web_search')
@@ -745,7 +751,13 @@ describe('Tool Escalation Security Tests', () => {
     it('envelope is the outermost boundary - no combination can expand beyond it', () => {
       const profileToolIds = ['file_read', 'web_search', 'exec', 'admin_config', 'artifact_create']
       const policyToolIds = ['file_read', 'web_search', 'exec', 'admin_config', 'artifact_create']
-      const effective = computeEffectiveToolIdsWithEnvelope('main', catalog, envelopeRegistry, profileToolIds, policyToolIds)
+      const effective = computeEffectiveToolIdsWithEnvelope(
+        'main',
+        catalog,
+        envelopeRegistry,
+        profileToolIds,
+        policyToolIds,
+      )
 
       expect(effective).toEqual(expect.arrayContaining(['file_read', 'web_search']))
       expect(effective).not.toContain('exec')
@@ -774,9 +786,7 @@ describe('Tool Escalation Security Tests', () => {
 
     it('assertAllowed throws for profile ID with path traversal attempt', () => {
       setup()
-      expect(() => registry.assertAllowed('../../etc/passwd')).toThrow(
-        'Unknown agent profile: "../../etc/passwd"',
-      )
+      expect(() => registry.assertAllowed('../../etc/passwd')).toThrow('Unknown agent profile: "../../etc/passwd"')
     })
 
     it('assertAllowed throws for profile ID mimicking system profile format', () => {
@@ -1045,12 +1055,12 @@ describe('Tool Escalation Security Tests', () => {
       const kernelResolved = normalizeAgentLabel('kernel')
       expect(kernelResolved.agentType).toBe('main')
 
-      const effective = computeEffectiveToolIdsWithEnvelope(
-        kernelResolved.agentType,
-        catalog,
-        envelopeRegistry,
-        ['file_read', 'artifact_create', 'exec', 'admin_config'],
-      )
+      const effective = computeEffectiveToolIdsWithEnvelope(kernelResolved.agentType, catalog, envelopeRegistry, [
+        'file_read',
+        'artifact_create',
+        'exec',
+        'admin_config',
+      ])
 
       expect(effective).toContain('file_read')
       expect(effective).not.toContain('exec')

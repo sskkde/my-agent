@@ -4,10 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import {
-  AgentlyCliRunner,
-  type ExecFileFn,
-} from '../../../../src/connectors/agently-mail/cli-runner.js'
+import { AgentlyCliRunner, type ExecFileFn } from '../../../../src/connectors/agently-mail/cli-runner.js'
 import type { AgentlyMailCliEnvelope } from '../../../../src/connectors/agently-mail/types.js'
 
 // ─── Mock helpers ──────────────────────────────────────────────────────────────
@@ -75,14 +72,14 @@ describe('AgentlyCliRunner', () => {
 
     for (const code of exitCodes) {
       it(`should capture exit code ${code}`, async () => {
-        const envelope: AgentlyMailCliEnvelope = code === 0
-          ? { data: { ok: true } }
-          : { error: { code: `E${code}`, message: `fail-${code}` } }
+        const envelope: AgentlyMailCliEnvelope =
+          code === 0 ? { data: { ok: true } } : { error: { code: `E${code}`, message: `fail-${code}` } }
 
         const stdout = JSON.stringify(envelope)
-        const error = code === 0
-          ? undefined
-          : Object.assign(new Error(`exit ${code}`), { code, killed: false, signal: undefined as string | undefined })
+        const error =
+          code === 0
+            ? undefined
+            : Object.assign(new Error(`exit ${code}`), { code, killed: false, signal: undefined as string | undefined })
 
         const { fn } = createMockExecFile({
           stdout,
@@ -187,7 +184,9 @@ describe('AgentlyCliRunner', () => {
     })
 
     it('should redact Bearer tokens from stderr', async () => {
-      const { fn } = createMockExecFile({ stderr: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U' })
+      const { fn } = createMockExecFile({
+        stderr: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U',
+      })
       const runner = new AgentlyCliRunner(fn)
       const result = await runner.run('me', [])
 
@@ -343,10 +342,18 @@ describe('AgentlyCliRunner', () => {
       const runner = new AgentlyCliRunner(fn)
 
       const operations = [
-        'auth_login', 'auth_logout', 'auth_status', 'me',
-        'list_messages', 'read_message', 'search_messages',
-        'send_message', 'reply_message', 'forward_message',
-        'trash_message', 'download_attachment',
+        'auth_login',
+        'auth_logout',
+        'auth_status',
+        'me',
+        'list_messages',
+        'read_message',
+        'search_messages',
+        'send_message',
+        'reply_message',
+        'forward_message',
+        'trash_message',
+        'download_attachment',
       ] as const
 
       for (const op of operations) {
@@ -365,8 +372,9 @@ describe('AgentlyCliRunner', () => {
       const controller = new AbortController()
       controller.abort()
 
-      await expect(runner.run('me', [], { abortSignal: controller.signal }))
-        .rejects.toThrow('The operation was aborted.')
+      await expect(runner.run('me', [], { abortSignal: controller.signal })).rejects.toThrow(
+        'The operation was aborted.',
+      )
     })
 
     it('should reject with AbortError when signal fires during execution', async () => {
@@ -378,8 +386,9 @@ describe('AgentlyCliRunner', () => {
       // Abort after a short delay
       setTimeout(() => controller.abort(), 10)
 
-      await expect(runner.run('me', [], { abortSignal: controller.signal }))
-        .rejects.toThrow('The operation was aborted.')
+      await expect(runner.run('me', [], { abortSignal: controller.signal })).rejects.toThrow(
+        'The operation was aborted.',
+      )
     })
 
     it('should work normally when signal is provided but never aborted', async () => {

@@ -31,8 +31,7 @@ const AUTH_STATUS_CAPABILITY: ConnectorCapability = {
 const LIST_MESSAGES_CAPABILITY: ConnectorCapability = {
   capabilityId: 'agently_mail.list_messages',
   name: 'List messages',
-  description:
-    'List messages in a folder with optional pagination, date range, and filter flags.',
+  description: 'List messages in a folder with optional pagination, date range, and filter flags.',
   category: 'read',
   riskLevel: 'low',
   inputSchema: {
@@ -310,8 +309,7 @@ const FORWARD_MESSAGE_CAPABILITY: ConnectorCapability = {
 const TRASH_MESSAGE_CAPABILITY: ConnectorCapability = {
   capabilityId: 'agently_mail.trash_message',
   name: 'Trash message',
-  description:
-    'Move a message to trash (soft delete; real deletion after 30 days). Requires two-stage confirmation.',
+  description: 'Move a message to trash (soft delete; real deletion after 30 days). Requires two-stage confirmation.',
   category: 'delete',
   riskLevel: 'high',
   inputSchema: {

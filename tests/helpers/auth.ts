@@ -41,8 +41,12 @@ export async function createAuthenticatedTestContext(dbPath: string = ':memory:'
 }
 
 export async function closeAuthenticatedTestContext(context: AuthenticatedTestContext): Promise<void> {
-  try { context.server.server.closeAllConnections?.() } catch {}
-  try { await context.server.close() } catch {}
+  try {
+    context.server.server.closeAllConnections?.()
+  } catch {}
+  try {
+    await context.server.close()
+  } catch {}
   if (context.apiContext && 'connection' in context.apiContext) {
     ;(context.apiContext as any).connection.close()
   }

@@ -55,10 +55,7 @@ export class BrowserInputParseError extends Error {
 
 function parseNumber(value: unknown, field: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new BrowserInputParseError(
-      'INVALID_NUMBER',
-      `Field "${field}" must be a finite number, got ${typeof value}`,
-    )
+    throw new BrowserInputParseError('INVALID_NUMBER', `Field "${field}" must be a finite number, got ${typeof value}`)
   }
   return value
 }
@@ -76,10 +73,7 @@ function parseString(value: unknown, field: string): string {
 function parseNormalizedUnit(value: unknown, field: string): number {
   const n = parseNumber(value, field)
   if (n < 0 || n > 1) {
-    throw new BrowserInputParseError(
-      'OUT_OF_RANGE',
-      `Field "${field}" must be in [0, 1], got ${n}`,
-    )
+    throw new BrowserInputParseError('OUT_OF_RANGE', `Field "${field}" must be in [0, 1], got ${n}`)
   }
   return n
 }
@@ -97,10 +91,7 @@ function parseClickCount(value: unknown): number {
   if (value === undefined || value === null) return 1
   const n = parseNumber(value, 'clickCount')
   if (!Number.isInteger(n) || n < 1) {
-    throw new BrowserInputParseError(
-      'INVALID_CLICK_COUNT',
-      `Field "clickCount" must be a positive integer, got ${n}`,
-    )
+    throw new BrowserInputParseError('INVALID_CLICK_COUNT', `Field "clickCount" must be a positive integer, got ${n}`)
   }
   return n
 }
@@ -108,10 +99,7 @@ function parseClickCount(value: unknown): number {
 function parseModifiers(value: unknown): readonly string[] {
   if (value === undefined || value === null) return []
   if (!Array.isArray(value) || value.some((v) => typeof v !== 'string')) {
-    throw new BrowserInputParseError(
-      'INVALID_MODIFIERS',
-      'Field "modifiers" must be an array of strings',
-    )
+    throw new BrowserInputParseError('INVALID_MODIFIERS', 'Field "modifiers" must be an array of strings')
   }
   return value as readonly string[]
 }
@@ -133,10 +121,7 @@ export function mapOwnershipToState(ownership: OwnershipState): BrowserSessionSt
   }
 }
 
-export function mapRouteInputToEvent(
-  action: string,
-  payload: Record<string, unknown>,
-): BrowserInputEvent {
+export function mapRouteInputToEvent(action: string, payload: Record<string, unknown>): BrowserInputEvent {
   switch (action) {
     case 'click':
       return {
@@ -165,10 +150,7 @@ export function mapRouteInputToEvent(
     case 'navigate':
       return { kind: 'navigate', url: parseString(payload.url, 'url') }
     default:
-      throw new BrowserInputParseError(
-        'UNKNOWN_ACTION',
-        `Unknown input action: ${action}`,
-      )
+      throw new BrowserInputParseError('UNKNOWN_ACTION', `Unknown input action: ${action}`)
   }
 }
 

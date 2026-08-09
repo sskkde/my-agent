@@ -2,10 +2,7 @@
 // Imports types from ./types.js. Never interpolates shell strings.
 
 import { execFile } from 'node:child_process'
-import type {
-  AgentlyMailOperation,
-  AgentlyMailCliEnvelope,
-} from './types.js'
+import type { AgentlyMailOperation, AgentlyMailCliEnvelope } from './types.js'
 
 // ─── Public types ──────────────────────────────────────────────────────────────
 

@@ -15,10 +15,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, writeFileSync, rmSync, existsSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import {
-  isWithinWorkspace,
-  resolveCanonicalPath,
-} from '../../../src/tools/builtins/safe-paths.js'
+import { isWithinWorkspace, resolveCanonicalPath } from '../../../src/tools/builtins/safe-paths.js'
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
 import { createWorkdirStore } from '../../../src/storage/workdir-store.js'
 import { createSessionWorkdirStateStore } from '../../../src/storage/session-workdir-state-store.js'
@@ -268,7 +265,12 @@ describe('Workdir Isolation', () => {
       const connection = openMemoryConnection()
       createWorkdirSchema(connection)
       const store = createWorkdirStore(connection)
-      store.create({ id: 'wd-owned', userId: 'authenticated-user', name: 'Owned', path: join(workdirRoot, 'auth', 'wd') })
+      store.create({
+        id: 'wd-owned',
+        userId: 'authenticated-user',
+        name: 'Owned',
+        path: join(workdirRoot, 'auth', 'wd'),
+      })
 
       expect(store.getById('wd-owned', 'authenticated-user')).not.toBeNull()
       expect(store.getById('wd-owned', 'spoofed-user')).toBeNull()

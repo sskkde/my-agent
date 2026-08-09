@@ -348,11 +348,7 @@ describe('buildSkillPlaneProjection', () => {
 
       // Registry sorts by skillId.localeCompare, so:
       // documentation_search < memory_research < session_status
-      expect(projection.skillIds).toEqual([
-        'documentation_search',
-        'memory_research',
-        'session_status',
-      ])
+      expect(projection.skillIds).toEqual(['documentation_search', 'memory_research', 'session_status'])
     })
 
     it('preserves registry order for documents', async () => {
@@ -369,11 +365,7 @@ describe('buildSkillPlaneProjection', () => {
       })
 
       const docIds = projection.skillDocuments!.map((d) => d.skillId)
-      expect(docIds).toEqual([
-        'documentation_search',
-        'memory_research',
-        'session_status',
-      ])
+      expect(docIds).toEqual(['documentation_search', 'memory_research', 'session_status'])
     })
 
     it('skillIds and skillDocuments have same order', async () => {

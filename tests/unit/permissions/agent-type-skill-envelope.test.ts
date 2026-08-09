@@ -209,19 +209,12 @@ describe('intersectSkillIdSets', () => {
   })
 
   it('returns empty when one set is empty', () => {
-    const result = intersectSkillIdSets(
-      new Set(['skill_a', 'skill_b']),
-      new Set([]),
-    )
+    const result = intersectSkillIdSets(new Set(['skill_a', 'skill_b']), new Set([]))
     expect(result).toEqual([])
   })
 
   it('skips undefined sets', () => {
-    const result = intersectSkillIdSets(
-      new Set(['skill_a', 'skill_b']),
-      undefined,
-      new Set(['skill_b', 'skill_c']),
-    )
+    const result = intersectSkillIdSets(new Set(['skill_a', 'skill_b']), undefined, new Set(['skill_b', 'skill_c']))
     expect(result).toEqual(['skill_b'])
   })
 

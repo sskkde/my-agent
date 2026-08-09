@@ -1,6 +1,10 @@
 import type { ConnectionManager } from './connection.js'
 import type { ToolCallSummary } from '../api/types.js'
-import type { StructuredDecisionTrace, ObservationSummary, RiskAssessmentRecord } from '../kernel/decision-trace-types.js'
+import type {
+  StructuredDecisionTrace,
+  ObservationSummary,
+  RiskAssessmentRecord,
+} from '../kernel/decision-trace-types.js'
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 export type Visibility = 'public' | 'internal' | 'confidential'

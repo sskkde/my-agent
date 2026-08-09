@@ -46,9 +46,7 @@ class FakeLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'fake-provider' }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -78,10 +76,18 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider) }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId) }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId) }
-  getHealthyProviders(): LLMProvider[] { return this.providers }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(providerId: string, priority: number): void {
     const p = this.getProvider(providerId)
     if (p) p.updateConfig({ ...p.config, priority })
@@ -97,7 +103,12 @@ class FakeToolExecutor {
     sessionId?: string
     kernelRunId?: string
     permissionContext: { userId: string; permissions: string[] }
-  }): Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean }; resultPreview?: string }> {
+  }): Promise<{
+    success: boolean
+    data?: unknown
+    error?: { code: string; message: string; recoverable: boolean }
+    resultPreview?: string
+  }> {
     return { success: true, data: {}, resultPreview: '{}' }
   }
 }
@@ -105,8 +116,12 @@ class FakeToolExecutor {
 class FakeContextManager {
   private contextItems: ContextItem[] = []
 
-  addItem(item: ContextItem): void { this.contextItems.push(item) }
-  getItems(): ContextItem[] { return this.contextItems }
+  addItem(item: ContextItem): void {
+    this.contextItems.push(item)
+  }
+  getItems(): ContextItem[] {
+    return this.contextItems
+  }
 
   assembleBundle(): ContextBundle {
     return {
@@ -136,7 +151,10 @@ class FakeContextManager {
 class FakeBatchDispatcher {
   dispatchCalls: DispatchRequest[] = []
   /** Per-toolCallId result overrides for testing distinct/reversed outputs */
-  toolResults: Map<string, { success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean } }> = new Map()
+  toolResults: Map<
+    string,
+    { success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean } }
+  > = new Map()
 
   async dispatch(request: DispatchRequest): Promise<{
     requestId: string
@@ -167,7 +185,11 @@ class FakeBatchDispatcher {
     }
 
     // Build per-tool results from toolResults map or defaults
-    const results: Array<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean } }> = []
+    const results: Array<{
+      success: boolean
+      data?: unknown
+      error?: { code: string; message: string; recoverable: boolean }
+    }> = []
     for (const tu of toolUses) {
       const existing = this.toolResults.get(tu.toolCallId)
       if (existing) {
@@ -352,14 +374,12 @@ describe('Batch dispatch (external tools flushed as one batch)', () => {
     const toolResultEntries = result.transcript.filter((e) => e.type === 'tool_result')
     expect(toolResultEntries).toHaveLength(2)
 
-    const alphaEntry = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-alpha',
-    )!.content as { result: unknown }
+    const alphaEntry = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-alpha')!
+      .content as { result: unknown }
     expect(alphaEntry.result).toEqual({ result: 'alpha-output' })
 
-    const betaEntry = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-beta',
-    )!.content as { result: unknown }
+    const betaEntry = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-beta')!
+      .content as { result: unknown }
     expect(betaEntry.result).toEqual({ result: 'beta-output' })
   })
 
@@ -407,9 +427,8 @@ describe('Batch dispatch (external tools flushed as one batch)', () => {
     // Each tool must have its own correct result despite the reverse-order array
     // call-first maps to toolCallId='call-first' → data.toolCallId === 'call-first'
     // call-second maps to toolCallId='call-second' → data.toolCallId === 'call-second'
-    const firstEntry = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-first',
-    )!.content as { result: { toolCallId: string } }
+    const firstEntry = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-first')!
+      .content as { result: { toolCallId: string } }
     expect(firstEntry.result.toolCallId).toBe('call-first')
 
     const secondEntry = toolResultEntries.find(
@@ -443,9 +462,8 @@ describe('Batch dispatch (external tools flushed as one batch)', () => {
     expect(fakeDispatcher.dispatchCalls).toHaveLength(1)
 
     // Valid tool gets a real result
-    const validEntry = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-valid',
-    )!.content as { result: unknown; error?: undefined }
+    const validEntry = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-valid')!
+      .content as { result: unknown; error?: undefined }
     expect(validEntry.result).toBeDefined()
     expect(validEntry.error).toBeUndefined()
 
@@ -470,9 +488,7 @@ describe('Batch dispatch (external tools flushed as one batch)', () => {
 
     const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Pair ok.')])
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('tool-pair') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('tool-pair') }))
 
     const { validateToolResultPairing } = await import('../../../src/kernel/tool-result-pairing-guard.js')
     const pairingResult = validateToolResultPairing(result.transcript)
@@ -494,9 +510,7 @@ describe('Batch dispatch (external tools flushed as one batch)', () => {
 
     const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Solo done.')])
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('solo-tool') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('solo-tool') }))
 
     // Single dispatch call (batch of 1)
     expect(fakeDispatcher.dispatchCalls).toHaveLength(1)

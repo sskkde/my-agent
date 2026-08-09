@@ -45,7 +45,10 @@ function planSearchQuery(input: SearchSubagentToolInput, intent: SearchIntent): 
     case 'news':
       return appendMissingTerms(question, ['latest', 'news'])
     case 'technical':
-      return appendMissingTerms(question, includesWord(question, 'documentation') ? ['official'] : ['official', 'documentation'])
+      return appendMissingTerms(
+        question,
+        includesWord(question, 'documentation') ? ['official'] : ['official', 'documentation'],
+      )
     case 'product':
       return appendMissingTerms(question, ['review', 'comparison', 'specs', 'price'])
     case 'local':
@@ -72,9 +75,7 @@ export class DefaultSearchQueryPlanner implements SearchQueryPlanner {
     const intent = normalizeIntent(input.intent)
     const originalQuestion = normalizeQuery(input.originalQuestion || '')
     const missingCriticalContext =
-      intent === 'weather' || intent === 'local'
-        ? missingLocationContext(originalQuestion, input.locale)
-        : []
+      intent === 'weather' || intent === 'local' ? missingLocationContext(originalQuestion, input.locale) : []
 
     const planned = planSearchQuery({ ...input, originalQuestion, intent }, intent)
     const searchQuery = normalizeQuery(planned || originalQuestion)

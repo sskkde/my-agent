@@ -176,10 +176,7 @@ describe('redactSecrets', () => {
 
   describe('custom secret field names', () => {
     it('should use custom field names when provided', () => {
-      const result = redactSecrets(
-        { password: 'pw123', token: 't123' },
-        ['password'],
-      ) as Record<string, unknown>
+      const result = redactSecrets({ password: 'pw123', token: 't123' }, ['password']) as Record<string, unknown>
       expect(result.password).toBe('[REDACTED]')
       expect(result.token).toBe('t123')
     })

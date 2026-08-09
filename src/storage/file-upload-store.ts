@@ -187,10 +187,7 @@ class FileUploadStoreImpl implements FileUploadStore {
   }
 
   getById(fileId: string, accessor: FileUploadAccessor): FileUploadRecord | undefined {
-    const rows = this.connection.query<FileUploadRow>(
-      'SELECT * FROM file_uploads WHERE file_id = ?',
-      [fileId],
-    )
+    const rows = this.connection.query<FileUploadRow>('SELECT * FROM file_uploads WHERE file_id = ?', [fileId])
 
     if (rows.length === 0) {
       return undefined
@@ -305,10 +302,7 @@ class FileUploadStoreImpl implements FileUploadStore {
       "UPDATE file_uploads SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE file_id = ?",
       [now, now, fileId],
     )
-    const rows = this.connection.query<FileUploadRow>(
-      'SELECT * FROM file_uploads WHERE file_id = ?',
-      [fileId],
-    )
+    const rows = this.connection.query<FileUploadRow>('SELECT * FROM file_uploads WHERE file_id = ?', [fileId])
     return rows.length > 0 && rows[0]!.status === 'deleted'
   }
 
@@ -324,10 +318,7 @@ class FileUploadStoreImpl implements FileUploadStore {
   // ── Private helpers ────────────────────────────────────────────────────
 
   private findById(fileId: string): FileUploadRecord | undefined {
-    const rows = this.connection.query<FileUploadRow>(
-      'SELECT * FROM file_uploads WHERE file_id = ?',
-      [fileId],
-    )
+    const rows = this.connection.query<FileUploadRow>('SELECT * FROM file_uploads WHERE file_id = ?', [fileId])
     if (rows.length === 0) {
       return undefined
     }

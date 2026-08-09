@@ -24,7 +24,10 @@ import {
   type SummaryLayerProjection,
   type SkillPlaneProjection,
 } from '../../../../src/kernel/model-input/model-input-types.js'
-import { renderSummarySkillPlane, renderDocumentsSkillPlane } from '../../../../src/kernel/model-input/skill-plane-projection-renderer.js'
+import {
+  renderSummarySkillPlane,
+  renderDocumentsSkillPlane,
+} from '../../../../src/kernel/model-input/skill-plane-projection-renderer.js'
 
 describe('Prompt Token Budget Tests', () => {
   describe('persona projection budget', () => {
@@ -223,7 +226,7 @@ describe('Prompt Token Budget Tests', () => {
 
       const rendered = renderPersonaProjection(projection)
 
-    expect(rendered).toContain('Style Guidelines')
+      expect(rendered).toContain('Style Guidelines')
       expect(rendered).toContain('Persona Identity')
       expect(rendered).toContain('test-id')
       expect(rendered).toContain('Style content')
@@ -262,7 +265,7 @@ describe('Prompt Token Budget Tests', () => {
 
       const rendered = renderPersonaProjection(projection)
 
-    expect(rendered).not.toContain('Constraints')
+      expect(rendered).not.toContain('Constraints')
     })
 
     it('null summary layers are handled', () => {
@@ -310,9 +313,7 @@ describe('Prompt Token Budget Tests', () => {
         skillIds: ['code-review'],
         renderMode: 'documents',
         tokenBudget: 0,
-        skillDocuments: [
-          { skillId: 's1', name: 'Skill One', document: 'A'.repeat(1000) },
-        ],
+        skillDocuments: [{ skillId: 's1', name: 'Skill One', document: 'A'.repeat(1000) }],
       }
 
       const rendered = renderDocumentsSkillPlane(projection)

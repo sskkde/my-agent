@@ -22,10 +22,7 @@ export function createCompactExecutor(deps: CompactExecutorDeps): CompactExecuto
   return (input: CompactExecutorInput) => executeCompact(input, deps)
 }
 
-async function executeCompact(
-  input: CompactExecutorInput,
-  deps: CompactExecutorDeps,
-): Promise<CompactExecutorResult> {
+async function executeCompact(input: CompactExecutorInput, deps: CompactExecutorDeps): Promise<CompactExecutorResult> {
   const { llmAdapter, summaryManager, sourceRefs, sessionId, userId, model } = deps
   const mustKeepSet = Object.freeze(new Set(input.mustKeepItemIds))
 
@@ -107,7 +104,13 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4)
 }
 
-function formatSummaryText(parsed: { summary: string; keyFacts: readonly string[]; decisions: readonly string[]; openQuestions: readonly string[]; risks?: readonly string[] }): string {
+function formatSummaryText(parsed: {
+  summary: string
+  keyFacts: readonly string[]
+  decisions: readonly string[]
+  openQuestions: readonly string[]
+  risks?: readonly string[]
+}): string {
   const sections = [`## Summary\n${parsed.summary}`]
 
   if (parsed.keyFacts.length > 0) {

@@ -14,7 +14,11 @@
  * @module kernel/model-input/static-prefix-builder
  */
 
-import type { PromptTemplateRegistry, PromptTemplateRecord, SevenLayerInput } from '../../prompt/prompt-template-registry.js'
+import type {
+  PromptTemplateRegistry,
+  PromptTemplateRecord,
+  SevenLayerInput,
+} from '../../prompt/prompt-template-registry.js'
 import type { TemplateLoader } from '../../prompt/template-loader.js'
 import { computeTemplateHash } from '../../prompt/template-hash.js'
 

@@ -28,8 +28,7 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
   {
     skillId: 'artifact_workflow',
     name: 'Artifact Workflow',
-    description:
-      'Guidance for creating, updating, and managing artifacts produced during agent runs.',
+    description: 'Guidance for creating, updating, and managing artifacts produced during agent runs.',
     category: 'write',
     sensitivity: 'medium',
     enabled: true,
@@ -37,15 +36,13 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'artifact_workflow.md',
-    summary:
-      'Covers artifact creation, update, and lifecycle management for agent-produced outputs.',
+    summary: 'Covers artifact creation, update, and lifecycle management for agent-produced outputs.',
     tags: ['artifact', 'workflow', 'output'],
   },
   {
     skillId: 'memory_research',
     name: 'Memory Research',
-    description:
-      'Guidance for retrieving, searching, and leveraging memory context during agent tasks.',
+    description: 'Guidance for retrieving, searching, and leveraging memory context during agent tasks.',
     category: 'read',
     sensitivity: 'low',
     enabled: true,
@@ -53,15 +50,13 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'memory_research.md',
-    summary:
-      'Covers memory retrieval, transcript search, and contextual recall for informed responses.',
+    summary: 'Covers memory retrieval, transcript search, and contextual recall for informed responses.',
     tags: ['memory', 'research', 'context'],
   },
   {
     skillId: 'session_status',
     name: 'Session Status',
-    description:
-      'Guidance for querying and reporting session status, progress, and state information.',
+    description: 'Guidance for querying and reporting session status, progress, and state information.',
     category: 'read',
     sensitivity: 'low',
     enabled: true,
@@ -69,15 +64,13 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'session_status.md',
-    summary:
-      'Covers status queries, progress reporting, and session state introspection.',
+    summary: 'Covers status queries, progress reporting, and session state introspection.',
     tags: ['session', 'status', 'progress'],
   },
   {
     skillId: 'documentation_search',
     name: 'Documentation Search',
-    description:
-      'Guidance for searching internal documentation, knowledge bases, and reference materials.',
+    description: 'Guidance for searching internal documentation, knowledge bases, and reference materials.',
     category: 'search',
     sensitivity: 'low',
     enabled: true,
@@ -85,15 +78,13 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'documentation_search.md',
-    summary:
-      'Covers documentation search strategies, knowledge base queries, and reference lookup.',
+    summary: 'Covers documentation search strategies, knowledge base queries, and reference lookup.',
     tags: ['documentation', 'search', 'reference'],
   },
   {
     skillId: 'web_research_guidance',
     name: 'Web Research Guidance',
-    description:
-      'Guidance for conducting effective web research, search strategies, and source evaluation.',
+    description: 'Guidance for conducting effective web research, search strategies, and source evaluation.',
     category: 'search',
     sensitivity: 'medium',
     enabled: true,
@@ -101,8 +92,7 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['main', 'subagent', 'background'],
     defaultAgentProfiles: ['default'],
     documentPath: 'web_research_guidance.md',
-    summary:
-      'Covers web search planning, source credibility evaluation, and result synthesis.',
+    summary: 'Covers web search planning, source credibility evaluation, and result synthesis.',
     tags: ['web', 'research', 'search'],
   },
   {
@@ -117,15 +107,13 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['subagent', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'pptx-generator.md',
-    summary:
-      'Covers PPTX generation from structured content and text extraction from existing presentations.',
+    summary: 'Covers PPTX generation from structured content and text extraction from existing presentations.',
     tags: ['pptx', 'presentation', 'document', 'mcp', 'minimax'],
   },
   {
     skillId: 'minimax-xlsx',
     name: 'MiniMax XLSX',
-    description:
-      'Guidance for reading and validating Excel spreadsheets (.xlsx) via the MiniMax Document MCP server.',
+    description: 'Guidance for reading and validating Excel spreadsheets (.xlsx) via the MiniMax Document MCP server.',
     category: 'read',
     sensitivity: 'medium',
     enabled: true,
@@ -133,15 +121,13 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['main', 'subagent', 'background', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'minimax-xlsx.md',
-    summary:
-      'Covers XLSX data extraction and file validation through MCP tools.',
+    summary: 'Covers XLSX data extraction and file validation through MCP tools.',
     tags: ['xlsx', 'excel', 'spreadsheet', 'mcp', 'minimax'],
   },
   {
     skillId: 'minimax-docx',
     name: 'MiniMax DOCX',
-    description:
-      'Guidance for generating Word documents (.docx) via the MiniMax Document MCP server.',
+    description: 'Guidance for generating Word documents (.docx) via the MiniMax Document MCP server.',
     category: 'write',
     sensitivity: 'medium',
     enabled: true,
@@ -149,15 +135,13 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['subagent', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'minimax-docx.md',
-    summary:
-      'Covers DOCX generation from structured content including text, headings, lists, and tables.',
+    summary: 'Covers DOCX generation from structured content including text, headings, lists, and tables.',
     tags: ['docx', 'word', 'document', 'mcp', 'minimax'],
   },
   {
     skillId: 'minimax-pdf',
     name: 'MiniMax PDF',
-    description:
-      'Guidance for generating PDF documents via the MiniMax Document MCP server.',
+    description: 'Guidance for generating PDF documents via the MiniMax Document MCP server.',
     category: 'write',
     sensitivity: 'medium',
     enabled: true,
@@ -165,8 +149,7 @@ const BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
     allowedAgentTypes: ['subagent', 'workflow_step'],
     defaultAgentProfiles: ['default'],
     documentPath: 'minimax-pdf.md',
-    summary:
-      'Covers PDF generation from structured content including text, tables, and formatted layouts.',
+    summary: 'Covers PDF generation from structured content including text, tables, and formatted layouts.',
     tags: ['pdf', 'document', 'mcp', 'minimax'],
   },
 ]
@@ -208,9 +191,7 @@ function buildDeprecatedAliases(): SkillDefinition[] {
     const replacement = BUILTIN_SKILL_DEFINITIONS.find((s) => s.skillId === newId)
     if (!replacement) {
       // Defensive: the map must reference real skill IDs.
-      throw new Error(
-        `Deprecated alias "${oldId}" references unknown skill "${newId}".`,
-      )
+      throw new Error(`Deprecated alias "${oldId}" references unknown skill "${newId}".`)
     }
 
     aliases.push({
@@ -246,8 +227,7 @@ export const ALL_BUILTIN_SKILL_DEFINITIONS: SkillDefinition[] = [
 // Only the active (non-deprecated) built-in skill definitions.
 // ---------------------------------------------------------------------------
 
-export const BUILTIN_ACTIVE_SKILL_DEFINITIONS: SkillDefinition[] =
-  BUILTIN_SKILL_DEFINITIONS
+export const BUILTIN_ACTIVE_SKILL_DEFINITIONS: SkillDefinition[] = BUILTIN_SKILL_DEFINITIONS
 
 // ---------------------------------------------------------------------------
 // Register all built-in skills (active + deprecated aliases) into a registry.

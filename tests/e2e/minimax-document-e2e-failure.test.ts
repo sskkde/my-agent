@@ -50,8 +50,7 @@ describe('MiniMax Document MCP - Failure Scenarios', () => {
 
     bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
   })
 
@@ -62,11 +61,9 @@ describe('MiniMax Document MCP - Failure Scenarios', () => {
 
     sessionManager.closeSession(session.sessionId)
 
-    const result = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_xlsx_read',
-      { inputPath: '/test.xlsx' },
-    )
+    const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
+      inputPath: '/test.xlsx',
+    })
 
     expect(result.status).toBe('failed')
     expect(result.error?.code).toBe('mcp_session_disconnected')
@@ -78,11 +75,7 @@ describe('MiniMax Document MCP - Failure Scenarios', () => {
     const session = sessionManager.openSession('minimax-document-mcp')
     await bridge.registerTools(toolRegistry, session.sessionId)
 
-    const result = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_nonexistent_tool',
-      {},
-    )
+    const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_nonexistent_tool', {})
 
     expect(result.status).toBe('failed')
   })

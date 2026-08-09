@@ -121,9 +121,19 @@ describe('provider config migrations', () => {
     runner.apply(allStoreMigrations)
 
     const domesticTypes = [
-      'dashscope', 'volcengine', 'qianfan', 'zhipu', 'moonshot',
-      'minimax', 'jdcloud-yanxi', 'mimo', 'iflytek-spark', 'stepfun',
-      'hunyuan', 'deepseek', 'siliconflow',
+      'dashscope',
+      'volcengine',
+      'qianfan',
+      'zhipu',
+      'moonshot',
+      'minimax',
+      'jdcloud-yanxi',
+      'mimo',
+      'iflytek-spark',
+      'stepfun',
+      'hunyuan',
+      'deepseek',
+      'siliconflow',
     ]
 
     for (const providerType of domesticTypes) {

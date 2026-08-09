@@ -29,9 +29,7 @@ class StaticLLMAdapter implements LLMAdapter {
     }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response

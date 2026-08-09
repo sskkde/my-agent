@@ -47,9 +47,7 @@ class FakeLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'fake-provider' }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -79,10 +77,18 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider) }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId) }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId) }
-  getHealthyProviders(): LLMProvider[] { return this.providers }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(providerId: string, priority: number): void {
     const p = this.getProvider(providerId)
     if (p) p.updateConfig({ ...p.config, priority })
@@ -98,7 +104,12 @@ class FakeToolExecutor {
     sessionId?: string
     kernelRunId?: string
     permissionContext: { userId: string; permissions: string[] }
-  }): Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean }; resultPreview?: string }> {
+  }): Promise<{
+    success: boolean
+    data?: unknown
+    error?: { code: string; message: string; recoverable: boolean }
+    resultPreview?: string
+  }> {
     return { success: true, data: {}, resultPreview: '{}' }
   }
 }
@@ -106,8 +117,12 @@ class FakeToolExecutor {
 class FakeContextManager {
   private contextItems: ContextItem[] = []
 
-  addItem(item: ContextItem): void { this.contextItems.push(item) }
-  getItems(): ContextItem[] { return this.contextItems }
+  addItem(item: ContextItem): void {
+    this.contextItems.push(item)
+  }
+  getItems(): ContextItem[] {
+    return this.contextItems
+  }
 
   assembleBundle(): ContextBundle {
     return {
@@ -297,9 +312,7 @@ describe('Truncation guard (finishReason = length)', () => {
     ])
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('test-tool') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('test-tool') }))
 
     // (a) dispatcher should NOT have been called for any toolCallId
     expect(fakeDispatcher.dispatchCalls).toHaveLength(0)
@@ -335,9 +348,7 @@ describe('Truncation guard (finishReason = length)', () => {
   })
 
   it('should still process content normally when finishReason is length without tool_calls', async () => {
-    const adapter = new FakeLLMAdapter([
-      createLengthTextResponse('Normal content despite length finish reason.'),
-    ])
+    const adapter = new FakeLLMAdapter([createLengthTextResponse('Normal content despite length finish reason.')])
 
     const kernel = new AgentKernel(createConfig(adapter))
     const result: KernelRunResult = await kernel.run(createInput())
@@ -359,9 +370,7 @@ describe('Truncation guard (finishReason = length)', () => {
       { id: 'call-single', type: 'function', function: { name: 'test-tool', arguments: '{}' } },
     ]
 
-    const adapter = new FakeLLMAdapter([
-      createLengthWithToolsResponse(toolCalls),
-    ])
+    const adapter = new FakeLLMAdapter([createLengthWithToolsResponse(toolCalls)])
 
     const kernel = new AgentKernel(createConfig(adapter, 1))
     const result: KernelRunResult = await kernel.run(
@@ -407,9 +416,7 @@ describe('Truncation guard (finishReason = length)', () => {
 
     const adapter = new FakeLLMAdapter([normalToolResponse, createTextResponse('Normal execution.')])
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('test-tool') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('test-tool') }))
 
     // Normal tool_calls path — dispatcher IS called, tool IS executed
     expect(fakeDispatcher.dispatchCalls.length).toBeGreaterThanOrEqual(1)

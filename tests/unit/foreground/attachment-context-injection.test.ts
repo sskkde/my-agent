@@ -156,9 +156,7 @@ describe('buildAttachmentContextItems', () => {
   })
 
   it('text-like upload with failed preview includes metadata but not content', () => {
-    const items = buildAttachmentContextItems([
-      makeTextAttachment({ previewStatus: 'failed', previewText: undefined }),
-    ])
+    const items = buildAttachmentContextItems([makeTextAttachment({ previewStatus: 'failed', previewText: undefined })])
 
     expect(items).toHaveLength(1)
     expect(items[0]!.content).toContain('Content bytes were not included')
@@ -166,9 +164,7 @@ describe('buildAttachmentContextItems', () => {
 
   it('preview text is truncated at MAX_PREVIEW_CHARS (8000) with notice', () => {
     const longPreview = 'x'.repeat(10000)
-    const items = buildAttachmentContextItems([
-      makeTextAttachment({ previewText: longPreview }),
-    ])
+    const items = buildAttachmentContextItems([makeTextAttachment({ previewText: longPreview })])
 
     expect(items).toHaveLength(1)
     expect(items[0]!.content).toContain('truncated')
@@ -179,11 +175,7 @@ describe('buildAttachmentContextItems', () => {
   })
 
   it('multiple attachments produce multiple context items', () => {
-    const items = buildAttachmentContextItems([
-      makeTextAttachment(),
-      makeImageAttachment(),
-      makePdfAttachment(),
-    ])
+    const items = buildAttachmentContextItems([makeTextAttachment(), makeImageAttachment(), makePdfAttachment()])
 
     expect(items).toHaveLength(3)
     expect(items[0]!.content).toContain('readme.txt')
@@ -224,10 +216,7 @@ describe('buildAttachmentContextItems', () => {
   })
 
   it('no storageRef ever appears in context items', () => {
-    const items = buildAttachmentContextItems([
-      makeTextAttachment(),
-      makeImageAttachment(),
-    ])
+    const items = buildAttachmentContextItems([makeTextAttachment(), makeImageAttachment()])
 
     for (const item of items) {
       expect(item.content).not.toContain('storageRef')
@@ -320,10 +309,7 @@ describe('buildContextBundleFromForegroundState with attachments', () => {
   })
 
   it('no storageRef in any bundle item', () => {
-    const resolver: AttachmentResolver = () => [
-      makeTextAttachment(),
-      makeImageAttachment(),
-    ]
+    const resolver: AttachmentResolver = () => [makeTextAttachment(), makeImageAttachment()]
     const input = createMockInput({ attachmentIds: ['file-001', 'file-002'] })
     const state = createMockState()
 
@@ -468,9 +454,7 @@ describe('createStoreAttachmentResolver', () => {
 describe('security: large text preview truncation', () => {
   it('extremely large preview text is truncated and does not include raw storageRef', () => {
     const hugePreview = 'A'.repeat(100_000) // 100KB of text
-    const items = buildAttachmentContextItems([
-      makeTextAttachment({ previewText: hugePreview }),
-    ])
+    const items = buildAttachmentContextItems([makeTextAttachment({ previewText: hugePreview })])
 
     expect(items).toHaveLength(1)
     // Should be truncated to ~8000 chars + header + truncation notice

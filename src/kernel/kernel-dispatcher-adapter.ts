@@ -65,7 +65,9 @@ export function createKernelDispatcherAdapter(runtimeDispatcher: DispatcherRunti
         status: 'created' as const,
         createdAt: now,
         updatedAt: now,
-        ...(dispatchTimeoutMs ? { policy: { mode: 'sync' as const, priority: 'normal' as const, timeoutMs: dispatchTimeoutMs } } : {}),
+        ...(dispatchTimeoutMs
+          ? { policy: { mode: 'sync' as const, priority: 'normal' as const, timeoutMs: dispatchTimeoutMs } }
+          : {}),
       }
 
       const context = {

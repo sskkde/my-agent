@@ -30,10 +30,7 @@ export interface FileApplyPatchResult {
 }
 
 export function createFileApplyPatchTool(): ToolDefinition {
-  const handler: ToolHandler = async (
-    params: unknown,
-    context: ToolExecutionContext,
-  ): Promise<ToolExecutionResult> => {
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
     const typedParams = params as FileApplyPatchParams
 
     // Check for conflicting input
@@ -103,10 +100,10 @@ export function createFileApplyPatchTool(): ToolDefinition {
     // Execute operations
     for (const op of operations) {
       // Validate path safety
-	      const safetyResult = validateWritePathSafety(op.filePath, workspaceRoot, {
-	        allowNew: true,
-	        enforceWorkdirBoundary: Boolean(context.workDirRoot),
-	      })
+      const safetyResult = validateWritePathSafety(op.filePath, workspaceRoot, {
+        allowNew: true,
+        enforceWorkdirBoundary: Boolean(context.workDirRoot),
+      })
       if (!safetyResult.safe) {
         results.push({
           filePath: op.filePath,

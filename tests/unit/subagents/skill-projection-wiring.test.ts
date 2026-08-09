@@ -7,7 +7,10 @@ import { createSubagentKernelAdapter } from '../../../src/subagents/kernel-adapt
 import { buildSevenLayerModelInput } from '../../../src/subagents/context-manager.js'
 import { createSubagentRegistry } from '../../../src/subagents/registry.js'
 import { createSkillRegistry, type SkillRegistry } from '../../../src/skills/skill-registry.js'
-import { createAgentTypeSkillEnvelopeRegistry, type AgentTypeSkillEnvelopeRegistry } from '../../../src/permissions/agent-type-skill-envelope.js'
+import {
+  createAgentTypeSkillEnvelopeRegistry,
+  type AgentTypeSkillEnvelopeRegistry,
+} from '../../../src/permissions/agent-type-skill-envelope.js'
 import type { SkillDefinition } from '../../../src/skills/types.js'
 import type { ProviderConfigStore } from '../../../src/storage/provider-config-store.js'
 import type { AgentConfigStore } from '../../../src/storage/agent-config-store.js'
@@ -43,11 +46,13 @@ function createMockDocumentLoader(): { loadSkillDocument: ReturnType<typeof vi.f
 
 function createMockProviderConfigStore(): ProviderConfigStore {
   return {
-    listByUser: () => [{
-      providerId: 'openrouter',
-      enabled: true,
-      selectedModel: 'anthropic/claude-3-sonnet',
-    }],
+    listByUser: () => [
+      {
+        providerId: 'openrouter',
+        enabled: true,
+        selectedModel: 'anthropic/claude-3-sonnet',
+      },
+    ],
   } as unknown as ProviderConfigStore
 }
 
@@ -342,19 +347,24 @@ describe('Subagent skill projection wiring', () => {
   describe('context-manager buildSevenLayerModelInput with skillProjection', () => {
     it('passes skillProjection to ModelInputBuildInput', async () => {
       const modelInputBuilder = new ModelInputBuilder({
-        templateRegistry: new PromptTemplateRegistry(new Map([
-          ['platform:base', {
-            id: 'platform:base',
-            version: '2026-05-23',
-            path: 'platform/base.md',
-            agentKind: '*',
-            providerFamily: '*',
-            layer: 1,
-            taxonomyLayer: 'platform',
-            description: 'Test base',
-            content: 'You are a helpful assistant.',
-          }],
-        ])),
+        templateRegistry: new PromptTemplateRegistry(
+          new Map([
+            [
+              'platform:base',
+              {
+                id: 'platform:base',
+                version: '2026-05-23',
+                path: 'platform/base.md',
+                agentKind: '*',
+                providerFamily: '*',
+                layer: 1,
+                taxonomyLayer: 'platform',
+                description: 'Test base',
+                content: 'You are a helpful assistant.',
+              },
+            ],
+          ]),
+        ),
         templateLoader: new TemplateLoader(),
       })
 
@@ -365,7 +375,8 @@ describe('Subagent skill projection wiring', () => {
 
       const skillProjection: SkillPlaneProjection = {
         skillIds: ['artifact_workflow', 'documentation_search'],
-        skillSummaries: 'Available Skills:\n- artifact_workflow (write): Manage artifacts\n- documentation_search (search): Search documentation',
+        skillSummaries:
+          'Available Skills:\n- artifact_workflow (write): Manage artifacts\n- documentation_search (search): Search documentation',
         renderMode: 'summary',
       }
 
@@ -383,19 +394,24 @@ describe('Subagent skill projection wiring', () => {
 
     it('works without skillProjection (backward compatible)', async () => {
       const modelInputBuilder = new ModelInputBuilder({
-        templateRegistry: new PromptTemplateRegistry(new Map([
-          ['platform:base', {
-            id: 'platform:base',
-            version: '2026-05-23',
-            path: 'platform/base.md',
-            agentKind: '*',
-            providerFamily: '*',
-            layer: 1,
-            taxonomyLayer: 'platform',
-            description: 'Test base',
-            content: 'You are a helpful assistant.',
-          }],
-        ])),
+        templateRegistry: new PromptTemplateRegistry(
+          new Map([
+            [
+              'platform:base',
+              {
+                id: 'platform:base',
+                version: '2026-05-23',
+                path: 'platform/base.md',
+                agentKind: '*',
+                providerFamily: '*',
+                layer: 1,
+                taxonomyLayer: 'platform',
+                description: 'Test base',
+                content: 'You are a helpful assistant.',
+              },
+            ],
+          ]),
+        ),
         templateLoader: new TemplateLoader(),
       })
 

@@ -15,12 +15,20 @@ describe('runCandidate', () => {
   beforeEach(() => {
     baseline = []
     const templates = new Map([
-      ['platform:base', {
-        id: 'platform:base', version: '2026-06-01', path: 'platform/base.md',
-        agentKind: '*', providerFamily: '*', layer: 1, taxonomyLayer: 'platform' as const,
-        content: 'You are a helpful assistant.',
-        description: 'Test platform base',
-      }],
+      [
+        'platform:base',
+        {
+          id: 'platform:base',
+          version: '2026-06-01',
+          path: 'platform/base.md',
+          agentKind: '*',
+          providerFamily: '*',
+          layer: 1,
+          taxonomyLayer: 'platform' as const,
+          content: 'You are a helpful assistant.',
+          description: 'Test platform base',
+        },
+      ],
     ])
     templateRegistry = new PromptTemplateRegistry(templates, '/nonexistent')
     templateLoader = new TemplateLoader('/nonexistent')
@@ -125,7 +133,6 @@ describe('runCandidate', () => {
     const originalBuild = await builder.build(buildInput)
     const expectedSegmentBHash = originalBuild.segmentHashes.segmentB
 
-
     const goldenCases = [
       {
         id: 'test-case-override',
@@ -157,9 +164,7 @@ describe('runCandidate', () => {
       {
         candidateId: 'override',
         description: 'With override',
-        templateOverrides: [
-          { templateId, content: 'MODIFIED agent instructions for {{agentKind}}.' },
-        ],
+        templateOverrides: [{ templateId, content: 'MODIFIED agent instructions for {{agentKind}}.' }],
         featureFlagOverrides: {},
         createdAt: new Date().toISOString(),
       },

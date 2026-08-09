@@ -16,9 +16,7 @@ import type { ToolRegistry } from '../../src/tools/types.js'
 import { createSkillRegistry, type SkillRegistry } from '../../src/skills/skill-registry.js'
 import { registerBuiltinSkills } from '../../src/skills/builtin/manifest.js'
 import { createMockMcpServer } from '../fixtures/phase3-mock-mcp.js'
-import {
-  PromptTemplateRegistry,
-} from '../../src/prompt/prompt-template-registry.js'
+import { PromptTemplateRegistry } from '../../src/prompt/prompt-template-registry.js'
 import { TemplateLoader } from '../../src/prompt/template-loader.js'
 import { ModelInputBuilder } from '../../src/kernel/model-input/model-input-builder.js'
 import { renderSummarySkillPlane } from '../../src/kernel/model-input/skill-plane-projection-renderer.js'
@@ -78,8 +76,7 @@ describe('MiniMax Document MCP - Full E2E Flow', () => {
 
     bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
   })
 
@@ -88,9 +85,7 @@ describe('MiniMax Document MCP - Full E2E Flow', () => {
   })
 
   it('platform sees MiniMax skills AND calls document tools in tool plane', async () => {
-    const minimaxSkills = MINIMAX_SKILL_IDS
-      .map((id) => skillRegistry.get(id))
-      .filter(Boolean)
+    const minimaxSkills = MINIMAX_SKILL_IDS.map((id) => skillRegistry.get(id)).filter(Boolean)
     expect(minimaxSkills).toHaveLength(4)
 
     const skillProjection = {
@@ -116,11 +111,9 @@ describe('MiniMax Document MCP - Full E2E Flow', () => {
     const allTools = toolRegistry.listTools()
     expect(allTools).toHaveLength(4)
 
-    const xlsxResult = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_xlsx_read',
-      { inputPath: '/data/report.xlsx' },
-    )
+    const xlsxResult = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
+      inputPath: '/data/report.xlsx',
+    })
     expect(xlsxResult.status).toBe('completed')
 
     const xlsxData = xlsxResult.data as typeof MOCK_XLSX_READ_RESULT
@@ -131,17 +124,13 @@ describe('MiniMax Document MCP - Full E2E Flow', () => {
     expect(containsBase64BinaryContent(xlsxSerialized)).toBe(false)
     expect(containsBinaryContentMarkers(xlsxSerialized)).toBe(false)
 
-    const pptxResult = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_pptx_generate',
-      {
-        title: 'Analysis Report',
-        slides: [
-          { layout: 'title', title: 'Analysis Report', content: ['Q2 2026'] },
-          { layout: 'titleAndContent', title: 'Findings', content: ['Key finding 1', 'Key finding 2'] },
-        ],
-      },
-    )
+    const pptxResult = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_pptx_generate', {
+      title: 'Analysis Report',
+      slides: [
+        { layout: 'title', title: 'Analysis Report', content: ['Q2 2026'] },
+        { layout: 'titleAndContent', title: 'Findings', content: ['Key finding 1', 'Key finding 2'] },
+      ],
+    })
     expect(pptxResult.status).toBe('completed')
 
     const pptxData = pptxResult.data as typeof MOCK_PPTX_GENERATE_RESULT
@@ -172,10 +161,7 @@ describe('MiniMax Document MCP - Full E2E Flow', () => {
     clearFileRegistry()
     const workspace = await createWorkspace('real-minimax-e2e')
     try {
-      const sourceXlsx = path.join(
-        process.cwd(),
-        'mcp-servers/minimax-document-mcp/test-fixtures/employees.xlsx',
-      )
+      const sourceXlsx = path.join(process.cwd(), 'mcp-servers/minimax-document-mcp/test-fixtures/employees.xlsx')
       await fs.copyFile(sourceXlsx, path.join(workspace.root, 'employees.xlsx'))
 
       const xlsxResult = await readXlsx({ inputPath: 'employees.xlsx', maxRows: 2 }, workspace.root)

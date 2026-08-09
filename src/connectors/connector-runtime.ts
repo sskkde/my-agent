@@ -321,10 +321,12 @@ export class ConnectorRuntimeImpl implements ConnectorRuntime {
     }))
   }
 
-  private findAdapter(definition: ConnectorDefinition): {
-    execute: (instance: ConnectorInstance, request: ConnectorCallRequest) => Promise<unknown>
-    discoverCapabilities: (instance: ConnectorInstance) => ConnectorCapability[]
-  } | undefined {
+  private findAdapter(definition: ConnectorDefinition):
+    | {
+        execute: (instance: ConnectorInstance, request: ConnectorCallRequest) => Promise<unknown>
+        discoverCapabilities: (instance: ConnectorInstance) => ConnectorCapability[]
+      }
+    | undefined {
     return this.adapterRegistry.get(definition.connectorId) ?? this.adapterRegistry.get(definition.connectorType)
   }
 

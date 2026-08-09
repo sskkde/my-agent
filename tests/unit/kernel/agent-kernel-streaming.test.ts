@@ -69,9 +69,7 @@ class FakeStreamingLLMAdapter implements LLMAdapter {
     }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     this.lastRequest = request
     this.streamCallCount++
 
@@ -123,7 +121,10 @@ interface BroadcastCall {
 
 class FakeTimelineBroadcaster {
   private broadcasts: BroadcastCall[] = []
-  private timelineEvents: Array<{ sessionId: string; event: import('../../../src/api/types.js').ConsoleTimelineEvent }> = []
+  private timelineEvents: Array<{
+    sessionId: string
+    event: import('../../../src/api/types.js').ConsoleTimelineEvent
+  }> = []
 
   broadcastTokenStream(sessionId: string, token: TokenStreamPayload): void {
     this.broadcasts.push({ sessionId, token })
@@ -498,9 +499,7 @@ describe('AgentKernel streaming behavior', () => {
       class ToolOnlyStreamAdapter extends FakeStreamingLLMAdapter {
         private doneTool = false
 
-        async *stream(
-          request: LLMRequest,
-        ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+        async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
           this.lastRequest = request
           this.streamCallCount++
           if (!this.doneTool) {
@@ -585,7 +584,6 @@ describe('AgentKernel streaming behavior', () => {
   })
 })
 
-
 describe('AgentKernel structured streaming with tool-capable turns (P0-P2)', () => {
   it('streams tool_calls when tools are projected; dispatches tool_calls once', async () => {
     class ToolCapableStreamAdapter extends FakeStreamingLLMAdapter {
@@ -609,9 +607,7 @@ describe('AgentKernel structured streaming with tool-capable turns (P0-P2)', () 
         }
       }
 
-      async *stream(
-        request: LLMRequest,
-      ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+      async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
         this.lastRequest = request
         this.streamCallCount++
 
@@ -750,7 +746,6 @@ describe('AgentKernel structured streaming with tool-capable turns (P0-P2)', () 
   })
 })
 
-
 describe('AgentKernel P1 provider-family stream gate', () => {
   it('falls back to complete when family lacks structured tool stream', async () => {
     class TrackingAdapter extends FakeStreamingLLMAdapter {
@@ -795,9 +790,7 @@ describe('AgentKernel P1 provider-family stream gate', () => {
         }
       }
 
-      async *stream(
-        request: LLMRequest,
-      ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+      async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
         this.lastRequest = request
         this.streamCallCount++
         // If this is called for tool turn, tool_calls would be lost — must not happen for anthropic.

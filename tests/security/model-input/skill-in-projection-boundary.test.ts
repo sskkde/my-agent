@@ -124,7 +124,9 @@ function makeMockDocumentLoader(documents: Map<string, string>): SkillDocumentLo
       return documents.get(skillId)
     },
     clearCache(): void {},
-    getCacheStats() { return { size: 0, entries: [] } },
+    getCacheStats() {
+      return { size: 0, entries: [] }
+    },
     async preloadDocuments(_skillIds: string[]): Promise<void> {},
   } as unknown as SkillDocumentLoader
 }
@@ -158,9 +160,7 @@ describe('Skill-in-Projection Boundary Security Tests', () => {
           skillProjection: {
             skillIds: ['evil-skill'],
             renderMode: 'documents',
-            skillDocuments: [
-              { skillId: 'evil-skill', name: 'Evil Skill', document: maliciousDoc },
-            ],
+            skillDocuments: [{ skillId: 'evil-skill', name: 'Evil Skill', document: maliciousDoc }],
           },
         }),
       )
@@ -172,21 +172,21 @@ describe('Skill-in-Projection Boundary Security Tests', () => {
         providerFamily: 'openai',
         toolProjection: {
           toolIds: ['file_read'],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'file_read',
-              description: 'Read a file',
-              parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'file_read',
+                description: 'Read a file',
+                parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+              },
             },
-          }],
+          ],
         },
         skillProjection: {
           skillIds: ['evil-skill'],
           renderMode: 'documents',
-          skillDocuments: [
-            { skillId: 'evil-skill', name: 'Evil Skill', document: maliciousDoc },
-          ],
+          skillDocuments: [{ skillId: 'evil-skill', name: 'Evil Skill', document: maliciousDoc }],
         },
       })
 
@@ -209,9 +209,7 @@ describe('Skill-in-Projection Boundary Security Tests', () => {
           skillProjection: {
             skillIds: ['schema-inject'],
             renderMode: 'documents',
-            skillDocuments: [
-              { skillId: 'schema-inject', name: 'Schema Inject', document: maliciousDoc },
-            ],
+            skillDocuments: [{ skillId: 'schema-inject', name: 'Schema Inject', document: maliciousDoc }],
           },
         }),
       )
@@ -248,14 +246,16 @@ describe('Skill-in-Projection Boundary Security Tests', () => {
         providerFamily: 'openai',
         toolProjection: {
           toolIds: ['file_read'],
-          tools: [{
-            type: 'function' as const,
-            function: {
-              name: 'file_read',
-              description: 'Read a file',
-              parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'file_read',
+                description: 'Read a file',
+                parameters: { type: 'object' as const, properties: { path: { type: 'string' } } },
+              },
             },
-          }],
+          ],
         },
         skillProjection: {
           skillIds: ['evil-1', 'evil-2', 'evil-3'],
@@ -307,9 +307,7 @@ describe('Skill-in-Projection Boundary Security Tests', () => {
         skillProjection: {
           skillIds: ['session_status'],
           renderMode: 'documents',
-          skillDocuments: [
-            { skillId: 'session_status', name: 'Session Status', document: 'Status guidance' },
-          ],
+          skillDocuments: [{ skillId: 'session_status', name: 'Session Status', document: 'Status guidance' }],
         },
       })
 

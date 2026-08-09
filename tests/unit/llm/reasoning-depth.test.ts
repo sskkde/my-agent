@@ -118,11 +118,7 @@ describe('domestic normalize includes reasoning mapping', () => {
   })
 
   it('applies moonshot thinking and tool_choice quirk', () => {
-    const body = normalizeDomesticProviderRequest(
-      'moonshot',
-      { model: 'kimi', tool_choice: 'required' },
-      'off',
-    )
+    const body = normalizeDomesticProviderRequest('moonshot', { model: 'kimi', tool_choice: 'required' }, 'off')
     expect(body.tool_choice).toBe('auto')
     expect(body.thinking).toEqual({ type: 'disabled' })
   })

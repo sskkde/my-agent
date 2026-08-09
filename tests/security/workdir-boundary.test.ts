@@ -16,11 +16,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, writeFileSync, symlinkSync, rmSync, existsSync, linkSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import {
-  resolveCanonicalPath,
-  isWithinWorkspace,
-  validateSymlinkSafety,
-} from '../../src/tools/builtins/safe-paths.js'
+import { resolveCanonicalPath, isWithinWorkspace, validateSymlinkSafety } from '../../src/tools/builtins/safe-paths.js'
 import {
   getWorkdirRoot,
   resetWorkdirRootCache,

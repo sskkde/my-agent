@@ -56,8 +56,7 @@ describe('MiniMax Document MCP - pptx.generate Verification', () => {
 
     bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
   })
 
@@ -66,19 +65,15 @@ describe('MiniMax Document MCP - pptx.generate Verification', () => {
     const session = sessionManager.openSession('minimax-document-mcp')
     await bridge.registerTools(toolRegistry, session.sessionId)
 
-    const result = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_pptx_generate',
-      {
-        title: 'Quarterly Report',
-        slides: [
-          { layout: 'title', title: 'Q2 2026 Report', content: ['Prepared by Engineering'] },
-          { layout: 'titleAndContent', title: 'Key Metrics', content: ['Revenue: $1.2M', 'Users: 15,000'] },
-          { layout: 'titleAndContent', title: 'Next Steps', content: ['Scale infrastructure', 'Expand to APAC'] },
-        ],
-        outputFileName: 'quarterly-report.pptx',
-      },
-    )
+    const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_pptx_generate', {
+      title: 'Quarterly Report',
+      slides: [
+        { layout: 'title', title: 'Q2 2026 Report', content: ['Prepared by Engineering'] },
+        { layout: 'titleAndContent', title: 'Key Metrics', content: ['Revenue: $1.2M', 'Users: 15,000'] },
+        { layout: 'titleAndContent', title: 'Next Steps', content: ['Scale infrastructure', 'Expand to APAC'] },
+      ],
+      outputFileName: 'quarterly-report.pptx',
+    })
 
     expect(result.status).toBe('completed')
     expect(result.data).toBeDefined()
@@ -90,9 +85,7 @@ describe('MiniMax Document MCP - pptx.generate Verification', () => {
     const artifact = data.structuredContent.artifact
     expect(artifact.fileId).toBe('file_abc123def456')
     expect(artifact.fileName).toBe('quarterly-report.pptx')
-    expect(artifact.mimeType).toBe(
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    )
+    expect(artifact.mimeType).toBe('application/vnd.openxmlformats-officedocument.presentationml.presentation')
     expect(artifact.sizeBytes).toBe(45_312)
     expect(artifact.downloadUrl).toBe('mcp-artifact://file_abc123def456')
 
@@ -105,14 +98,10 @@ describe('MiniMax Document MCP - pptx.generate Verification', () => {
     const session = sessionManager.openSession('minimax-document-mcp')
     await bridge.registerTools(toolRegistry, session.sessionId)
 
-    const result = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_pptx_generate',
-      {
-        title: 'Test Presentation',
-        slides: [{ layout: 'title', title: 'Slide 1', content: ['Content'] }],
-      },
-    )
+    const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_pptx_generate', {
+      title: 'Test Presentation',
+      slides: [{ layout: 'title', title: 'Slide 1', content: ['Content'] }],
+    })
 
     expect(result.status).toBe('completed')
 
@@ -139,14 +128,10 @@ describe('MiniMax Document MCP - pptx.generate Verification', () => {
     const session = sessionManager.openSession('minimax-document-mcp')
     await bridge.registerTools(toolRegistry, session.sessionId)
 
-    const result = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_pptx_generate',
-      {
-        title: 'Metadata Check',
-        slides: [{ layout: 'title', title: 'Slide 1', content: ['Content'] }],
-      },
-    )
+    const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_pptx_generate', {
+      title: 'Metadata Check',
+      slides: [{ layout: 'title', title: 'Slide 1', content: ['Content'] }],
+    })
 
     expect(result.status).toBe('completed')
     const data = result.data as typeof MOCK_PPTX_GENERATE_RESULT

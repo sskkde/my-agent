@@ -89,16 +89,19 @@ describe('runtime tool adapter identity propagation', () => {
     const capturedRequests: ToolExecutionRequest[] = []
     const adapter = registerToolPlaneAdapter(capturedRequests)
 
-    await adapter.execute(makeRuntimeAction({
-      toolCallId: 'call-1',
-      toolName: 'identity-tool',
-      params: {},
-      kernelRunId: 'run-1',
-      agentType: 'subagent',
-      agentId: 'subagent.run-1',
-      agentProfile: 'code_processor',
-      launchSource: 'subagent_runtime',
-    }), { signal: new AbortController().signal, timeoutMs: 30_000 })
+    await adapter.execute(
+      makeRuntimeAction({
+        toolCallId: 'call-1',
+        toolName: 'identity-tool',
+        params: {},
+        kernelRunId: 'run-1',
+        agentType: 'subagent',
+        agentId: 'subagent.run-1',
+        agentProfile: 'code_processor',
+        launchSource: 'subagent_runtime',
+      }),
+      { signal: new AbortController().signal, timeoutMs: 30_000 },
+    )
 
     expect(capturedRequests).toHaveLength(1)
     expect(capturedRequests[0]?.agentType).toBe('subagent')
@@ -111,17 +114,20 @@ describe('runtime tool adapter identity propagation', () => {
     const capturedRequests: ToolExecutionRequest[] = []
     const adapter = registerToolPlaneAdapter(capturedRequests)
 
-    await adapter.execute(makeRuntimeAction({
-      kernelRunId: 'run-1',
-      agentType: 'subagent',
-      agentId: 'subagent.batch',
-      agentProfile: 'code_processor',
-      launchSource: 'subagent_runtime',
-      toolUses: [
-        { toolCallId: 'call-1', toolName: 'identity-tool', params: {} },
-        { toolCallId: 'call-2', toolName: 'identity-tool', params: {}, agentId: 'subagent.override' },
-      ],
-    }), { signal: new AbortController().signal, timeoutMs: 30_000 })
+    await adapter.execute(
+      makeRuntimeAction({
+        kernelRunId: 'run-1',
+        agentType: 'subagent',
+        agentId: 'subagent.batch',
+        agentProfile: 'code_processor',
+        launchSource: 'subagent_runtime',
+        toolUses: [
+          { toolCallId: 'call-1', toolName: 'identity-tool', params: {} },
+          { toolCallId: 'call-2', toolName: 'identity-tool', params: {}, agentId: 'subagent.override' },
+        ],
+      }),
+      { signal: new AbortController().signal, timeoutMs: 30_000 },
+    )
 
     expect(capturedRequests).toHaveLength(2)
     expect(capturedRequests[0]?.agentId).toBe('subagent.batch')

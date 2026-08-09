@@ -39,10 +39,7 @@ function buildCallbackPayload(overrides?: Record<string, unknown>) {
   }
 }
 
-function buildInboundEvent(
-  payload: unknown,
-  connectorInstanceId = 'inst-dt-1',
-): InboundRawEvent {
+function buildInboundEvent(payload: unknown, connectorInstanceId = 'inst-dt-1'): InboundRawEvent {
   return {
     provider: 'dingtalk',
     connectorInstanceId,
@@ -92,9 +89,7 @@ describe('DingTalkAdapter', () => {
         verifyWebhook: async () => true,
       })
       const adapter = new DingTalkAdapter(BASE_CONFIG, transport)
-      const event = buildInboundEvent(
-        buildCallbackPayload({ msgtype: 'image' }),
-      )
+      const event = buildInboundEvent(buildCallbackPayload({ msgtype: 'image' }))
 
       const result = await adapter.handleInbound(event)
       expect(result).toBeNull()
@@ -106,9 +101,7 @@ describe('DingTalkAdapter', () => {
         verifyWebhook: async () => true,
       })
       const adapter = new DingTalkAdapter(BASE_CONFIG, transport)
-      const event = buildInboundEvent(
-        buildCallbackPayload({ text: { content: '' } }),
-      )
+      const event = buildInboundEvent(buildCallbackPayload({ text: { content: '' } }))
 
       const result = await adapter.handleInbound(event)
       expect(result).toBeNull()
@@ -120,9 +113,7 @@ describe('DingTalkAdapter', () => {
         verifyWebhook: async () => true,
       })
       const adapter = new DingTalkAdapter(BASE_CONFIG, transport)
-      const event = buildInboundEvent(
-        buildCallbackPayload({ text: { content: '  hello world  ' } }),
-      )
+      const event = buildInboundEvent(buildCallbackPayload({ text: { content: '  hello world  ' } }))
 
       const result = await adapter.handleInbound(event)
       expect(result!.text).toBe('hello world')
@@ -237,10 +228,13 @@ describe('DingTalkAdapter', () => {
       const now = Date.now().toString()
       const sign = signPayload(now, BASE_CONFIG.signSecret!)
 
-      const result = await adapter.verifyInbound({}, {
-        timestamp: now,
-        sign,
-      })
+      const result = await adapter.verifyInbound(
+        {},
+        {
+          timestamp: now,
+          sign,
+        },
+      )
 
       expect(result).toBe(true)
     })
@@ -254,10 +248,13 @@ describe('DingTalkAdapter', () => {
 
       const now = Date.now().toString()
 
-      const result = await adapter.verifyInbound({}, {
-        timestamp: now,
-        sign: 'wrong-signature',
-      })
+      const result = await adapter.verifyInbound(
+        {},
+        {
+          timestamp: now,
+          sign: 'wrong-signature',
+        },
+      )
 
       expect(result).toBe(false)
     })
@@ -273,10 +270,13 @@ describe('DingTalkAdapter', () => {
       const staleTs = (Date.now() - 2 * 60 * 60 * 1000).toString()
       const sign = signPayload(staleTs, BASE_CONFIG.signSecret!)
 
-      const result = await adapter.verifyInbound({}, {
-        timestamp: staleTs,
-        sign,
-      })
+      const result = await adapter.verifyInbound(
+        {},
+        {
+          timestamp: staleTs,
+          sign,
+        },
+      )
 
       expect(result).toBe(false)
     })
@@ -311,10 +311,13 @@ describe('DingTalkAdapter', () => {
       })
       const adapter = new DingTalkAdapter(BASE_CONFIG, transport)
 
-      const result = await adapter.verifyInbound({}, {
-        timestamp: 'not-a-number',
-        sign: 'abc',
-      })
+      const result = await adapter.verifyInbound(
+        {},
+        {
+          timestamp: 'not-a-number',
+          sign: 'abc',
+        },
+      )
 
       expect(result).toBe(false)
     })

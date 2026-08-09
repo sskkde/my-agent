@@ -1264,7 +1264,9 @@ describe('ToolExecutor', () => {
 
       expect(result.success).toBe(false)
       expect(result.error?.code).toBe('APPROVAL_REQUIRED')
-      expect(mockPermissionEngine.checkPermission).toHaveBeenCalledWith(expect.objectContaining({ resource: outsidePath }))
+      expect(mockPermissionEngine.checkPermission).toHaveBeenCalledWith(
+        expect.objectContaining({ resource: outsidePath }),
+      )
       expect(handler).not.toHaveBeenCalled()
     })
   })

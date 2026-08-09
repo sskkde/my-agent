@@ -11,7 +11,6 @@ import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../s
 import { TemplateLoader } from '../../../../src/prompt/template-loader.js'
 import { ModelInputBuilder } from '../../../../src/kernel/model-input/model-input-builder.js'
 
-
 // ── Template fixtures ──────────────────────────────────────────────────────────
 
 function makeTemplates(): Map<string, PromptTemplateRecord> {
@@ -389,9 +388,8 @@ describe('Output contract routing through Layer 4', () => {
   describe('external result schemas are unchanged', () => {
     it('ExtractionResult type is preserved (memory)', async () => {
       // Verify the memory extractor service returns the same ExtractionResult union
-      const { createLongTermMemoryExtractorService } = await import(
-        '../../../../src/memory/long-term-memory-extractor-service.js'
-      )
+      const { createLongTermMemoryExtractorService } =
+        await import('../../../../src/memory/long-term-memory-extractor-service.js')
       expect(typeof createLongTermMemoryExtractorService).toBe('function')
     })
 

@@ -350,7 +350,14 @@ describe('Kernel Tool Loop Closure', () => {
 
     fakeDispatcher.registerHandler('execute_tool', async (request) => {
       const targetAction = request.action.targetAction as
-        | { toolCallId?: string; toolName?: string; params?: unknown; toolDispatchRequest?: { toolUses?: Array<{ toolCallId: string; toolName: string; input: Record<string, unknown> }> } }
+        | {
+            toolCallId?: string
+            toolName?: string
+            params?: unknown
+            toolDispatchRequest?: {
+              toolUses?: Array<{ toolCallId: string; toolName: string; input: Record<string, unknown> }>
+            }
+          }
         | undefined
 
       // Batch dispatch: execute each tool in toolUses array
@@ -933,9 +940,8 @@ describe('Kernel Tool Loop Closure', () => {
     expect(alphaResult.result).toEqual({ result: 'alpha-output' })
     expect(alphaResult.error).toBeUndefined()
 
-    const betaResult = toolResultEntries.find(
-      (e) => (e.content as { toolCallId: string }).toolCallId === 'call-beta',
-    )!.content as { result: unknown; error?: unknown }
+    const betaResult = toolResultEntries.find((e) => (e.content as { toolCallId: string }).toolCallId === 'call-beta')!
+      .content as { result: unknown; error?: unknown }
     expect(betaResult.result).toEqual({ result: 'beta-output' })
     expect(betaResult.error).toBeUndefined()
 

@@ -5,7 +5,10 @@ import type { KernelRunState, KernelRunInput } from '../../../src/kernel/types.j
 function makeInput(overrides?: Partial<KernelRunInput>): KernelRunInput {
   return {
     contextBundle: { items: [], agentType: 'main', runId: 'test-run' } as any,
-    runId: 'test-run', agentId: 'test-agent', agentType: 'main', userId: 'test-user',
+    runId: 'test-run',
+    agentId: 'test-agent',
+    agentType: 'main',
+    userId: 'test-user',
     toolProjection: { toolIds: ['web_search', 'file_read', 'file_write'] },
     ...overrides,
   }
@@ -13,9 +16,15 @@ function makeInput(overrides?: Partial<KernelRunInput>): KernelRunInput {
 
 function makeState(overrides?: Partial<KernelRunState>): KernelRunState {
   return {
-    currentIteration: 1, status: 'completed', contextItems: [], startTime: Date.now(),
-    toolCalls: [], transcript: [], compactedItemIds: new Set(),
-    compactedToolCallIds: new Set(), lastCompactSummaryItem: undefined,
+    currentIteration: 1,
+    status: 'completed',
+    contextItems: [],
+    startTime: Date.now(),
+    toolCalls: [],
+    transcript: [],
+    compactedItemIds: new Set(),
+    compactedToolCallIds: new Set(),
+    lastCompactSummaryItem: undefined,
     ...overrides,
   }
 }
@@ -55,7 +64,10 @@ describe('buildDecisionTrace', () => {
   })
 
   it('candidateTools comes from input.toolProjection.toolIds', () => {
-    const trace = buildDecisionTrace(makeState(), makeInput({ toolProjection: { toolIds: ['web_search', 'file_read'] } }))
+    const trace = buildDecisionTrace(
+      makeState(),
+      makeInput({ toolProjection: { toolIds: ['web_search', 'file_read'] } }),
+    )
     expect(trace.candidateTools).toEqual(['web_search', 'file_read'])
   })
 
@@ -68,14 +80,21 @@ describe('buildDecisionTrace', () => {
     })
     const trace = buildDecisionTrace(state, makeInput())
     expect(trace.selectedTools).toHaveLength(2)
-    expect(trace.selectedTools[0]).toEqual({ toolName: 'web_search', toolCallId: 'call_1', selectionReason: 'llm_choice' })
+    expect(trace.selectedTools[0]).toEqual({
+      toolName: 'web_search',
+      toolCallId: 'call_1',
+      selectionReason: 'llm_choice',
+    })
   })
 
   it('populates rejectedTools as candidate minus selected', () => {
     const state = makeState({
       toolCalls: [{ toolCallId: 'call_1', toolName: 'web_search', params: {} }],
     })
-    const trace = buildDecisionTrace(state, makeInput({ toolProjection: { toolIds: ['web_search', 'file_read', 'file_write'] } }))
+    const trace = buildDecisionTrace(
+      state,
+      makeInput({ toolProjection: { toolIds: ['web_search', 'file_read', 'file_write'] } }),
+    )
     expect(trace.rejectedTools).toHaveLength(2)
     expect(trace.rejectedTools.map((r) => r.toolName).sort()).toEqual(['file_read', 'file_write'])
     expect(trace.rejectedTools.every((r) => r.rejectionReason === 'not_called')).toBe(true)
@@ -102,7 +121,15 @@ describe('buildDecisionTrace', () => {
       toolCalls: [{ toolCallId: 'call_1', toolName: 'web_search', params: {} }],
       transcript: [
         { iteration: 1, timestamp: new Date().toISOString(), type: 'tool_call', content: { toolCallId: 'call_1' } },
-        { iteration: 1, timestamp: new Date().toISOString(), type: 'tool_result', content: { toolCallId: 'call_1', result: { extractedFacts: [{ fact: 'TypeScript is great', sourceUrl: 'x', confidence: 0.9 }] } } },
+        {
+          iteration: 1,
+          timestamp: new Date().toISOString(),
+          type: 'tool_result',
+          content: {
+            toolCallId: 'call_1',
+            result: { extractedFacts: [{ fact: 'TypeScript is great', sourceUrl: 'x', confidence: 0.9 }] },
+          },
+        },
       ],
     })
     const trace = buildDecisionTrace(state, makeInput())

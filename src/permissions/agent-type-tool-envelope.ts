@@ -91,10 +91,7 @@ export interface AgentTypeToolEnvelopeRegistry {
   isToolAllowedByEnvelope(agentType: AgentType, toolId: string, toolCategory: ToolCategory): boolean
 
   /** Get all allowed tool IDs for an AgentType given a full tool catalog. */
-  getAllowedToolIds(
-    agentType: AgentType,
-    catalog: Array<{ id: string; category: ToolCategory }>,
-  ): string[]
+  getAllowedToolIds(agentType: AgentType, catalog: Array<{ id: string; category: ToolCategory }>): string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -105,44 +102,25 @@ export interface AgentTypeToolEnvelopeRegistry {
  * SAFE_CATEGORIES: categories allowed for interactive (main) agent types.
  * Read-only, search, and internal tools — no side effects.
  */
-const SAFE_CATEGORIES: ReadonlySet<ToolCategory> = new Set([
-  'read',
-  'search',
-  'internal',
-])
+const SAFE_CATEGORIES: ReadonlySet<ToolCategory> = new Set(['read', 'search', 'internal'])
 
 /**
  * SUBAGENT_CATEGORIES: categories allowed for subagent execution.
  * Extends safe with write capability (artifacts, etc.).
  */
-const SUBAGENT_CATEGORIES: ReadonlySet<ToolCategory> = new Set([
-  'read',
-  'search',
-  'internal',
-  'write',
-])
+const SUBAGENT_CATEGORIES: ReadonlySet<ToolCategory> = new Set(['read', 'search', 'internal', 'write'])
 
 /**
  * BACKGROUND_CATEGORIES: categories allowed for background tasks.
  * Limited to read/search/internal — no write/execute/admin.
  */
-const BACKGROUND_CATEGORIES: ReadonlySet<ToolCategory> = new Set([
-  'read',
-  'search',
-  'internal',
-])
+const BACKGROUND_CATEGORIES: ReadonlySet<ToolCategory> = new Set(['read', 'search', 'internal'])
 
 /**
  * WORKFLOW_STEP_CATEGORIES: categories allowed for workflow steps.
  * Extends safe with write and limited execute capability.
  */
-const WORKFLOW_STEP_CATEGORIES: ReadonlySet<ToolCategory> = new Set([
-  'read',
-  'search',
-  'internal',
-  'write',
-  'execute',
-])
+const WORKFLOW_STEP_CATEGORIES: ReadonlySet<ToolCategory> = new Set(['read', 'search', 'internal', 'write', 'execute'])
 
 /**
  * REMOTE_EMPTY_SET: remote agent type has NO allowed categories.
@@ -159,7 +137,8 @@ const MAIN_ENVELOPE: AgentTypeToolEnvelope = {
   allowedCategories: SAFE_CATEGORIES,
   deniedToolIds: new Set<string>(),
   categoryExceptionToolIds: MAIN_WORKDIR_WRITE_EXCEPTION_TOOL_IDS,
-  reason: 'Main agent: read/search/internal only — no side effects in interactive mode, except workdir file write/edit/patch tools',
+  reason:
+    'Main agent: read/search/internal only — no side effects in interactive mode, except workdir file write/edit/patch tools',
 }
 
 /**
@@ -188,7 +167,8 @@ const BACKGROUND_ENVELOPE: AgentTypeToolEnvelope = {
   allowedCategories: BACKGROUND_CATEGORIES,
   deniedToolIds: new Set<string>(),
   categoryExceptionToolIds: new Set<string>(['todowrite', 'todolist']),
-  reason: 'Background: read/search/internal only — no side effects in unattended mode, except todo tools (owner-scoped)',
+  reason:
+    'Background: read/search/internal only — no side effects in unattended mode, except todo tools (owner-scoped)',
 }
 
 /**
@@ -275,10 +255,7 @@ export function createAgentTypeToolEnvelopeRegistry(): AgentTypeToolEnvelopeRegi
       return envelope.allowedCategories.has(toolCategory)
     },
 
-    getAllowedToolIds(
-      agentType: AgentType,
-      catalog: Array<{ id: string; category: ToolCategory }>,
-    ): string[] {
+    getAllowedToolIds(agentType: AgentType, catalog: Array<{ id: string; category: ToolCategory }>): string[] {
       return catalog
         .filter((tool) => this.isToolAllowedByEnvelope(agentType, tool.id, tool.category))
         .map((tool) => tool.id)

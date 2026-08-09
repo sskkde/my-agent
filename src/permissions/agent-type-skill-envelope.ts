@@ -57,17 +57,10 @@ export interface AgentTypeSkillEnvelopeRegistry {
   getEnvelope(agentType: AgentType): AgentTypeSkillEnvelope | undefined
 
   /** Check if a skill ID is permitted by the envelope for the given AgentType. */
-  isSkillAllowedByEnvelope(
-    agentType: AgentType,
-    skillId: string,
-    skillCategory: SkillCategory,
-  ): boolean
+  isSkillAllowedByEnvelope(agentType: AgentType, skillId: string, skillCategory: SkillCategory): boolean
 
   /** Get all allowed skill IDs for an AgentType given a full skill catalog. */
-  getAllowedSkillIds(
-    agentType: AgentType,
-    catalog: Array<{ id: string; category: SkillCategory }>,
-  ): string[]
+  getAllowedSkillIds(agentType: AgentType, catalog: Array<{ id: string; category: SkillCategory }>): string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -78,33 +71,19 @@ export interface AgentTypeSkillEnvelopeRegistry {
  * SAFE_CATEGORIES: skill categories allowed for interactive (main) agent types.
  * Read-only, search, and internal skills — no side-effect guidance.
  */
-const SAFE_CATEGORIES: ReadonlySet<SkillCategory> = new Set([
-  'read',
-  'search',
-  'internal',
-])
+const SAFE_CATEGORIES: ReadonlySet<SkillCategory> = new Set(['read', 'search', 'internal'])
 
 /**
  * SUBAGENT_CATEGORIES: skill categories allowed for subagent execution.
  * Extends safe with write and automation guidance.
  */
-const SUBAGENT_CATEGORIES: ReadonlySet<SkillCategory> = new Set([
-  'read',
-  'search',
-  'internal',
-  'write',
-  'automation',
-])
+const SUBAGENT_CATEGORIES: ReadonlySet<SkillCategory> = new Set(['read', 'search', 'internal', 'write', 'automation'])
 
 /**
  * BACKGROUND_CATEGORIES: skill categories allowed for background tasks.
  * Limited to read/search/internal — no write/automation/admin.
  */
-const BACKGROUND_CATEGORIES: ReadonlySet<SkillCategory> = new Set([
-  'read',
-  'search',
-  'internal',
-])
+const BACKGROUND_CATEGORIES: ReadonlySet<SkillCategory> = new Set(['read', 'search', 'internal'])
 
 /**
  * WORKFLOW_STEP_CATEGORIES: skill categories allowed for workflow steps.
@@ -209,11 +188,7 @@ export function createAgentTypeSkillEnvelopeRegistry(): AgentTypeSkillEnvelopeRe
       return envelopeMap.get(agentType)
     },
 
-    isSkillAllowedByEnvelope(
-      agentType: AgentType,
-      skillId: string,
-      skillCategory: SkillCategory,
-    ): boolean {
+    isSkillAllowedByEnvelope(agentType: AgentType, skillId: string, skillCategory: SkillCategory): boolean {
       const envelope = envelopeMap.get(agentType)
       if (!envelope) {
         // Unknown agentType → deny by default
@@ -239,10 +214,7 @@ export function createAgentTypeSkillEnvelopeRegistry(): AgentTypeSkillEnvelopeRe
       return envelope.allowedCategories.has(skillCategory)
     },
 
-    getAllowedSkillIds(
-      agentType: AgentType,
-      catalog: Array<{ id: string; category: SkillCategory }>,
-    ): string[] {
+    getAllowedSkillIds(agentType: AgentType, catalog: Array<{ id: string; category: SkillCategory }>): string[] {
       return catalog
         .filter((skill) => this.isSkillAllowedByEnvelope(agentType, skill.id, skill.category))
         .map((skill) => skill.id)
@@ -261,9 +233,7 @@ export function createAgentTypeSkillEnvelopeRegistry(): AgentTypeSkillEnvelopeRe
  * If any set is empty, returns empty (nothing is permitted).
  * If a set is undefined, it is treated as "no restriction" (skip).
  */
-export function intersectSkillIdSets(
-  ...sets: Array<Set<string> | string[] | undefined>
-): string[] {
+export function intersectSkillIdSets(...sets: Array<Set<string> | string[] | undefined>): string[] {
   const definedSets = sets.filter((s): s is Set<string> | string[] => s !== undefined)
 
   if (definedSets.length === 0) {

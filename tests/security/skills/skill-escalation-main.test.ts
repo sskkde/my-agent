@@ -14,12 +14,11 @@ describe('Skill Escalation - Main Agent', () => {
   const catalog = makeSkillCatalog()
 
   it('main agent cannot access write-category skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'main',
-      catalog,
-      envelopeRegistry,
-      ['artifact_workflow', 'memory_research', 'session_status'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('main', catalog, envelopeRegistry, [
+      'artifact_workflow',
+      'memory_research',
+      'session_status',
+    ])
 
     expect(effective).toContain('memory_research')
     expect(effective).toContain('session_status')
@@ -27,36 +26,33 @@ describe('Skill Escalation - Main Agent', () => {
   })
 
   it('main agent cannot access automation-category skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'main',
-      catalog,
-      envelopeRegistry,
-      ['custom_automation', 'memory_research'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('main', catalog, envelopeRegistry, [
+      'custom_automation',
+      'memory_research',
+    ])
 
     expect(effective).toContain('memory_research')
     expect(effective).not.toContain('custom_automation')
   })
 
   it('main agent cannot access admin-category skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'main',
-      catalog,
-      envelopeRegistry,
-      ['admin_config', 'session_status'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('main', catalog, envelopeRegistry, [
+      'admin_config',
+      'session_status',
+    ])
 
     expect(effective).toContain('session_status')
     expect(effective).not.toContain('admin_config')
   })
 
   it('main agent can access read/search/internal skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'main',
-      catalog,
-      envelopeRegistry,
-      ['memory_research', 'session_status', 'documentation_search', 'web_research_guidance', 'internal_ops'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('main', catalog, envelopeRegistry, [
+      'memory_research',
+      'session_status',
+      'documentation_search',
+      'web_research_guidance',
+      'internal_ops',
+    ])
 
     expect(effective).toContain('memory_research')
     expect(effective).toContain('session_status')
@@ -66,12 +62,11 @@ describe('Skill Escalation - Main Agent', () => {
   })
 
   it('main agent allows read MiniMax skills and denies write MiniMax skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'main',
-      catalog,
-      envelopeRegistry,
-      [...MINIMAX_SKILL_IDS, 'memory_research', 'session_status'],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('main', catalog, envelopeRegistry, [
+      ...MINIMAX_SKILL_IDS,
+      'memory_research',
+      'session_status',
+    ])
 
     expect(effective).toContain('memory_research')
     expect(effective).toContain('session_status')
@@ -99,24 +94,13 @@ describe('Skill Escalation - Main Agent', () => {
 
   it('empty config allowedSkillIds denies all skills even if profile includes them', () => {
     const profileSkillIds = ['memory_research', 'session_status', 'documentation_search']
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'main',
-      catalog,
-      envelopeRegistry,
-      profileSkillIds,
-      [],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('main', catalog, envelopeRegistry, profileSkillIds, [])
 
     expect(effective).toEqual([])
   })
 
   it('empty profile does not expand — envelope governs when profile is empty', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'main',
-      catalog,
-      envelopeRegistry,
-      [],
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('main', catalog, envelopeRegistry, [])
 
     expect(effective).toContain('memory_research')
     expect(effective).toContain('session_status')

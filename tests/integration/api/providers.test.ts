@@ -649,8 +649,16 @@ describe('Provider API Integration', () => {
 
     it('should return 400 when each domestic provider missing apiKey', async () => {
       const domesticTypes = [
-        'qianfan', 'zhipu', 'moonshot', 'minimax', 'jdcloud-yanxi',
-        'mimo', 'stepfun', 'hunyuan', 'deepseek', 'siliconflow',
+        'qianfan',
+        'zhipu',
+        'moonshot',
+        'minimax',
+        'jdcloud-yanxi',
+        'mimo',
+        'stepfun',
+        'hunyuan',
+        'deepseek',
+        'siliconflow',
       ]
 
       for (const providerType of domesticTypes) {

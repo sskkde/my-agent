@@ -288,8 +288,6 @@ const PROVIDER_SILICONFLOW_TEMPLATE: PromptTemplateRecord = {
   taxonomyLayer: 'provider',
 }
 
-
-
 const PERSONA_DEFAULT_TEMPLATE: PromptTemplateRecord = {
   id: 'persona:default',
   version: '2026-05-24',
@@ -829,8 +827,7 @@ export class PromptTemplateRegistry {
   }
 
   private matchesSevenLayer(record: PromptTemplateRecord, input: SevenLayerInput): boolean {
-    const providerMatches =
-      record.providerFamily === '*' || record.providerFamily === input.providerFamily
+    const providerMatches = record.providerFamily === '*' || record.providerFamily === input.providerFamily
 
     if (!providerMatches) {
       return false
@@ -864,8 +861,7 @@ export class PromptTemplateRegistry {
         return false
     }
   }
-
-  }
+}
 
 export function createPromptTemplateRegistry(
   templates?: Map<string, PromptTemplateRecord>,

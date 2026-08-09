@@ -162,9 +162,7 @@ describe('Transcript Redaction Mapper', () => {
       expect(assistantMessages[0].content).not.toContain(REASONING_FIXTURE)
 
       // SAFETY: hiddenPrompt / internal fields must NEVER appear in any visible message.
-      const hasHiddenPrompt = messages.some((m) =>
-        m.content.includes('This is private chain-of-thought reasoning'),
-      )
+      const hasHiddenPrompt = messages.some((m) => m.content.includes('This is private chain-of-thought reasoning'))
       expect(hasHiddenPrompt).toBe(false)
     })
   })
@@ -366,7 +364,6 @@ describe('Transcript Redaction Mapper', () => {
   })
 })
 
-
 // ─── Plan C ordered projection ────────────────────────────────────────────────
 
 function entry(
@@ -403,13 +400,7 @@ describe('Plan C ordered projection', () => {
     }
 
     const messages = mapKernelResultToVisibleMessages(kernelResult, 'turn-s1')
-    expect(messages.map((m) => m.role)).toEqual([
-      'assistant',
-      'tool',
-      'assistant',
-      'tool',
-      'assistant',
-    ])
+    expect(messages.map((m) => m.role)).toEqual(['assistant', 'tool', 'assistant', 'tool', 'assistant'])
     expect(messages.map((m) => m.content)).toEqual([
       'I will check.',
       'Tool completed: search',

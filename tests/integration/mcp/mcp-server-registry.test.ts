@@ -279,9 +279,7 @@ describe('McpServerRegistry', () => {
     registry.registerServer(
       createMockMcpServer({ serverId: 's1', baseUrl: 'stdio://local', configType: 'stdio', command: 'node' }),
     )
-    registry.registerServer(
-      createMockMcpServer({ serverId: 's2', baseUrl: 'https://a.com', configType: 'http' }),
-    )
+    registry.registerServer(createMockMcpServer({ serverId: 's2', baseUrl: 'https://a.com', configType: 'http' }))
     registry.registerServer(
       createMockMcpServer({ serverId: 's3', baseUrl: 'https://b.com', configType: 'streamable_http' }),
     )
@@ -298,15 +296,11 @@ describe('redactSecretParams', () => {
   })
 
   it('strips api_key param from URL', () => {
-    expect(redactSecretParams('https://example.com/rpc?api_key=SECRET&foo=bar')).toBe(
-      'https://example.com/rpc?foo=bar',
-    )
+    expect(redactSecretParams('https://example.com/rpc?api_key=SECRET&foo=bar')).toBe('https://example.com/rpc?foo=bar')
   })
 
   it('strips multiple secret params', () => {
-    expect(redactSecretParams('https://example.com/rpc?key=A&token=B&safe=c')).toBe(
-      'https://example.com/rpc?safe=c',
-    )
+    expect(redactSecretParams('https://example.com/rpc?key=A&token=B&safe=c')).toBe('https://example.com/rpc?safe=c')
   })
 
   it('preserves URL without secret params', () => {
@@ -318,8 +312,6 @@ describe('redactSecretParams', () => {
   })
 
   it('strips access_token param', () => {
-    expect(redactSecretParams('https://example.com/rpc?access_token=TOKEN&v=2')).toBe(
-      'https://example.com/rpc?v=2',
-    )
+    expect(redactSecretParams('https://example.com/rpc?access_token=TOKEN&v=2')).toBe('https://example.com/rpc?v=2')
   })
 })

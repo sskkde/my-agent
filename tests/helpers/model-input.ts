@@ -16,8 +16,7 @@ function makeTestTemplates(): Map<string, PromptTemplateRecord> {
         providerFamily: '*',
         layer: 1,
         taxonomyLayer: 'platform',
-        content:
-          'You are a helpful AI assistant with access to tools.',
+        content: 'You are a helpful AI assistant with access to tools.',
         description: 'Test platform base',
       },
     ],
@@ -101,8 +100,7 @@ export function createMockModelInputBuilder(modeOverride?: 'function_calling' | 
     const messages = [
       {
         role: 'system' as const,
-        content:
-          'You are a helpful AI assistant with access to tools.',
+        content: 'You are a helpful AI assistant with access to tools.',
       },
       { role: 'user' as const, content: `${toolPlaneContent}\n\n${contextBundleParts.join('\n')}` },
     ]

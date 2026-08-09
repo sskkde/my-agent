@@ -286,29 +286,30 @@ export function createE2EHarness(): E2EHarness {
 
       const permissionContext = this.createPermissionContext(userId, sessionId, 'ask_on_write')
       const normalizedMessage = message.toLowerCase()
-      const decision: TestForegroundDecision = normalizedMessage.includes('cancel') || normalizedMessage.includes('stop')
-        ? {
-            route: 'cancel_or_modify_task',
-            requiresPlanner: false,
-            reason: 'Cancel request detected',
-            userVisibleResponse: 'Processing your cancel request...',
-          }
-        : normalizedMessage.includes('status') ||
-            normalizedMessage.includes('query') ||
-            normalizedMessage.includes('progress') ||
-            normalizedMessage.includes('how is')
+      const decision: TestForegroundDecision =
+        normalizedMessage.includes('cancel') || normalizedMessage.includes('stop')
           ? {
-              route: 'status_query',
+              route: 'cancel_or_modify_task',
               requiresPlanner: false,
-              reason: 'Status query detected',
-              userVisibleResponse: 'Checking active work status...',
+              reason: 'Cancel request detected',
+              userVisibleResponse: 'Processing your cancel request...',
             }
-          : {
-              route: 'answer_directly',
-              requiresPlanner: false,
-              reason: 'Default test response',
-              userVisibleResponse: 'I understand your message.',
-            }
+          : normalizedMessage.includes('status') ||
+              normalizedMessage.includes('query') ||
+              normalizedMessage.includes('progress') ||
+              normalizedMessage.includes('how is')
+            ? {
+                route: 'status_query',
+                requiresPlanner: false,
+                reason: 'Status query detected',
+                userVisibleResponse: 'Checking active work status...',
+              }
+            : {
+                route: 'answer_directly',
+                requiresPlanner: false,
+                reason: 'Default test response',
+                userVisibleResponse: 'I understand your message.',
+              }
 
       const toolExecutions: Array<{ toolCallId: string; toolName: string; status: string }> = []
 

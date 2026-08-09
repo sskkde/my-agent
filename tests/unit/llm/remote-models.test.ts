@@ -92,12 +92,7 @@ describe('remote-models', () => {
     it('skips OpenAI data entries missing id', async () => {
       const req = createFakeRequest()
       httpsRequestMock.mockImplementation((_opts, cb) => {
-        cb(
-          createFakeResponse(
-            200,
-            JSON.stringify({ data: [{ id: 'm1' }, { name: 'no-id' }, { id: 'm2' }] }),
-          ),
-        )
+        cb(createFakeResponse(200, JSON.stringify({ data: [{ id: 'm1' }, { name: 'no-id' }, { id: 'm2' }] })))
         return req
       })
 

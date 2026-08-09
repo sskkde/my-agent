@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import {
-  PromptTemplateRegistry,
-  PROMPT_TEMPLATE_REGISTRY,
-} from '../../../src/prompt/prompt-template-registry.js'
+import { PromptTemplateRegistry, PROMPT_TEMPLATE_REGISTRY } from '../../../src/prompt/prompt-template-registry.js'
 
 describe('prompt-template-registry (taxonomy)', () => {
   let registry: PromptTemplateRegistry
@@ -54,8 +51,13 @@ describe('prompt-template-registry (taxonomy)', () => {
 
     it('has all agentProfile records', () => {
       const profiles = [
-        'default_main', 'foreground', 'planner', 'memory',
-        'search', 'research_processor', 'search_processor',
+        'default_main',
+        'foreground',
+        'planner',
+        'memory',
+        'search',
+        'research_processor',
+        'search_processor',
       ]
       for (const profile of profiles) {
         const record = registry.getTemplate(`agentProfile:${profile}`)

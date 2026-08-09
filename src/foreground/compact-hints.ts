@@ -36,10 +36,7 @@ export function generateForegroundCompactHints(
   tokenBudget: number,
   threshold: number = DEFAULT_THRESHOLD,
 ): CompactHints {
-  const tokenEstimate = items.reduce(
-    (sum, item) => sum + (item.estimatedTokens ?? 0),
-    0,
-  )
+  const tokenEstimate = items.reduce((sum, item) => sum + (item.estimatedTokens ?? 0), 0)
 
   const utilizationRatio = tokenBudget > 0 ? tokenEstimate / tokenBudget : 0
 
@@ -52,9 +49,7 @@ export function generateForegroundCompactHints(
     .slice(0, MAX_CANDIDATES)
     .map((item) => item.itemId)
 
-  const mustKeepItemIds = items
-    .filter((item) => item.isPinned)
-    .map((item) => item.itemId)
+  const mustKeepItemIds = items.filter((item) => item.isPinned).map((item) => item.itemId)
 
   return {
     shouldCompactSoon: true,

@@ -83,12 +83,10 @@ describe('mapRouteInputToEvent', () => {
     })
 
     it('rejects an invalid button value', () => {
-      expect(() =>
-        mapRouteInputToEvent('click', { x: 0.5, y: 0.3, button: 'sideways' }),
-      ).toThrow(BrowserInputParseError)
-      expect(() =>
-        mapRouteInputToEvent('click', { x: 0.5, y: 0.3, button: 'sideways' }),
-      ).toThrow(/INVALID_BUTTON/)
+      expect(() => mapRouteInputToEvent('click', { x: 0.5, y: 0.3, button: 'sideways' })).toThrow(
+        BrowserInputParseError,
+      )
+      expect(() => mapRouteInputToEvent('click', { x: 0.5, y: 0.3, button: 'sideways' })).toThrow(/INVALID_BUTTON/)
     })
   })
 
@@ -133,12 +131,8 @@ describe('mapRouteInputToEvent', () => {
     })
 
     it('rejects a non-numeric deltaX', () => {
-      expect(() => mapRouteInputToEvent('scroll', { deltaX: 'fast', deltaY: 0 })).toThrow(
-        BrowserInputParseError,
-      )
-      expect(() => mapRouteInputToEvent('scroll', { deltaX: 'fast', deltaY: 0 })).toThrow(
-        /INVALID_NUMBER/,
-      )
+      expect(() => mapRouteInputToEvent('scroll', { deltaX: 'fast', deltaY: 0 })).toThrow(BrowserInputParseError)
+      expect(() => mapRouteInputToEvent('scroll', { deltaX: 'fast', deltaY: 0 })).toThrow(/INVALID_NUMBER/)
     })
   })
 

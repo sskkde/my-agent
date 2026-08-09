@@ -16,9 +16,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
 import { createWorkdirStore } from '../../../src/storage/workdir-store.js'
-import {
-  createSessionWorkdirStateStore,
-} from '../../../src/storage/session-workdir-state-store.js'
+import { createSessionWorkdirStateStore } from '../../../src/storage/session-workdir-state-store.js'
 import {
   createWorkdirService,
   WorkdirServiceError,

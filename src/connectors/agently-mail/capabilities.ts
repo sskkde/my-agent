@@ -20,30 +20,20 @@ export function createAgentlyMailCapabilities(): ConnectorCapability[] {
 // ─── Lookup helpers ───────────────────────────────────────────────────────────
 
 const CAPABILITY_BY_OPERATION = new Map<AgentlyMailOperation, ConnectorCapability>(
-  AGENTLY_MAIL_CAPABILITIES.map((cap) => [
-    cap.supportedOperations[0] as AgentlyMailOperation,
-    cap,
-  ]),
+  AGENTLY_MAIL_CAPABILITIES.map((cap) => [cap.supportedOperations[0] as AgentlyMailOperation, cap]),
 )
 
 /** All AgentlyMail operations that are exposed as model-callable capabilities. */
-export const AGENTLY_MAIL_EXPOSED_OPERATIONS: readonly AgentlyMailOperation[] = [
-  ...CAPABILITY_BY_OPERATION.keys(),
-]
+export const AGENTLY_MAIL_EXPOSED_OPERATIONS: readonly AgentlyMailOperation[] = [...CAPABILITY_BY_OPERATION.keys()]
 
 /**
  * auth_login and auth_logout are intentionally excluded from the capability
  * surface. They are interactive OAuth flows that require user setup context
  * (PTY, browser redirect) and MUST NOT be callable by the model as ordinary tools.
  */
-export const AGENTLY_MAIL_HIDDEN_OPERATIONS: readonly AgentlyMailOperation[] = [
-  'auth_login',
-  'auth_logout',
-]
+export const AGENTLY_MAIL_HIDDEN_OPERATIONS: readonly AgentlyMailOperation[] = ['auth_login', 'auth_logout']
 
 /** Look up a capability by its operation name. Returns undefined for hidden ops. */
-export function getCapabilityByOperation(
-  operation: AgentlyMailOperation,
-): ConnectorCapability | undefined {
+export function getCapabilityByOperation(operation: AgentlyMailOperation): ConnectorCapability | undefined {
   return CAPABILITY_BY_OPERATION.get(operation)
 }

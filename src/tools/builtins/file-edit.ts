@@ -22,10 +22,7 @@ export interface FileEditResult {
 }
 
 export function createFileEditTool(): ToolDefinition {
-  const handler: ToolHandler = async (
-    params: unknown,
-    context: ToolExecutionContext,
-  ): Promise<ToolExecutionResult> => {
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
     const typedParams = params as FileEditParams
 
     if (!typedParams.filePath) {

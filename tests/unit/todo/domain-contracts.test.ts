@@ -19,7 +19,12 @@ import {
 describe('Todo Domain Contracts', () => {
   describe('TodoStatus enum', () => {
     it('should define all required statuses', () => {
-      const statuses: TodoStatus[] = [TodoStatus.pending, TodoStatus.in_progress, TodoStatus.completed, TodoStatus.cancelled]
+      const statuses: TodoStatus[] = [
+        TodoStatus.pending,
+        TodoStatus.in_progress,
+        TodoStatus.completed,
+        TodoStatus.cancelled,
+      ]
       expect(statuses).toHaveLength(4)
       expect(statuses).toContain('pending')
       expect(statuses).toContain('in_progress')
@@ -53,7 +58,12 @@ describe('Todo Domain Contracts', () => {
 
   describe('TodoWriteMode enum', () => {
     it('should define all required modes', () => {
-      const modes: TodoWriteMode[] = [TodoWriteMode.append, TodoWriteMode.replace, TodoWriteMode.update, TodoWriteMode.remove]
+      const modes: TodoWriteMode[] = [
+        TodoWriteMode.append,
+        TodoWriteMode.replace,
+        TodoWriteMode.update,
+        TodoWriteMode.remove,
+      ]
       expect(modes).toHaveLength(4)
       expect(modes).toContain('append')
       expect(modes).toContain('replace')
@@ -300,7 +310,7 @@ describe('Todo Domain Contracts', () => {
       // Level 2: Second child (parentTodoId = first child)
       // Level 3: Third child (parentTodoId = second child)
       // Any deeper nesting should be rejected
-      
+
       expect(MAX_TODO_DEPTH).toBe(3)
     })
 
@@ -313,7 +323,7 @@ describe('Todo Domain Contracts', () => {
       // - Grandchild: depth 2
       // - Great-grandchild: depth 3 (allowed)
       // - Great-great-grandchild: depth 4 (NOT allowed)
-      
+
       expect(MAX_TODO_DEPTH).toBeLessThan(4)
       expect(MAX_TODO_DEPTH).toBeGreaterThanOrEqual(0)
     })

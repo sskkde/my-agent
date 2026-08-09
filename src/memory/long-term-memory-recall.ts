@@ -177,9 +177,7 @@ class LongTermMemoryRecallServiceImpl implements LongTermMemoryRecallService {
         sourceType: 'long_term_memory' as const,
         sourceRef: mem.memoryId,
         freshnessTs: mem.lifecycle.updatedAt,
-        relevanceReason: query.query
-          ? `keyword match: ${query.query}`
-          : 'high confidence',
+        relevanceReason: query.query ? `keyword match: ${query.query}` : 'high confidence',
         retrievalScore: mem.relevanceScore > 0 ? mem.relevanceScore : undefined,
       },
     }))

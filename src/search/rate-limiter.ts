@@ -26,9 +26,7 @@ export class SearchRateLimiter {
     this.minIntervalMs = config.minIntervalMs
     this.maxJitterMs = config.maxJitterMs
     this.now = config.now ?? (() => Date.now())
-    this.sleep =
-      config.sleep ??
-      ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+    this.sleep = config.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
     this.random = config.random ?? Math.random
   }
 

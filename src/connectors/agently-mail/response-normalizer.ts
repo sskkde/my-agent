@@ -7,10 +7,7 @@
  */
 
 import type { ConnectorResponse, ConnectorResponseStatus } from '../types.js'
-import type {
-  AgentlyMailExitCode,
-  AgentlyMailCliEnvelope,
-} from './types.js'
+import type { AgentlyMailExitCode, AgentlyMailCliEnvelope } from './types.js'
 
 // ─── Secret redaction ──────────────────────────────────────────────────────────
 
@@ -68,20 +65,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isSuccessEnvelope(
-  envelope: AgentlyMailCliEnvelope,
-): envelope is { data: unknown } {
+function isSuccessEnvelope(envelope: AgentlyMailCliEnvelope): envelope is { data: unknown } {
   return isRecord(envelope) && 'data' in envelope
 }
 
-function isErrorEnvelope(
-  envelope: AgentlyMailCliEnvelope,
-): envelope is { error: { code: string; message: string } } {
-  return (
-    isRecord(envelope) &&
-    'error' in envelope &&
-    isRecord((envelope as Record<string, unknown>).error)
-  )
+function isErrorEnvelope(envelope: AgentlyMailCliEnvelope): envelope is { error: { code: string; message: string } } {
+  return isRecord(envelope) && 'error' in envelope && isRecord((envelope as Record<string, unknown>).error)
 }
 
 /**
@@ -230,9 +219,8 @@ export function normalizeAgentlyMailResponse(
   }
 
   // Build the error message: prefer envelope, fall back to redacted stderr
-  const errorMessage = envelopeMessage ?? (redactedStderr.trim().length > 0
-    ? redactedStderr.trim()
-    : `CLI exited with code ${exitCode}`)
+  const errorMessage =
+    envelopeMessage ?? (redactedStderr.trim().length > 0 ? redactedStderr.trim() : `CLI exited with code ${exitCode}`)
 
   // Build base response
   const response: ConnectorResponse = {
@@ -248,11 +236,12 @@ export function normalizeAgentlyMailResponse(
 
   // ── Retry metadata for recoverable / rate-limited errors ──────────────────
   if (mapping.status === 'rate_limited') {
-    const retryAfterMs = parseRetryAfterMs(
-      envelope && isRecord(envelope) && 'metadata' in envelope
-        ? (envelope as Record<string, unknown>).metadata
-        : undefined,
-    ) ?? DEFAULT_RETRY_AFTER_MS
+    const retryAfterMs =
+      parseRetryAfterMs(
+        envelope && isRecord(envelope) && 'metadata' in envelope
+          ? (envelope as Record<string, unknown>).metadata
+          : undefined,
+      ) ?? DEFAULT_RETRY_AFTER_MS
 
     response.metadata = {
       retryAfterMs,

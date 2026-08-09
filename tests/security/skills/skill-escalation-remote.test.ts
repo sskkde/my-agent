@@ -26,24 +26,14 @@ describe('Skill Escalation - Remote Agent', () => {
   })
 
   it('remote agent with undefined profile and config gets no skills', () => {
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'remote',
-      catalog,
-      envelopeRegistry,
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('remote', catalog, envelopeRegistry)
 
     expect(effective).toEqual([])
   })
 
   it('remote agent with broad config still gets no skills', () => {
     const allIds = catalog.map((c) => c.id)
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'remote',
-      catalog,
-      envelopeRegistry,
-      allIds,
-      allIds,
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('remote', catalog, envelopeRegistry, allIds, allIds)
 
     expect(effective).toEqual([])
   })
@@ -62,13 +52,7 @@ describe('Skill Escalation - Remote Agent', () => {
 
   it('no combination of profile + config can override envelope for remote with MiniMax skills', () => {
     const allIds = catalog.map((c) => c.id)
-    const effective = computeEffectiveSkillIdsWithEnvelope(
-      'remote',
-      catalog,
-      envelopeRegistry,
-      allIds,
-      allIds,
-    )
+    const effective = computeEffectiveSkillIdsWithEnvelope('remote', catalog, envelopeRegistry, allIds, allIds)
 
     expect(effective).toEqual([])
     for (const minimaxId of MINIMAX_SKILL_IDS) {

@@ -205,7 +205,6 @@ describe('Tenant Leakage Security Tests', () => {
         makeTenantInput(TENANT_A, {
           toolProjection: {
             toolIds: ['file_read', 'web_search'],
-
           },
         }),
       )
@@ -214,7 +213,6 @@ describe('Tenant Leakage Security Tests', () => {
         makeTenantInput(TENANT_B, {
           toolProjection: {
             toolIds: ['memory_retrieve', 'status_query'],
-
           },
         }),
       )

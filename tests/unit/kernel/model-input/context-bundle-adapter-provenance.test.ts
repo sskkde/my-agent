@@ -91,7 +91,9 @@ describe('projectBundleToData - provenance preservation', () => {
 
     it('preserves provenance on summaryBlocks', () => {
       const bundle = makeBundle({
-        summaryBlocks: [makeItem({ itemId: 'sum-1', sourceType: 'conversation_state', freshnessTs: '2026-06-18T00:00:00Z' })],
+        summaryBlocks: [
+          makeItem({ itemId: 'sum-1', sourceType: 'conversation_state', freshnessTs: '2026-06-18T00:00:00Z' }),
+        ],
       })
 
       const result = projectBundleToData(bundle)
@@ -132,9 +134,7 @@ describe('projectBundleToData - provenance preservation', () => {
   describe('edge case: item with no provenance fields', () => {
     it('renders stable output when sourceType is present but sourceRef and freshnessTs are absent', () => {
       const bundle = makeBundle({
-        orderedItems: [
-          makeItem({ sourceType: 'session_history', sourceRef: undefined, freshnessTs: undefined }),
-        ],
+        orderedItems: [makeItem({ sourceType: 'session_history', sourceRef: undefined, freshnessTs: undefined })],
       })
 
       const result = projectBundleToData(bundle)

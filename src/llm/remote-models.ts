@@ -55,11 +55,7 @@ function parseOpenAIShapedModels(parsed: unknown): string[] {
   if (!Array.isArray(data)) return []
   return data
     .filter((entry): entry is { id: string } => {
-      return (
-        typeof entry === 'object' &&
-        entry !== null &&
-        typeof (entry as { id?: unknown }).id === 'string'
-      )
+      return typeof entry === 'object' && entry !== null && typeof (entry as { id?: unknown }).id === 'string'
     })
     .map((entry) => entry.id)
 }
@@ -70,11 +66,7 @@ function parseOllamaTagsModels(parsed: unknown): string[] {
   if (!Array.isArray(models)) return []
   return models
     .filter((entry): entry is { name: string } => {
-      return (
-        typeof entry === 'object' &&
-        entry !== null &&
-        typeof (entry as { name?: unknown }).name === 'string'
-      )
+      return typeof entry === 'object' && entry !== null && typeof (entry as { name?: unknown }).name === 'string'
     })
     .map((entry) => entry.name)
 }

@@ -5,11 +5,7 @@ import {
   createSessionWorkdirStateStore,
   type SessionWorkdirStateStore,
 } from '../../../src/storage/session-workdir-state-store.js'
-import {
-  createWorkdirService,
-  type WorkdirService,
-  type FileSystemOps,
-} from '../../../src/workdirs/workdir-service.js'
+import { createWorkdirService, type WorkdirService, type FileSystemOps } from '../../../src/workdirs/workdir-service.js'
 import { createGateway, type Stores } from '../../../src/gateway/gateway.js'
 import { buildContextBundleFromForegroundState } from '../../../src/foreground/context-bundle-builder.js'
 import type { ForegroundTurnInput } from '../../../src/foreground/foreground-runner-types.js'
@@ -147,7 +143,9 @@ describe('Workdir context integration', () => {
 
   afterEach(() => {
     for (const conn of connections) {
-      try { conn.close() } catch {}
+      try {
+        conn.close()
+      } catch {}
     }
     connections.length = 0
   })

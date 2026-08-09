@@ -189,7 +189,25 @@ export interface AllProvidersFailedError extends RuntimeError {
  * Provider family identifier
  * Categorizes providers by their underlying architecture
  */
-export type ProviderFamily = 'openai' | 'openai_compatible' | 'deepseek' | 'anthropic' | 'gemini' | 'ollama' | 'bedrock' | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot' | 'minimax' | 'mimo' | 'iflytek-spark' | 'stepfun' | 'hunyuan' | 'siliconflow'
+export type ProviderFamily =
+  | 'openai'
+  | 'openai_compatible'
+  | 'deepseek'
+  | 'anthropic'
+  | 'gemini'
+  | 'ollama'
+  | 'bedrock'
+  | 'dashscope'
+  | 'volcengine'
+  | 'qianfan'
+  | 'zhipu'
+  | 'moonshot'
+  | 'minimax'
+  | 'mimo'
+  | 'iflytek-spark'
+  | 'stepfun'
+  | 'hunyuan'
+  | 'siliconflow'
 
 /**
  * Provider communication protocol
@@ -207,7 +225,23 @@ export type ProviderProtocol =
  * Prompt provider family
  * Used for prompt template compatibility
  */
-export type PromptProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini' | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot' | 'minimax' | 'mimo' | 'iflytek-spark' | 'stepfun' | 'hunyuan' | 'siliconflow'
+export type PromptProviderFamily =
+  | 'openai'
+  | 'deepseek'
+  | 'ollama'
+  | 'anthropic'
+  | 'gemini'
+  | 'dashscope'
+  | 'volcengine'
+  | 'qianfan'
+  | 'zhipu'
+  | 'moonshot'
+  | 'minimax'
+  | 'mimo'
+  | 'iflytek-spark'
+  | 'stepfun'
+  | 'hunyuan'
+  | 'siliconflow'
 
 /**
  * Model limits
@@ -331,7 +365,6 @@ export function computeCacheHitRate(usage: TokenUsage): number {
   return total > 0 ? hit / total : 0
 }
 
-
 // =============================================================================
 // Streaming chunk types (text + tool_calls)
 // =============================================================================
@@ -407,11 +440,7 @@ export function mapFinishReason(value: string | null | undefined): LLMFinishReas
 }
 
 /** Lift a provider event into an adapter chunk. */
-export function toLLMStreamChunk(
-  event: ProviderStreamEvent,
-  providerId: string,
-  model?: string,
-): LLMStreamChunk {
+export function toLLMStreamChunk(event: ProviderStreamEvent, providerId: string, model?: string): LLMStreamChunk {
   switch (event.kind) {
     case 'text':
       return { kind: 'text', delta: event.delta, providerId, model }

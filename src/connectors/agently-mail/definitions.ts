@@ -35,10 +35,7 @@ function detectCliAvailability(): boolean {
 // Definition data
 // ---------------------------------------------------------------------------
 
-export type AgentlyMailDefinitionInput = Omit<
-  ConnectorDefinition,
-  'id' | 'createdAt' | 'updatedAt'
->
+export type AgentlyMailDefinitionInput = Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>
 
 /**
  * Build the AgentlyMail connector definition.

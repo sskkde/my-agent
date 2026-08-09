@@ -36,10 +36,20 @@ describe('Skill Escalation - Skill Registry and Unknown Agent Type', () => {
       const activeSkillIds = new Set(activeSkills.map((s) => s.skillId))
 
       const knownToolIds = [
-        'file_read', 'file_write', 'web_search', 'web_fetch',
-        'exec', 'bash', 'process', 'code_execution',
-        'status_query', 'memory_retrieve', 'artifact_create',
-        'admin_config', 'transcript_search', 'plan_patch',
+        'file_read',
+        'file_write',
+        'web_search',
+        'web_fetch',
+        'exec',
+        'bash',
+        'process',
+        'code_execution',
+        'status_query',
+        'memory_retrieve',
+        'artifact_create',
+        'admin_config',
+        'transcript_search',
+        'plan_patch',
       ]
 
       for (const toolId of knownToolIds) {
@@ -50,12 +60,10 @@ describe('Skill Escalation - Skill Registry and Unknown Agent Type', () => {
 
   describe('unknown agent type denies all skills', () => {
     it('unknown agent type returns empty effective skill IDs', () => {
-      const effective = computeEffectiveSkillIdsWithEnvelope(
-        'unknown_type' as any,
-        catalog,
-        envelopeRegistry,
-        ['memory_research', 'session_status'],
-      )
+      const effective = computeEffectiveSkillIdsWithEnvelope('unknown_type' as any, catalog, envelopeRegistry, [
+        'memory_research',
+        'session_status',
+      ])
 
       expect(effective).toEqual([])
     })

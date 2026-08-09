@@ -32,9 +32,7 @@ class FakeToolLoopLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'mock-provider' }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response

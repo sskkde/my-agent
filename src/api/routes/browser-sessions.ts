@@ -15,11 +15,7 @@ import {
   buildStatusResponse,
   resolveSessionState,
 } from './browser-sessions-auth.js'
-import type {
-  BrowserStatusResponse,
-  BrowserTakeoverResponse,
-  BrowserInputResponse,
-} from './browser-sessions-types.js'
+import type { BrowserStatusResponse, BrowserTakeoverResponse, BrowserInputResponse } from './browser-sessions-types.js'
 
 interface BrowserSessionParams {
   sessionId: string
@@ -30,10 +26,7 @@ interface BrowserInputBody {
   payload: Record<string, unknown>
 }
 
-export async function registerBrowserSessionRoutes(
-  server: FastifyInstance,
-  context: ApiContext,
-): Promise<void> {
+export async function registerBrowserSessionRoutes(server: FastifyInstance, context: ApiContext): Promise<void> {
   const sessionStore = context.stores.sessionStore
   const browserSessionManager = context.browserSessionManager
   const browserFrameStream = context.browserFrameStream
@@ -110,9 +103,7 @@ export async function registerBrowserSessionRoutes(
 
       if (!result.success) {
         if (result.error === 'SESSION_NOT_FOUND') {
-          return reply
-            .code(404)
-            .send(envelopeError('NOT_FOUND', 'Browser session not found', request.requestId))
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'Browser session not found', request.requestId))
         }
         if (result.error === 'LEASE_CONFLICT') {
           return reply
@@ -135,10 +126,7 @@ export async function registerBrowserSessionRoutes(
   // ===========================================================================
   server.post<{ Params: BrowserSessionParams; Body: BrowserInputBody }>(
     '/api/v1/sessions/:sessionId/browser/input',
-    async (
-      request: FastifyRequest<{ Params: BrowserSessionParams; Body: BrowserInputBody }>,
-      reply: FastifyReply,
-    ) => {
+    async (request: FastifyRequest<{ Params: BrowserSessionParams; Body: BrowserInputBody }>, reply: FastifyReply) => {
       if (!request.requirePermission(ResourceType.sessions, Action.execute)) {
         return reply
       }
@@ -158,7 +146,13 @@ export async function registerBrowserSessionRoutes(
       if (!body || typeof body.action !== 'string' || typeof body.payload !== 'object' || body.payload === null) {
         return reply
           .code(400)
-          .send(envelopeError('BAD_REQUEST', 'Body must contain "action" (string) and "payload" (object)', request.requestId))
+          .send(
+            envelopeError(
+              'BAD_REQUEST',
+              'Body must contain "action" (string) and "payload" (object)',
+              request.requestId,
+            ),
+          )
       }
 
       const bsId = toBrowserSessionId(sessionId)
@@ -178,9 +172,7 @@ export async function registerBrowserSessionRoutes(
         inputEvent = mapRouteInputToEvent(body.action, body.payload)
       } catch (err) {
         if (err instanceof BrowserInputParseError) {
-          return reply
-            .code(400)
-            .send(envelopeError('INVALID_INPUT', err.message, request.requestId))
+          return reply.code(400).send(envelopeError('INVALID_INPUT', err.message, request.requestId))
         }
         throw err
       }
@@ -197,9 +189,7 @@ export async function registerBrowserSessionRoutes(
         await dispatchInputToPage(page, inputEvent)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Input dispatch failed'
-        return reply
-          .code(500)
-          .send(envelopeError('INPUT_DISPATCH_FAILED', message, request.requestId))
+        return reply.code(500).send(envelopeError('INPUT_DISPATCH_FAILED', message, request.requestId))
       }
 
       const response: BrowserInputResponse = { success: true }
@@ -235,9 +225,7 @@ export async function registerBrowserSessionRoutes(
 
       if (!result.success) {
         if (result.error === 'SESSION_NOT_FOUND') {
-          return reply
-            .code(404)
-            .send(envelopeError('NOT_FOUND', 'Browser session not found', request.requestId))
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'Browser session not found', request.requestId))
         }
         if (result.error === 'NO_ACTIVE_LEASE' || result.error === 'NOT_LEASE_HOLDER') {
           return reply
@@ -286,9 +274,7 @@ export async function registerBrowserSessionRoutes(
       const handoff = browserSessionManager.requestHandoff(bsId)
       if (!handoff.success) {
         if (handoff.error === 'SESSION_NOT_FOUND') {
-          return reply
-            .code(404)
-            .send(envelopeError('NOT_FOUND', 'Browser session not found', request.requestId))
+          return reply.code(404).send(envelopeError('NOT_FOUND', 'Browser session not found', request.requestId))
         }
         return reply
           .code(409)

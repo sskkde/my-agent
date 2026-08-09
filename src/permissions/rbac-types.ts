@@ -53,7 +53,14 @@ function generateAllPermissions(): Permission[] {
 function generateUserPermissions(): Permission[] {
   const permissions: Permission[] = []
 
-  const ownResources = [ResourceType.sessions, ResourceType.workflows, ResourceType.triggers, ResourceType.memory, ResourceType.todos, ResourceType.workdirs]
+  const ownResources = [
+    ResourceType.sessions,
+    ResourceType.workflows,
+    ResourceType.triggers,
+    ResourceType.memory,
+    ResourceType.todos,
+    ResourceType.workdirs,
+  ]
 
   const crudActions = [Action.create, Action.read, Action.update, Action.delete]
 

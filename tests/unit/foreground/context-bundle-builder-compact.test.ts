@@ -39,9 +39,7 @@ describe('generateForegroundCompactHints', () => {
     it('should return shouldCompactSoon: true with candidateItemIds when tokenEstimate / tokenBudget > 0.8', () => {
       // Given: 20 items × 200 tokens = 4000 tokens, budget = 4000
       // utilization = 4000 / 4000 = 1.0 → exceeds 0.8
-      const items = Array.from({ length: 20 }, (_, i) =>
-        makeItem({ itemId: `hist-${i}`, estimatedTokens: 200 }),
-      )
+      const items = Array.from({ length: 20 }, (_, i) => makeItem({ itemId: `hist-${i}`, estimatedTokens: 200 }))
       const tokenBudget = 4000
 
       // When
@@ -197,9 +195,7 @@ describe('generateForegroundCompactHints', () => {
     it('should return shouldCompactSoon: false for short conversation history', () => {
       // Given: 3 items × 100 tokens = 300 tokens, budget = 4000
       // utilization = 300 / 4000 = 0.075 → well below 0.8
-      const items = Array.from({ length: 3 }, (_, i) =>
-        makeItem({ itemId: `short-${i}`, estimatedTokens: 100 }),
-      )
+      const items = Array.from({ length: 3 }, (_, i) => makeItem({ itemId: `short-${i}`, estimatedTokens: 100 }))
       const tokenBudget = 4000
 
       // When
@@ -226,9 +222,7 @@ describe('generateForegroundCompactHints', () => {
     it('should return shouldCompactSoon: false when utilization is exactly at threshold', () => {
       // Given: utilization = 0.8 exactly (not > 0.8)
       // 8 items × 100 tokens = 800, budget = 1000 → 0.8 exactly
-      const items = Array.from({ length: 8 }, (_, i) =>
-        makeItem({ itemId: `exact-${i}`, estimatedTokens: 100 }),
-      )
+      const items = Array.from({ length: 8 }, (_, i) => makeItem({ itemId: `exact-${i}`, estimatedTokens: 100 }))
       const tokenBudget = 1000
 
       // When
@@ -243,9 +237,7 @@ describe('generateForegroundCompactHints', () => {
   describe('threshold semantics', () => {
     it('should use default 0.8 threshold when no override provided', () => {
       // Given: utilization = 0.85
-      const items = Array.from({ length: 17 }, (_, i) =>
-        makeItem({ itemId: `item-${i}`, estimatedTokens: 50 }),
-      )
+      const items = Array.from({ length: 17 }, (_, i) => makeItem({ itemId: `item-${i}`, estimatedTokens: 50 }))
       // 17 × 50 = 850, budget = 1000 → 0.85
       const tokenBudget = 1000
 
@@ -258,9 +250,7 @@ describe('generateForegroundCompactHints', () => {
 
     it('should respect custom threshold when provided', () => {
       // Given: utilization = 0.6, custom threshold = 0.5
-      const items = Array.from({ length: 6 }, (_, i) =>
-        makeItem({ itemId: `item-${i}`, estimatedTokens: 100 }),
-      )
+      const items = Array.from({ length: 6 }, (_, i) => makeItem({ itemId: `item-${i}`, estimatedTokens: 100 }))
       // 6 × 100 = 600, budget = 1000 → 0.6
       const tokenBudget = 1000
 
@@ -274,11 +264,17 @@ describe('generateForegroundCompactHints', () => {
 })
 
 describe('buildContextBundleFromForegroundState — compactHints via tokenBudget', () => {
-  function makeForegroundState(conversationHistory: ForegroundSessionState['conversationHistory']): ForegroundSessionState {
+  function makeForegroundState(
+    conversationHistory: ForegroundSessionState['conversationHistory'],
+  ): ForegroundSessionState {
     return {
       hydratedSession: {} as ForegroundSessionState['hydratedSession'],
       activeWorkRefs: { pendingApprovals: [], activeRuns: [] },
-      currentPersona: { personaId: 'default', name: 'Assistant', directDelegationPolicy: {} as ForegroundSessionState['currentPersona']['directDelegationPolicy'] },
+      currentPersona: {
+        personaId: 'default',
+        name: 'Assistant',
+        directDelegationPolicy: {} as ForegroundSessionState['currentPersona']['directDelegationPolicy'],
+      },
       effectivePolicy: {} as ForegroundSessionState['effectivePolicy'],
       conversationHistory,
     }

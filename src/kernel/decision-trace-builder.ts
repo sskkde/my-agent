@@ -8,7 +8,13 @@ function isHighRiskTool(toolName: string): boolean {
 }
 
 function buildRiskAssessment(toolName: string, toolCallId: string): RiskAssessmentRecord {
-  return { toolName, toolCallId, riskLevel: 'high', riskReason: `${toolName} belongs to a high-risk tool category`, approvalStatus: 'not_required' }
+  return {
+    toolName,
+    toolCallId,
+    riskLevel: 'high',
+    riskReason: `${toolName} belongs to a high-risk tool category`,
+    approvalStatus: 'not_required',
+  }
 }
 
 function isToolResultEntry(entry: KernelTranscriptEntry): entry is KernelTranscriptEntry & { content: ToolUseResult } {
@@ -33,12 +39,10 @@ export function buildDecisionTrace(
     .filter((name) => !selectedNames.has(name))
     .map((name) => ({ toolName: name, selectionReason: 'llm_choice' as const, rejectionReason: 'not_called' as const }))
 
-  const observationSummaries = state.transcript
-    .filter(isToolResultEntry)
-    .map((entry) => {
-      const tc = state.toolCalls.find((t) => t.toolCallId === entry.content.toolCallId)
-      return buildObservationSummary(tc?.toolName ?? 'unknown', entry.content)
-    })
+  const observationSummaries = state.transcript.filter(isToolResultEntry).map((entry) => {
+    const tc = state.toolCalls.find((t) => t.toolCallId === entry.content.toolCallId)
+    return buildObservationSummary(tc?.toolName ?? 'unknown', entry.content)
+  })
 
   const riskAssessments: RiskAssessmentRecord[] = selectedTools
     .filter((st) => st.toolCallId && isHighRiskTool(st.toolName))
@@ -46,10 +50,21 @@ export function buildDecisionTrace(
 
   const hasToolCalls = state.toolCalls.length > 0
   const route = hasToolCalls ? 'tool_loop' : state.status === 'failed' ? 'failed' : 'answer_directly'
-  const finalAnswerSource = hasToolCalls && finalContent ? 'tool_synthesized' : state.status === 'failed' ? 'error' : 'llm_direct'
+  const finalAnswerSource =
+    hasToolCalls && finalContent ? 'tool_synthesized' : state.status === 'failed' ? 'error' : 'llm_direct'
   const intent = (input.contextBundle?.agentType as string) ?? 'unknown'
 
   const reasoningSummary = `LLM selected ${selectedTools.length} tool(s) from ${candidateTools.length} candidate(s); route: ${route}`
 
-  return { route, intent, candidateTools, selectedTools, rejectedTools, observationSummaries, riskAssessments, finalAnswerSource, reasoningSummary }
+  return {
+    route,
+    intent,
+    candidateTools,
+    selectedTools,
+    rejectedTools,
+    observationSummaries,
+    riskAssessments,
+    finalAnswerSource,
+    reasoningSummary,
+  }
 }

@@ -89,7 +89,10 @@ function scoreRankedSearchResult(result: WebSearchResultItem, plan: SearchQueryP
   return scoreSearchResult(result, plan) + Math.max(0, 10 - providerRank)
 }
 
-export function rankSearchResults(results: readonly WebSearchResultItem[], plan: SearchQueryPlan): WebSearchResultItem[] {
+export function rankSearchResults(
+  results: readonly WebSearchResultItem[],
+  plan: SearchQueryPlan,
+): WebSearchResultItem[] {
   return results
     .map((result, index) => ({ result, index, score: scoreRankedSearchResult(result, plan, index + 1) }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
@@ -185,7 +188,9 @@ export function checkFreshnessWarning(plan: SearchQueryPlan, results: readonly W
     return []
   }
 
-  const hasTimestampInfo = results.some((result) => result.source?.includes('date') || result.snippet.match(/\d{4}-\d{2}-\d{2}/))
+  const hasTimestampInfo = results.some(
+    (result) => result.source?.includes('date') || result.snippet.match(/\d{4}-\d{2}-\d{2}/),
+  )
   if (hasTimestampInfo || results.length === 0) {
     return []
   }
@@ -193,7 +198,8 @@ export function checkFreshnessWarning(plan: SearchQueryPlan, results: readonly W
   return [
     {
       code: 'FRESHNESS_UNVERIFIABLE',
-      message: 'Query requires fresh results but no publication dates were found in the results. Information may be outdated.',
+      message:
+        'Query requires fresh results but no publication dates were found in the results. Information may be outdated.',
       recoverable: true,
     },
   ]

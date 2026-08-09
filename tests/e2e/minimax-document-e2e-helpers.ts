@@ -15,12 +15,7 @@ export function containsBase64BinaryContent(text: string): boolean {
 
 /** Check if a string contains binary document content markers */
 export function containsBinaryContentMarkers(text: string): boolean {
-  const binaryMarkers = [
-    'UEsDB',
-    'JVBER',
-    '0M8R4',
-    '\\x50\\x4b\\x03\\x04',
-  ]
+  const binaryMarkers = ['UEsDB', 'JVBER', '0M8R4', '\\x50\\x4b\\x03\\x04']
   return binaryMarkers.some((marker) => text.includes(marker))
 }
 

@@ -209,37 +209,23 @@ describe('AgentTypeToolEnvelopeRegistry', () => {
 
 describe('intersectToolIdSets', () => {
   it('returns intersection of two sets', () => {
-    const result = intersectToolIdSets(
-      new Set(['a', 'b', 'c']),
-      new Set(['b', 'c', 'd']),
-    )
+    const result = intersectToolIdSets(new Set(['a', 'b', 'c']), new Set(['b', 'c', 'd']))
     expect(result).toEqual(expect.arrayContaining(['b', 'c']))
     expect(result).toHaveLength(2)
   })
 
   it('returns intersection of three sets', () => {
-    const result = intersectToolIdSets(
-      new Set(['a', 'b', 'c']),
-      new Set(['b', 'c', 'd']),
-      new Set(['c', 'd', 'e']),
-    )
+    const result = intersectToolIdSets(new Set(['a', 'b', 'c']), new Set(['b', 'c', 'd']), new Set(['c', 'd', 'e']))
     expect(result).toEqual(['c'])
   })
 
   it('returns empty when one set is empty', () => {
-    const result = intersectToolIdSets(
-      new Set(['a', 'b']),
-      new Set([]),
-    )
+    const result = intersectToolIdSets(new Set(['a', 'b']), new Set([]))
     expect(result).toEqual([])
   })
 
   it('skips undefined sets', () => {
-    const result = intersectToolIdSets(
-      new Set(['a', 'b']),
-      undefined,
-      new Set(['b', 'c']),
-    )
+    const result = intersectToolIdSets(new Set(['a', 'b']), undefined, new Set(['b', 'c']))
     expect(result).toEqual(['b'])
   })
 

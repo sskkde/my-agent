@@ -59,11 +59,7 @@ class UploadFileServiceImpl implements UploadFileService {
     this.maxFileSizeBytes = maxFileSizeBytes
   }
 
-  async write(
-    fileId: string,
-    stream: WebReadableStream<Uint8Array>,
-    expectedSize?: number,
-  ): Promise<WriteResult> {
+  async write(fileId: string, stream: WebReadableStream<Uint8Array>, expectedSize?: number): Promise<WriteResult> {
     // Derive storage path from fileId — never from user filenames
     const storageRef = this.deriveStorageRef(fileId)
     const fullPath = this.resolvePath(storageRef)
@@ -124,7 +120,11 @@ class UploadFileServiceImpl implements UploadFileService {
           const done = () => resolve()
           writeStream!.once('close', done)
           writeStream!.once('error', done)
-          try { writeStream!.destroy() } catch { done() }
+          try {
+            writeStream!.destroy()
+          } catch {
+            done()
+          }
           setTimeout(done, 500)
         })
       }
@@ -241,15 +241,9 @@ export class StoragePathTraversalError extends Error {
  * Create an UploadFileService backed by the local filesystem.
  * Reads upload directory and max file size from the upload config.
  */
-export function createUploadFileService(
-  uploadDir?: string,
-  maxFileSizeBytes?: number,
-): UploadFileService {
+export function createUploadFileService(uploadDir?: string, maxFileSizeBytes?: number): UploadFileService {
   const config = getUploadConfig()
-  return new UploadFileServiceImpl(
-    uploadDir ?? config.uploadDir,
-    maxFileSizeBytes ?? config.maxFileSizeBytes,
-  )
+  return new UploadFileServiceImpl(uploadDir ?? config.uploadDir, maxFileSizeBytes ?? config.maxFileSizeBytes)
 }
 
 // ── Type guard ──────────────────────────────────────────────────────────────

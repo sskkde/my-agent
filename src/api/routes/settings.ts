@@ -51,9 +51,7 @@ export function registerSettingsRoutes(server: FastifyInstance, context: ApiCont
 
       if (body.theme !== undefined) {
         if (body.theme !== null && !VALID_THEMES.has(body.theme as AppTheme)) {
-          return reply
-            .code(400)
-            .send(envelopeError('BAD_REQUEST', `Invalid theme: ${body.theme}`, request.requestId))
+          return reply.code(400).send(envelopeError('BAD_REQUEST', `Invalid theme: ${body.theme}`, request.requestId))
         }
         updates.theme = body.theme === null ? undefined : (body.theme as AppTheme)
       }
@@ -61,9 +59,7 @@ export function registerSettingsRoutes(server: FastifyInstance, context: ApiCont
       if (body.commandPrefs !== undefined) {
         const prefs = body.commandPrefs
         if (prefs !== null && typeof prefs !== 'object') {
-          return reply
-            .code(400)
-            .send(envelopeError('BAD_REQUEST', 'commandPrefs must be an object', request.requestId))
+          return reply.code(400).send(envelopeError('BAD_REQUEST', 'commandPrefs must be an object', request.requestId))
         }
         if (prefs === null) {
           updates.commandPrefs = undefined
@@ -72,15 +68,12 @@ export function registerSettingsRoutes(server: FastifyInstance, context: ApiCont
           if (thinkingLevel !== undefined && !VALID_THINKING_LEVELS.has(thinkingLevel as ThinkingLevel)) {
             return reply
               .code(400)
-              .send(
-                envelopeError('BAD_REQUEST', `Invalid thinkingLevel: ${thinkingLevel}`, request.requestId),
-              )
+              .send(envelopeError('BAD_REQUEST', `Invalid thinkingLevel: ${thinkingLevel}`, request.requestId))
           }
           updates.commandPrefs = {
             verbose: typeof prefs.verbose === 'boolean' ? prefs.verbose : false,
             reasoningVisible: typeof prefs.reasoningVisible === 'boolean' ? prefs.reasoningVisible : false,
-            thinkingLevel:
-              (thinkingLevel as ThinkingLevel) ?? 'off',
+            thinkingLevel: (thinkingLevel as ThinkingLevel) ?? 'off',
           }
         }
       }

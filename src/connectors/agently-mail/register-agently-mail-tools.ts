@@ -124,16 +124,9 @@ export function registerAgentlyMailTools(deps: RegisterAgentlyMailToolsDeps): Re
     }
 
     const capabilities = createAgentlyMailCapabilities()
-    registerConnectorTools(
-      deps.toolRegistry,
-      { ...instance, connectorId: 'agently_mail' },
-      capabilities,
-      { runtime },
-    )
+    registerConnectorTools(deps.toolRegistry, { ...instance, connectorId: 'agently_mail' }, capabilities, { runtime })
 
-    const toolCount = deps.toolRegistry
-      .listTools()
-      .filter((t) => t.metadata?.connectorId === 'agently_mail').length
+    const toolCount = deps.toolRegistry.listTools().filter((t) => t.metadata?.connectorId === 'agently_mail').length
 
     console.log(`[agently-mail] Registered ${toolCount} connector tool(s) for instance ${instance.id}`)
     return { enabled: true, registered: true, toolCount, runtime }

@@ -189,10 +189,7 @@ export function parseOpenAIStreamLine(line: string): ProviderStreamEvent | null 
         kind: 'tool_call_delta',
         index: typeof tc.index === 'number' ? tc.index : 0,
         id: typeof tc.id === 'string' && tc.id.length > 0 ? tc.id : undefined,
-        name:
-          typeof tc.function?.name === 'string' && tc.function.name.length > 0
-            ? tc.function.name
-            : undefined,
+        name: typeof tc.function?.name === 'string' && tc.function.name.length > 0 ? tc.function.name : undefined,
         argumentsDelta:
           typeof tc.function?.arguments === 'string' && tc.function.arguments.length > 0
             ? tc.function.arguments
@@ -251,10 +248,7 @@ export function parseOpenAIStreamEvents(line: string): ProviderStreamEvent[] {
             kind: 'tool_call_delta',
             index: typeof tc.index === 'number' ? tc.index : 0,
             id: typeof tc.id === 'string' && tc.id.length > 0 ? tc.id : undefined,
-            name:
-              typeof tc.function?.name === 'string' && tc.function.name.length > 0
-                ? tc.function.name
-                : undefined,
+            name: typeof tc.function?.name === 'string' && tc.function.name.length > 0 ? tc.function.name : undefined,
             argumentsDelta:
               typeof tc.function?.arguments === 'string' && tc.function.arguments.length > 0
                 ? tc.function.arguments

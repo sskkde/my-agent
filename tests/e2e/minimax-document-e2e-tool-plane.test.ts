@@ -59,8 +59,7 @@ describe('MiniMax Document MCP - Tool Plane Verification', () => {
 
     bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
   })
 
@@ -120,14 +119,16 @@ describe('MiniMax Document MCP - Tool Plane Verification', () => {
   it('MiniMax skills do not appear in tool projection', () => {
     const toolProjection = {
       toolIds: ['mcp_minimax-document-mcp_xlsx_read'],
-      tools: [{
-        type: 'function' as const,
-        function: {
-          name: 'mcp_minimax-document-mcp_xlsx_read',
-          description: 'Read XLSX file',
-          parameters: { type: 'object' as const, properties: { inputPath: { type: 'string' } } },
+      tools: [
+        {
+          type: 'function' as const,
+          function: {
+            name: 'mcp_minimax-document-mcp_xlsx_read',
+            description: 'Read XLSX file',
+            parameters: { type: 'object' as const, properties: { inputPath: { type: 'string' } } },
+          },
         },
-      }],
+      ],
     }
 
     const result = extractToolsForRequest({

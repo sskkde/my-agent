@@ -62,9 +62,7 @@ export interface LLMAdapter {
    * Stream a completion request with automatic failover
    * Falls back to complete() if provider doesn't support streaming
    */
-  stream(
-    request: LLMRequest,
-  ): AsyncGenerator<LLMStreamChunk>
+  stream(request: LLMRequest): AsyncGenerator<LLMStreamChunk>
 
   /**
    * Add a provider to the adapter

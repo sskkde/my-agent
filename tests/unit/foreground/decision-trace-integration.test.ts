@@ -13,10 +13,15 @@ describe('Foreground decision trace integration', () => {
     candidateTools: ['web_search', 'file_read'],
     selectedTools: [{ toolName: 'web_search', toolCallId: 'call_1', selectionReason: 'llm_choice' }],
     rejectedTools: [{ toolName: 'file_read', selectionReason: 'llm_choice', rejectionReason: 'not_called' }],
-    observationSummaries: [{
-      toolName: 'web_search', toolCallId: 'call_1',
-      summaryType: 'search_facts', summary: 'Found results', evidenceCount: 3,
-    }],
+    observationSummaries: [
+      {
+        toolName: 'web_search',
+        toolCallId: 'call_1',
+        summaryType: 'search_facts',
+        summary: 'Found results',
+        evidenceCount: 3,
+      },
+    ],
     riskAssessments: [],
     finalAnswerSource: 'tool_synthesized',
   }

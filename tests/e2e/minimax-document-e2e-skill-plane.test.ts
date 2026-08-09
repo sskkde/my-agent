@@ -19,11 +19,7 @@ import {
   renderSummarySkillPlane,
   renderSkillPlaneProjection,
 } from '../../src/kernel/model-input/skill-plane-projection-renderer.js'
-import {
-  MiniMaxDocumentMockTransport,
-  createMcpTables,
-  makeTestTemplates,
-} from './minimax-document-e2e-setup.js'
+import { MiniMaxDocumentMockTransport, createMcpTables, makeTestTemplates } from './minimax-document-e2e-setup.js'
 
 describe('MiniMax Document MCP - Skill Plane Verification', () => {
   let connection: ConnectionManager

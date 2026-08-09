@@ -88,20 +88,14 @@ export class TelegramAdapter implements MessagingAdapter {
   // Inbound
   // -------------------------------------------------------------------------
 
-  async handleInbound(
-    event: InboundRawEvent,
-  ): Promise<NormalizedInboundMessage | null> {
+  async handleInbound(event: InboundRawEvent): Promise<NormalizedInboundMessage | null> {
     const update = this.parseUpdate(event.rawPayload)
     if (!update) {
       return null
     }
 
     // Use message, edited_message, channel_post, or edited_channel_post
-    const msg =
-      update.message ??
-      update.edited_message ??
-      update.channel_post ??
-      update.edited_channel_post
+    const msg = update.message ?? update.edited_message ?? update.channel_post ?? update.edited_channel_post
 
     if (!msg) {
       return null
@@ -119,9 +113,7 @@ export class TelegramAdapter implements MessagingAdapter {
     const fromId = msg.from ? String(msg.from.id) : chatId
     const fromName = msg.from?.first_name
 
-    const timestamp = msg.date
-      ? new Date(msg.date * 1000).toISOString()
-      : event.receivedAt
+    const timestamp = msg.date ? new Date(msg.date * 1000).toISOString() : event.receivedAt
 
     return {
       provider: PROVIDER_ID,
@@ -145,10 +137,7 @@ export class TelegramAdapter implements MessagingAdapter {
   // Outbound
   // -------------------------------------------------------------------------
 
-  async sendOutbound(
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ): Promise<MessagingTransportResult> {
+  async sendOutbound(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> {
     return this.transport.sendText(target, message)
   }
 
@@ -188,15 +177,10 @@ export class TelegramAdapter implements MessagingAdapter {
   // Verification
   // -------------------------------------------------------------------------
 
-  async verifyInbound(
-    _payload: unknown,
-    headers: Record<string, string>,
-  ): Promise<boolean> {
+  async verifyInbound(_payload: unknown, headers: Record<string, string>): Promise<boolean> {
     // Telegram sends the secret token in this header when a webhook
     // secret is configured via setWebhook(secret_token=...).
-    const secretToken =
-      headers['x-telegram-bot-api-secret-token'] ??
-      headers['X-Telegram-Bot-Api-Secret-Token']
+    const secretToken = headers['x-telegram-bot-api-secret-token'] ?? headers['X-Telegram-Bot-Api-Secret-Token']
 
     if (!secretToken) {
       return false
@@ -250,9 +234,11 @@ export class TelegramAdapter implements MessagingAdapter {
  * @param body - Parsed JSON body of the 429 response.
  * @returns Retry-after metadata, or undefined if unparseable.
  */
-export function parseTelegram429(body: Record<string, unknown>): {
-  retryAfterMs?: number
-} | undefined {
+export function parseTelegram429(body: Record<string, unknown>):
+  | {
+      retryAfterMs?: number
+    }
+  | undefined {
   if (body.error_code !== 429) {
     return undefined
   }
@@ -275,9 +261,6 @@ export function parseTelegram429(body: Record<string, unknown>): {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createTelegramAdapter(
-  config: TelegramConfig,
-  transport: MessagingTransport,
-): TelegramAdapter {
+export function createTelegramAdapter(config: TelegramConfig, transport: MessagingTransport): TelegramAdapter {
   return new TelegramAdapter(config, transport)
 }

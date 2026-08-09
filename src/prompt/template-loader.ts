@@ -139,10 +139,7 @@ export class TemplateLoader {
    * @param variables - Optional key-value pairs for placeholder replacement
    * @returns Array of resolved templates with content
    */
-  loadResolvedTemplatesSync(
-    records: PromptTemplateRecord[],
-    variables?: Record<string, string>,
-  ): ResolvedTemplate[] {
+  loadResolvedTemplatesSync(records: PromptTemplateRecord[], variables?: Record<string, string>): ResolvedTemplate[] {
     const results: ResolvedTemplate[] = []
 
     for (const record of records) {

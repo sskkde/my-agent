@@ -85,18 +85,29 @@ class ContextMetricsStoreImpl implements ContextMetricsStore {
         dropped_context_reasons, flag_phase, flag_name
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        id, data.runId, data.agentId, data.sessionId, data.timestamp,
-        data.segmentDTokenEstimate, data.segmentDTokenActual,
-        data.memoryInjectedCount, data.memoryTokenEstimate,
-        data.summaryHitCount, data.summaryTokenEstimate,
-        data.transcriptTokenEstimate, data.pinnedItemCount, data.orderedItemCount,
-        data.droppedContextReasons, data.flagPhase, data.flagName,
+        id,
+        data.runId,
+        data.agentId,
+        data.sessionId,
+        data.timestamp,
+        data.segmentDTokenEstimate,
+        data.segmentDTokenActual,
+        data.memoryInjectedCount,
+        data.memoryTokenEstimate,
+        data.summaryHitCount,
+        data.summaryTokenEstimate,
+        data.transcriptTokenEstimate,
+        data.pinnedItemCount,
+        data.orderedItemCount,
+        data.droppedContextReasons,
+        data.flagPhase,
+        data.flagName,
       ],
     )
     return id
   }
 
-    getMetricsByRunId(runId: string): ContextMetrics | null {
+  getMetricsByRunId(runId: string): ContextMetrics | null {
     const rows = this.connection.query<Record<string, unknown>>(
       'SELECT * FROM context_metrics WHERE run_id = ? ORDER BY timestamp DESC LIMIT 1',
       [runId],

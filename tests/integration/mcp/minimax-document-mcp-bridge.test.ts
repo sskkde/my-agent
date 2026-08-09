@@ -5,11 +5,7 @@ import { createMcpSessionManager, type McpSessionManager } from '../../../src/co
 import { McpToolBridge } from '../../../src/connectors/mcp/mcp-tool-bridge.js'
 import { createToolRegistry } from '../../../src/tools/tool-registry.js'
 import type { ToolRegistry } from '../../../src/tools/types.js'
-import {
-  MockMcpTransport,
-  createMiniMaxDocumentMcpSetup,
-  createMockMcpServer,
-} from '../../fixtures/phase3-mock-mcp.js'
+import { MockMcpTransport, createMiniMaxDocumentMcpSetup, createMockMcpServer } from '../../fixtures/phase3-mock-mcp.js'
 
 const BUILTIN_DOCUMENT_TOOL_NAMES = [
   'xlsx_read',
@@ -117,8 +113,7 @@ describe('MiniMax Document MCP - Server Registry + Tool Bridge', () => {
 
     const bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
 
     const tools = await bridge.discoverTools(session.sessionId)
@@ -137,8 +132,7 @@ describe('MiniMax Document MCP - Server Registry + Tool Bridge', () => {
 
     const bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
 
     await bridge.registerTools(toolRegistry, session.sessionId)
@@ -170,8 +164,7 @@ describe('MiniMax Document MCP - Server Registry + Tool Bridge', () => {
 
     const bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
 
     await bridge.registerTools(toolRegistry, session.sessionId)
@@ -190,8 +183,7 @@ describe('MiniMax Document MCP - Server Registry + Tool Bridge', () => {
 
     const bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
 
     await bridge.registerTools(toolRegistry, session.sessionId)
@@ -213,8 +205,7 @@ describe('MiniMax Document MCP - Server Registry + Tool Bridge', () => {
 
     const bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
 
     await bridge.registerTools(toolRegistry, session.sessionId)

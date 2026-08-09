@@ -58,8 +58,8 @@ export function generateDiffReport(
       })
     }
 
-    const baselineToolDiff = baselineResult.diffs.find(d => d.path === 'expectedTools')
-    const currentToolDiff = currentResult.diffs.find(d => d.path === 'expectedTools')
+    const baselineToolDiff = baselineResult.diffs.find((d) => d.path === 'expectedTools')
+    const currentToolDiff = currentResult.diffs.find((d) => d.path === 'expectedTools')
     const baselineTools = (baselineToolDiff?.actual as string[]) ?? []
     const currentTools = (currentToolDiff?.actual as string[]) ?? []
     const addedTools = currentTools.filter((t) => !baselineTools.includes(t))
@@ -78,10 +78,10 @@ export function generateDiffReport(
       })
     }
 
-    const hasHashChanges = segmentHashChanges.some(d => d.caseId === caseId)
-    const hasTokenChanges = tokenChanges.some(d => d.caseId === caseId)
-    const hasToolChanges = toolSelectionChanges.some(d => d.caseId === caseId)
-    const hasSchemaChanges = schemaFailureRateChanges.some(d => d.caseId === caseId)
+    const hasHashChanges = segmentHashChanges.some((d) => d.caseId === caseId)
+    const hasTokenChanges = tokenChanges.some((d) => d.caseId === caseId)
+    const hasToolChanges = toolSelectionChanges.some((d) => d.caseId === caseId)
+    const hasSchemaChanges = schemaFailureRateChanges.some((d) => d.caseId === caseId)
     const hasAnyDiff = hasHashChanges || hasTokenChanges || hasToolChanges || hasSchemaChanges
 
     if (hasAnyDiff || baselineResult.passed !== currentResult.passed) {

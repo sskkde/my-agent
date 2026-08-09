@@ -35,10 +35,7 @@ import {
   getCapabilityByOperation,
 } from '../../../../src/connectors/agently-mail/index.js'
 
-import type {
-  AgentlyMailOperation,
-  MessageId,
-} from '../../../../src/connectors/agently-mail/index.js'
+import type { AgentlyMailOperation, MessageId } from '../../../../src/connectors/agently-mail/index.js'
 
 import type { ConnectorAdapter } from '../../../../src/connectors/types.js'
 
@@ -133,9 +130,7 @@ describe('agently-mail index (barrel module)', () => {
       })
 
       // discoverCapabilities is synchronous on AgentlyMailAdapter
-      const caps = adapter.discoverCapabilities(
-        {} as Parameters<ConnectorAdapter['discoverCapabilities']>[0],
-      )
+      const caps = adapter.discoverCapabilities({} as Parameters<ConnectorAdapter['discoverCapabilities']>[0])
       expect(Array.isArray(caps)).toBe(true)
       expect(caps.length).toBeGreaterThan(0)
     })
@@ -146,9 +141,7 @@ describe('agently-mail index (barrel module)', () => {
         execFileFn: mockExecFile,
       })
 
-      const health = adapter.checkHealth(
-        {} as Parameters<ConnectorAdapter['checkHealth']>[0],
-      )
+      const health = adapter.checkHealth({} as Parameters<ConnectorAdapter['checkHealth']>[0])
       expect(health.healthy).toBe(true)
     })
 

@@ -73,9 +73,7 @@ export class DingTalkAdapter implements MessagingAdapter {
 
   // ---- Inbound -------------------------------------------------------------
 
-  async handleInbound(
-    event: InboundRawEvent,
-  ): Promise<NormalizedInboundMessage | null> {
+  async handleInbound(event: InboundRawEvent): Promise<NormalizedInboundMessage | null> {
     const payload = event.rawPayload as DingTalkCallbackPayload
 
     // Only handle text messages
@@ -91,9 +89,7 @@ export class DingTalkAdapter implements MessagingAdapter {
       externalUserName: payload.senderNick,
       text: payload.text.content.trim(),
       messageId: payload.msgId ?? `${payload.senderStaffId}-${payload.createAt ?? Date.now()}`,
-      timestamp: payload.createAt
-        ? new Date(payload.createAt).toISOString()
-        : event.receivedAt,
+      timestamp: payload.createAt ? new Date(payload.createAt).toISOString() : event.receivedAt,
       metadata: {
         conversationType: payload.conversationType,
         robotCode: payload.robotCode,
@@ -104,19 +100,13 @@ export class DingTalkAdapter implements MessagingAdapter {
 
   // ---- Outbound ------------------------------------------------------------
 
-  async sendOutbound(
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ): Promise<MessagingTransportResult> {
+  async sendOutbound(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> {
     return this.transport.sendText(target, message)
   }
 
   // ---- Verification --------------------------------------------------------
 
-  async verifyInbound(
-    _payload: unknown,
-    headers: Record<string, string>,
-  ): Promise<boolean> {
+  async verifyInbound(_payload: unknown, headers: Record<string, string>): Promise<boolean> {
     const signSecret = this.config.signSecret
     if (!signSecret) {
       return false
@@ -138,9 +128,7 @@ export class DingTalkAdapter implements MessagingAdapter {
 
     // Compute expected signature: Base64(HmacSHA256(timestamp + "\n" + signSecret, signSecret))
     const stringToSign = `${timestamp}\n${signSecret}`
-    const expected = createHmac('sha256', signSecret)
-      .update(stringToSign)
-      .digest('base64')
+    const expected = createHmac('sha256', signSecret).update(stringToSign).digest('base64')
 
     return sign === expected
   }
@@ -162,9 +150,6 @@ export class DingTalkAdapter implements MessagingAdapter {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createDingTalkAdapter(
-  config: DingTalkConfig,
-  transport: MessagingTransport,
-): DingTalkAdapter {
+export function createDingTalkAdapter(config: DingTalkConfig, transport: MessagingTransport): DingTalkAdapter {
   return new DingTalkAdapter(config, transport)
 }

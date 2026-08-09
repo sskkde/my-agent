@@ -45,17 +45,17 @@ type CapturedCall = {
   argv: readonly string[]
 }
 
-function createFakeRunner(fixtureStdout: string, fixtureExitCode = 0): {
+function createFakeRunner(
+  fixtureStdout: string,
+  fixtureExitCode = 0,
+): {
   runner: AgentlyCliRunner
   calls: CapturedCall[]
 } {
   const calls: CapturedCall[] = []
 
   const runner = {
-    async run(
-      operation: AgentlyMailOperation,
-      argv: readonly string[],
-    ): Promise<AgentlyCliRunResult> {
+    async run(operation: AgentlyMailOperation, argv: readonly string[]): Promise<AgentlyCliRunResult> {
       calls.push({ operation, argv })
       return {
         stdout: fixtureStdout,
@@ -158,12 +158,18 @@ describe('AgentlyMailAdapter', () => {
       )
 
       expect(calls[0]!.argv).toEqual([
-        'message', '+list',
-        '--dir', 'sent',
-        '--limit', '25',
-        '--cursor', 'cur_abc',
-        '--after', '2025-01-01',
-        '--before', '2025-06-01',
+        'message',
+        '+list',
+        '--dir',
+        'sent',
+        '--limit',
+        '25',
+        '--cursor',
+        'cur_abc',
+        '--after',
+        '2025-01-01',
+        '--before',
+        '2025-06-01',
         '--has-attachments',
         '--is-unread',
       ])
@@ -320,18 +326,28 @@ describe('AgentlyMailAdapter', () => {
       )
 
       expect(calls[0]!.argv).toEqual([
-        'message', '+search',
-        '--q', 'invoice',
-        '--search-in', 'SEARCH_IN_SUBJECT',
-        '--from', 'boss@corp.com',
-        '--to', 'me@corp.com',
-        '--dir', 'inbox',
-        '--after', '2025-01-01',
-        '--before', '2025-06-01',
+        'message',
+        '+search',
+        '--q',
+        'invoice',
+        '--search-in',
+        'SEARCH_IN_SUBJECT',
+        '--from',
+        'boss@corp.com',
+        '--to',
+        'me@corp.com',
+        '--dir',
+        'inbox',
+        '--after',
+        '2025-01-01',
+        '--before',
+        '2025-06-01',
         '--has-attachments',
         '--is-unread',
-        '--limit', '5',
-        '--cursor', 'cur_xyz',
+        '--limit',
+        '5',
+        '--cursor',
+        'cur_xyz',
       ])
     })
 
@@ -351,10 +367,14 @@ describe('AgentlyMailAdapter', () => {
 
       // Cursor must be appended alongside the original conditions
       expect(calls[0]!.argv).toEqual([
-        'message', '+search',
-        '--q', 'important',
-        '--dir', 'inbox',
-        '--cursor', 'cur_page2',
+        'message',
+        '+search',
+        '--q',
+        'important',
+        '--dir',
+        'inbox',
+        '--cursor',
+        'cur_page2',
       ])
     })
   })

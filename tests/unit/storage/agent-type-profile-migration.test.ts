@@ -132,7 +132,15 @@ function seedPreference(connection: ConnectionManager, agentType = 'research_pro
     `INSERT INTO subagent_provider_preferences (
       user_id, agent_type, provider_id, model, fallback_mode, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['user-1', agentType, 'openrouter', 'claude-3', 'any_compatible', '2026-06-19T00:00:00.000Z', '2026-06-19T00:00:00.000Z'],
+    [
+      'user-1',
+      agentType,
+      'openrouter',
+      'claude-3',
+      'any_compatible',
+      '2026-06-19T00:00:00.000Z',
+      '2026-06-19T00:00:00.000Z',
+    ],
   )
 }
 
@@ -207,10 +215,9 @@ describe('agent_type_profile_split migration', () => {
     const runner = createRunnerAtV62(connection)
     runner.apply([agentTypeProfileSplitMigration])
 
-    const rows = connection.query<PreferenceRow>(
-      'SELECT * FROM subagent_provider_preferences WHERE user_id = ?',
-      ['user-1'],
-    )
+    const rows = connection.query<PreferenceRow>('SELECT * FROM subagent_provider_preferences WHERE user_id = ?', [
+      'user-1',
+    ])
     expect(rows).toHaveLength(1)
     expect(rows[0]!.agent_type).toBe('subagent')
     expect(rows[0]!.agent_profile).toBe('research_processor')
@@ -247,9 +254,7 @@ describe('agent_type_profile_split migration', () => {
     const runner = createRunnerAtV62(connection)
     runner.apply([agentTypeProfileSplitMigration])
 
-    const rows = connection.query<SubagentRunRow>(
-      'SELECT * FROM subagent_runs ORDER BY subagent_run_id',
-    )
+    const rows = connection.query<SubagentRunRow>('SELECT * FROM subagent_runs ORDER BY subagent_run_id')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.agent_type).toBe('subagent')
     expect(rows[0]!.agent_profile).toBe('research_processor')

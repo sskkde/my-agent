@@ -170,16 +170,16 @@ export interface ToolExecutor {
     toolCallId: string
     toolName: string
     params: unknown
-	    userId: string
-	    sessionId?: string
-	    kernelRunId?: string
-	    agentId?: string
-	    agentType?: AgentType
-	    agentProfile?: string
-	    launchSource?: string
-	    workDirRoot?: string
-	    workDirId?: string
-	    permissionContext: {
+    userId: string
+    sessionId?: string
+    kernelRunId?: string
+    agentId?: string
+    agentType?: AgentType
+    agentProfile?: string
+    launchSource?: string
+    workDirRoot?: string
+    workDirId?: string
+    permissionContext: {
       userId: string
       permissions: string[]
     }

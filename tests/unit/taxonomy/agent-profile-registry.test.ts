@@ -158,7 +158,9 @@ describe('AgentProfileRegistry', () => {
 
     it('assertAllowed should throw for unknown profile', () => {
       const registry = createRegistry()
-      expect(() => registry.assertAllowed('nonexistent_profile')).toThrow('Unknown agent profile: "nonexistent_profile"')
+      expect(() => registry.assertAllowed('nonexistent_profile')).toThrow(
+        'Unknown agent profile: "nonexistent_profile"',
+      )
     })
 
     it('assertAllowed should return profile for known ID', () => {
@@ -222,27 +224,16 @@ describe('AgentProfileRegistry', () => {
     it('all system profiles should have defaultSkillIds defined', () => {
       const registry = createRegistry()
       for (const profile of registry.list()) {
-        expect(
-          profile.defaultSkillIds,
-          `Profile "${profile.id}" missing defaultSkillIds`,
-        ).toBeDefined()
-        expect(
-          profile.defaultSkillIds!.length,
-          `Profile "${profile.id}" has empty defaultSkillIds`,
-        ).toBeGreaterThan(0)
+        expect(profile.defaultSkillIds, `Profile "${profile.id}" missing defaultSkillIds`).toBeDefined()
+        expect(profile.defaultSkillIds!.length, `Profile "${profile.id}" has empty defaultSkillIds`).toBeGreaterThan(0)
       }
     })
 
     it('every declared skill ID should resolve in the skill registry', () => {
       const registry = createRegistry()
       for (const profile of registry.list()) {
-        const unresolved = (profile.defaultSkillIds ?? []).filter(
-          (id) => !skillRegistry.has(id),
-        )
-        expect(
-          unresolved,
-          `Profile "${profile.id}" has unresolved skill IDs: ${unresolved.join(', ')}`,
-        ).toEqual([])
+        const unresolved = (profile.defaultSkillIds ?? []).filter((id) => !skillRegistry.has(id))
+        expect(unresolved, `Profile "${profile.id}" has unresolved skill IDs: ${unresolved.join(', ')}`).toEqual([])
       }
     })
 

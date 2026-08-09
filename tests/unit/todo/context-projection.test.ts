@@ -1,6 +1,6 @@
 /**
  * TDD RED Phase Tests for Todo Context Projection
- * 
+ *
  * Tests for projecting active todos into agent/session context at turn start.
  * These tests will FAIL because the implementation doesn't exist yet.
  */
@@ -239,10 +239,7 @@ describe('Todo Context Projection (RED Phase)', () => {
     })
 
     it('should return empty array when no active todos exist', () => {
-      const todos: TodoItem[] = [
-        createMockTodo({ status: 'completed' }),
-        createMockTodo({ status: 'cancelled' }),
-      ]
+      const todos: TodoItem[] = [createMockTodo({ status: 'completed' }), createMockTodo({ status: 'cancelled' })]
 
       const result = projectActiveTodosToContext({
         sessionId: 'session-001',
@@ -461,9 +458,7 @@ describe('Todo Context Projection (RED Phase)', () => {
 
   describe('Integration with ContextBundle', () => {
     it('should produce ContextItems compatible with ContextBundle.orderedItems', () => {
-      const todos: TodoItem[] = [
-        createMockTodo({ status: 'pending', content: 'Task to integrate' }),
-      ]
+      const todos: TodoItem[] = [createMockTodo({ status: 'pending', content: 'Task to integrate' })]
 
       const result = projectActiveTodosToContext({
         sessionId: 'session-001',
@@ -494,10 +489,25 @@ describe('Todo Context Projection (RED Phase)', () => {
   describe('Owner-aware active projection', () => {
     it('should filter active todos by ownerAgentId when provided', () => {
       const todos: TodoItem[] = [
-        createMockTodo({ todoId: 'owner-a-1', status: 'pending', content: 'Owner A task', ownerAgentId: 'agent-alpha' }),
-        createMockTodo({ todoId: 'owner-a-2', status: 'in_progress', content: 'Owner A active', ownerAgentId: 'agent-alpha' }),
+        createMockTodo({
+          todoId: 'owner-a-1',
+          status: 'pending',
+          content: 'Owner A task',
+          ownerAgentId: 'agent-alpha',
+        }),
+        createMockTodo({
+          todoId: 'owner-a-2',
+          status: 'in_progress',
+          content: 'Owner A active',
+          ownerAgentId: 'agent-alpha',
+        }),
         createMockTodo({ todoId: 'owner-b-1', status: 'pending', content: 'Owner B task', ownerAgentId: 'agent-beta' }),
-        createMockTodo({ todoId: 'owner-b-2', status: 'in_progress', content: 'Owner B active', ownerAgentId: 'agent-beta' }),
+        createMockTodo({
+          todoId: 'owner-b-2',
+          status: 'in_progress',
+          content: 'Owner B active',
+          ownerAgentId: 'agent-beta',
+        }),
       ]
 
       const result = projectActiveTodosToContext({
@@ -532,9 +542,24 @@ describe('Todo Context Projection (RED Phase)', () => {
 
     it('should not inject owner B active todos into owner A scoped context', () => {
       const todos: TodoItem[] = [
-        createMockTodo({ todoId: 'a-todo', status: 'pending', content: 'Agent alpha work', ownerAgentId: 'agent-alpha' }),
-        createMockTodo({ todoId: 'b-todo', status: 'in_progress', content: 'Agent beta work', ownerAgentId: 'agent-beta' }),
-        createMockTodo({ todoId: 'b-todo-2', status: 'pending', content: 'Agent beta work 2', ownerAgentId: 'agent-beta' }),
+        createMockTodo({
+          todoId: 'a-todo',
+          status: 'pending',
+          content: 'Agent alpha work',
+          ownerAgentId: 'agent-alpha',
+        }),
+        createMockTodo({
+          todoId: 'b-todo',
+          status: 'in_progress',
+          content: 'Agent beta work',
+          ownerAgentId: 'agent-beta',
+        }),
+        createMockTodo({
+          todoId: 'b-todo-2',
+          status: 'pending',
+          content: 'Agent beta work 2',
+          ownerAgentId: 'agent-beta',
+        }),
       ]
 
       const resultA = projectActiveTodosToContext({
@@ -563,9 +588,24 @@ describe('Todo Context Projection (RED Phase)', () => {
 
     it('two owners in one session have separate active projections', () => {
       const todos: TodoItem[] = [
-        createMockTodo({ todoId: 'main-1', status: 'pending', content: 'Main task', ownerAgentId: 'foreground.default' }),
-        createMockTodo({ todoId: 'main-2', status: 'in_progress', content: 'Main active', ownerAgentId: 'foreground.default' }),
-        createMockTodo({ todoId: 'sub-1', status: 'pending', content: 'Subagent task', ownerAgentId: 'subagent.planner' }),
+        createMockTodo({
+          todoId: 'main-1',
+          status: 'pending',
+          content: 'Main task',
+          ownerAgentId: 'foreground.default',
+        }),
+        createMockTodo({
+          todoId: 'main-2',
+          status: 'in_progress',
+          content: 'Main active',
+          ownerAgentId: 'foreground.default',
+        }),
+        createMockTodo({
+          todoId: 'sub-1',
+          status: 'pending',
+          content: 'Subagent task',
+          ownerAgentId: 'subagent.planner',
+        }),
       ]
 
       const mainResult = projectActiveTodosToContext({

@@ -98,11 +98,7 @@ export interface MessagingTransportResult {
  */
 export interface MessagingTransport {
   sendText(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult>
-  verifyWebhook(
-    payload: unknown,
-    headers: Record<string, string>,
-    config: Record<string, unknown>,
-  ): Promise<boolean>
+  verifyWebhook(payload: unknown, headers: Record<string, string>, config: Record<string, unknown>): Promise<boolean>
 }
 
 // ---------------------------------------------------------------------------

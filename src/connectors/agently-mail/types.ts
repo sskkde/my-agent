@@ -54,9 +54,7 @@ export interface AgentlyMailCliErrorEnvelope {
   }
 }
 
-export type AgentlyMailCliEnvelope<T = unknown> =
-  | AgentlyMailCliSuccessEnvelope<T>
-  | AgentlyMailCliErrorEnvelope
+export type AgentlyMailCliEnvelope<T = unknown> = AgentlyMailCliSuccessEnvelope<T> | AgentlyMailCliErrorEnvelope
 
 // ─── DTOs (untrusted external data) ──────────────────────────────────────────
 

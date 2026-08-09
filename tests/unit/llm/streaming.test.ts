@@ -1,8 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import { createLLMAdapter, createCircuitBreaker } from '../../../src/llm'
-import type { LLMProvider, LLMRequest, LLMResponse, LLMResult, ProviderConfig, ProviderCapabilities } from '../../../src/llm'
+import type {
+  LLMProvider,
+  LLMRequest,
+  LLMResponse,
+  LLMResult,
+  ProviderConfig,
+  ProviderCapabilities,
+} from '../../../src/llm'
 import type { RuntimeError } from '../../../src/shared/errors'
-import { parseOpenAIStreamLine, parseOpenAIStreamEvents, mapOpenAIChatResponse } from '../../../src/llm/transform/openai-chat-transformer'
+import {
+  parseOpenAIStreamLine,
+  parseOpenAIStreamEvents,
+  mapOpenAIChatResponse,
+} from '../../../src/llm/transform/openai-chat-transformer'
 import { StreamResponseAggregator } from '../../../src/llm/stream-aggregator'
 import { parseOllamaStreamLine } from '../../../src/llm/transform/ollama-transformer'
 import { buildOllamaChatRequestBody } from '../../../src/llm/transform/ollama-transformer'
@@ -80,15 +91,14 @@ class StreamingFakeProvider implements LLMProvider {
     if (this.completeError) {
       return { success: false, error: this.completeError, providerId: this.id }
     }
-    const response: LLMResponse =
-      this.completeResponse ?? {
-        id: `resp_${Date.now()}`,
-        model: 'test-model',
-        content: 'Complete fallback response',
-        role: 'assistant',
-        finishReason: 'stop',
-        createdAt: new Date().toISOString(),
-      }
+    const response: LLMResponse = this.completeResponse ?? {
+      id: `resp_${Date.now()}`,
+      model: 'test-model',
+      content: 'Complete fallback response',
+      role: 'assistant',
+      finishReason: 'stop',
+      createdAt: new Date().toISOString(),
+    }
     return { success: true, response, providerId: this.id }
   }
 }
@@ -287,9 +297,13 @@ describe('LLM Streaming', () => {
         enableCircuitBreaker: true,
       })
 
-      const failingProvider = new StreamingFakeProvider('failing', createTestProviderConfig({ id: 'failing', priority: 1 }), {
-        streamDeltas: [],
-      })
+      const failingProvider = new StreamingFakeProvider(
+        'failing',
+        createTestProviderConfig({ id: 'failing', priority: 1 }),
+        {
+          streamDeltas: [],
+        },
+      )
       failingProvider.circuitBreaker.forceOpen()
       adapter.addProvider(failingProvider)
 
@@ -322,7 +336,6 @@ describe('LLM Streaming', () => {
     })
   })
 })
-
 
 describe('StreamResponseAggregator', () => {
   it('aggregates text deltas into content', () => {
@@ -457,10 +470,7 @@ describe('toLLMStreamChunk reasoning mapping (T1)', () => {
 
   it('preserves reasoning delta without falling through to never', () => {
     const event: ProviderStreamEvent = { kind: 'reasoning', delta: 'REASONING_FIXTURE_12345' }
-    const chunk = toLLMStreamChunk(event, 'p1') as Extract<
-      LLMStreamChunk,
-      { kind: 'reasoning' }
-    >
+    const chunk = toLLMStreamChunk(event, 'p1') as Extract<LLMStreamChunk, { kind: 'reasoning' }>
     expect(chunk.kind).toBe('reasoning')
     expect(chunk.delta).toBe('REASONING_FIXTURE_12345')
     expect(chunk.providerId).toBe('p1')
@@ -714,9 +724,7 @@ describe('mapOpenAIChatResponse reasoning_content (T2)', () => {
           message: {
             content: '',
             reasoning_content: 'REASONING_FIXTURE_12345',
-            tool_calls: [
-              { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"q":"x"}' } },
-            ],
+            tool_calls: [{ id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"q":"x"}' } }],
           },
           finish_reason: 'tool_calls',
         },

@@ -45,9 +45,7 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -182,9 +180,7 @@ class ToolCallLLMAdapter implements LLMAdapter {
     }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -240,9 +236,7 @@ class HangingLLMAdapter implements LLMAdapter {
     return new Promise(() => {})
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -822,7 +816,8 @@ describe('AgentKernel envelope enforcement', () => {
 
 const sampleSkillProjection: SkillPlaneProjection = {
   skillIds: ['session_status', 'documentation_search'],
-  skillSummaries: 'Available Skills:\n- session_status (internal): Check session status\n- documentation_search (search): Search documentation',
+  skillSummaries:
+    'Available Skills:\n- session_status (internal): Check session status\n- documentation_search (search): Search documentation',
   renderMode: 'summary',
 }
 

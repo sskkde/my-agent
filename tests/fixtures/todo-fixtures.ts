@@ -15,9 +15,7 @@ export interface TodoFixture {
   updatedAt: string
 }
 
-export function createTodoFixture(
-  overrides: Partial<TodoFixture> & { id: string; sessionId: string },
-): TodoFixture {
+export function createTodoFixture(overrides: Partial<TodoFixture> & { id: string; sessionId: string }): TodoFixture {
   const now = new Date().toISOString()
   return {
     content: 'Test todo item',

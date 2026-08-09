@@ -34,7 +34,11 @@ import { computeTemplateHash } from '../../prompt/template-hash.js'
 import { enforceSegmentDBudget } from './segment-d-budget.js'
 import { StaticPrefixBuilder } from './static-prefix-builder.js'
 import { renderDocumentsSkillPlane, renderSummarySkillPlane } from './skill-plane-projection-renderer.js'
-import type { PromptTemplateRegistry, PromptTemplateRecord, SevenLayerInput } from '../../prompt/prompt-template-registry.js'
+import type {
+  PromptTemplateRegistry,
+  PromptTemplateRecord,
+  SevenLayerInput,
+} from '../../prompt/prompt-template-registry.js'
 import type { TemplateLoader } from '../../prompt/template-loader.js'
 import { normalizeAgentLabel, isKnownAgentLabel } from '../../taxonomy/agent-label-normalizer.js'
 import {
@@ -154,10 +158,13 @@ export class ModelInputBuilder {
     }
   }
 
-  private async buildSegmentA(resolved: {
-    agentType: import('../../context/types.js').AgentType
-    agentProfile: string
-  }, input: ModelInputBuildInput) {
+  private async buildSegmentA(
+    resolved: {
+      agentType: import('../../context/types.js').AgentType
+      agentProfile: string
+    },
+    input: ModelInputBuildInput,
+  ) {
     const sevenLayerInput: SevenLayerInput = {
       agentType: resolved.agentType,
       agentProfile: resolved.agentProfile,
@@ -167,11 +174,14 @@ export class ModelInputBuilder {
     return this.staticPrefixBuilder.buildStaticPrefix(sevenLayerInput)
   }
 
-  private async buildSegmentB(resolved: {
-    agentType: import('../../context/types.js').AgentType
-    agentProfile: string
-    agentKind: string
-  }, input: ModelInputBuildInput) {
+  private async buildSegmentB(
+    resolved: {
+      agentType: import('../../context/types.js').AgentType
+      agentProfile: string
+      agentKind: string
+    },
+    input: ModelInputBuildInput,
+  ) {
     // Segment B = B1 + B2 + B3 (stable ordering for hash determinism)
     const b1Parts: string[] = []
     const b2Parts: string[] = []
@@ -222,11 +232,14 @@ export class ModelInputBuilder {
     return { content, hash }
   }
 
-  private async buildSegmentC(resolved: {
-    agentType: import('../../context/types.js').AgentType
-    agentProfile: string
-    agentKind: string
-  }, input: ModelInputBuildInput) {
+  private async buildSegmentC(
+    resolved: {
+      agentType: import('../../context/types.js').AgentType
+      agentProfile: string
+      agentKind: string
+    },
+    input: ModelInputBuildInput,
+  ) {
     const projection = input.toolProjection
     const mode = input.mode
     const policy = input.toolSelectionPolicy
@@ -271,11 +284,14 @@ export class ModelInputBuilder {
     return { content, hash }
   }
 
-  private async buildSegmentD(resolved: {
-    agentType: import('../../context/types.js').AgentType
-    agentProfile: string
-    agentKind: string
-  }, input: ModelInputBuildInput) {
+  private async buildSegmentD(
+    resolved: {
+      agentType: import('../../context/types.js').AgentType
+      agentProfile: string
+      agentKind: string
+    },
+    input: ModelInputBuildInput,
+  ) {
     const parts: string[] = []
 
     parts.push(this.renderSegmentDProvenance(input))
@@ -518,7 +534,8 @@ export class ModelInputBuilder {
   private renderSegmentDProvenance(input: ModelInputBuildInput): string {
     const bundle = input.contextBundle
     const firstItem = bundle?.pinnedItems?.[0] ?? bundle?.orderedItems?.[0] ?? bundle?.summaryBlocks?.[0]
-    const sourceType = firstItem?.sourceType ?? (bundle?.summaryBlocks && bundle.summaryBlocks.length > 0 ? 'memory' : 'session_history')
+    const sourceType =
+      firstItem?.sourceType ?? (bundle?.summaryBlocks && bundle.summaryBlocks.length > 0 ? 'memory' : 'session_history')
     const sourceRef = firstItem?.sourceRef ?? input.messageId ?? input.runId ?? input.sessionId ?? 'current_request'
     const freshnessTs = firstItem?.freshnessTs ?? input.currentDate ?? 'unspecified'
     const invocationSource = bundle?.invocationSource ?? this.defaultInvocationSource(input)

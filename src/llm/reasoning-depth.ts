@@ -25,9 +25,7 @@ export function parseReasoningDepth(
 }
 
 /** OpenAI-compatible reasoning_effort; omit when off. */
-export function toReasoningEffort(
-  depth: ReasoningDepth | undefined,
-): 'low' | 'medium' | 'high' | undefined {
+export function toReasoningEffort(depth: ReasoningDepth | undefined): 'low' | 'medium' | 'high' | undefined {
   if (!depth || depth === 'off') return undefined
   return depth
 }

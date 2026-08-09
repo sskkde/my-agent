@@ -18,10 +18,7 @@ import type {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function makeInboundEvent(
-  rawPayload: unknown,
-  overrides?: Partial<InboundRawEvent>,
-): InboundRawEvent {
+function makeInboundEvent(rawPayload: unknown, overrides?: Partial<InboundRawEvent>): InboundRawEvent {
   return {
     provider: 'qq',
     connectorInstanceId: 'qq-inst-1',
@@ -110,11 +107,7 @@ function createAdapterWithFetch(fetchFn: typeof fetch): QQAdapter {
     sendText: async () => ({ success: true, messageId: 'sent-001' }),
     verifyWebhook: async () => true,
   })
-  return new QQAdapter(
-    { appId: 'test-app', appSecret: 'test-secret' },
-    transport,
-    fetchFn,
-  )
+  return new QQAdapter({ appId: 'test-app', appSecret: 'test-secret' }, transport, fetchFn)
 }
 
 function computeQQSignature(payload: unknown, secret: string): string {
@@ -267,9 +260,7 @@ describe('QQAdapter', () => {
     it('should return null when d is missing', async () => {
       const adapter = createAdapterWithFetch(createSuccessfulFetch())
 
-      const result = await adapter.handleInbound(
-        makeInboundEvent({ event_type: 'C2C_MESSAGE_CREATE' }),
-      )
+      const result = await adapter.handleInbound(makeInboundEvent({ event_type: 'C2C_MESSAGE_CREATE' }))
 
       expect(result).toBeNull()
     })
@@ -310,11 +301,7 @@ describe('QQAdapter', () => {
         sendText: async () => ({ success: true, messageId: 'sent-001' }),
         verifyWebhook: async () => true,
       })
-      const adapter = new QQAdapter(
-        { appId: 'app-1', appSecret: 'secret-1' },
-        transport,
-        fetchFn,
-      )
+      const adapter = new QQAdapter({ appId: 'app-1', appSecret: 'secret-1' }, transport, fetchFn)
 
       const result = await adapter.sendOutbound(defaultTarget, defaultMessage)
 
@@ -339,18 +326,12 @@ describe('QQAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = new QQAdapter(
-        { appId: 'app-1', appSecret: 'secret-1', sandbox: true },
-        transport,
-        fetchFn,
-      )
+      const adapter = new QQAdapter({ appId: 'app-1', appSecret: 'secret-1', sandbox: true }, transport, fetchFn)
 
       await adapter.sendOutbound(defaultTarget, defaultMessage)
 
       const [url] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]
-      expect(url).toBe(
-        'https://bots.qq.com/app/getAppAccessToken?sandbox=true',
-      )
+      expect(url).toBe('https://bots.qq.com/app/getAppAccessToken?sandbox=true')
     })
 
     it('should send correct token request body', async () => {
@@ -359,11 +340,7 @@ describe('QQAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = new QQAdapter(
-        { appId: 'my-app', appSecret: 'my-secret' },
-        transport,
-        fetchFn,
-      )
+      const adapter = new QQAdapter({ appId: 'my-app', appSecret: 'my-secret' }, transport, fetchFn)
 
       await adapter.sendOutbound(defaultTarget, defaultMessage)
 
@@ -387,11 +364,7 @@ describe('QQAdapter', () => {
         sendText: async () => ({ success: true, messageId: 'should-not-reach' }),
         verifyWebhook: async () => true,
       })
-      const adapter = new QQAdapter(
-        { appId: 'bad-app', appSecret: 'bad-secret' },
-        transport,
-        fetchFn,
-      )
+      const adapter = new QQAdapter({ appId: 'bad-app', appSecret: 'bad-secret' }, transport, fetchFn)
 
       const result = await adapter.sendOutbound(defaultTarget, defaultMessage)
 
@@ -413,11 +386,7 @@ describe('QQAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = new QQAdapter(
-        { appId: 'app', appSecret: 'secret' },
-        transport,
-        fetchFn,
-      )
+      const adapter = new QQAdapter({ appId: 'app', appSecret: 'secret' }, transport, fetchFn)
 
       const result = await adapter.sendOutbound(defaultTarget, defaultMessage)
 
@@ -436,11 +405,7 @@ describe('QQAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = new QQAdapter(
-        { appId: 'app', appSecret: 'secret' },
-        transport,
-        fetchFn,
-      )
+      const adapter = new QQAdapter({ appId: 'app', appSecret: 'secret' }, transport, fetchFn)
 
       const result = await adapter.sendOutbound(defaultTarget, defaultMessage)
 
@@ -555,10 +520,7 @@ describe('QQAdapter', () => {
         verifyWebhook: async () => true,
       })
 
-      const adapter = createQQAdapter(
-        { appId: 'app', appSecret: 'secret' },
-        transport,
-      )
+      const adapter = createQQAdapter({ appId: 'app', appSecret: 'secret' }, transport)
 
       expect(adapter).toBeInstanceOf(QQAdapter)
     })
@@ -570,11 +532,7 @@ describe('QQAdapter', () => {
       })
       const customFetch = vi.fn() as unknown as typeof fetch
 
-      const adapter = createQQAdapter(
-        { appId: 'app', appSecret: 'secret' },
-        transport,
-        customFetch,
-      )
+      const adapter = createQQAdapter({ appId: 'app', appSecret: 'secret' }, transport, customFetch)
 
       expect(adapter).toBeInstanceOf(QQAdapter)
     })

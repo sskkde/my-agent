@@ -49,9 +49,7 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -165,7 +163,7 @@ function createModelInputBuilder(): ModelInputBuilder {
           content: 'You are a helpful assistant.',
         },
       ],
-[
+      [
         'agentProfile:default_main',
         {
           id: 'agentProfile:default_main',

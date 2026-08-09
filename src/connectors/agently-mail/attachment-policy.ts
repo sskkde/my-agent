@@ -98,9 +98,7 @@ export type DownloadStrategy =
  * - **Oversized** (has `download_url`, no `attachment_id`): return the opaque
  *   URL to the user without fetching.
  */
-export function getAttachmentDownloadStrategy(
-  attachment: AgentlyMailAttachment,
-): DownloadStrategy {
+export function getAttachmentDownloadStrategy(attachment: AgentlyMailAttachment): DownloadStrategy {
   if (isOversizedAttachment(attachment)) {
     return { type: 'url', value: attachment.download_url! }
   }

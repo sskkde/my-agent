@@ -197,9 +197,7 @@ export function getOutputContractDefinition(contractId: string | undefined): Out
   return CONTRACTS.get(contractId)
 }
 
-export function validateOutputContractContent(
-  input: OutputContractValidationInput,
-): OutputContractValidationResult {
+export function validateOutputContractContent(input: OutputContractValidationInput): OutputContractValidationResult {
   if (!input.contractId) {
     return { ok: true, kind: 'none', skippedReason: 'no_contract' }
   }

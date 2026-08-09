@@ -1092,114 +1092,114 @@ describe('provider-resolver', () => {
           nodeEnv: 'development',
         })
 
-      expect(candidates).toHaveLength(1)
-      const model = candidates[0].model
+        expect(candidates).toHaveLength(1)
+        const model = candidates[0].model
 
-      expect(model.modelId).toBe('glm-5.2:cloud')
-      expect(model.capabilities.functionCalling).toBe(true)
-      expect(canServeRequest(toolsRequirement, model)).toBe(true)
+        expect(model.modelId).toBe('glm-5.2:cloud')
+        expect(model.capabilities.functionCalling).toBe(true)
+        expect(canServeRequest(toolsRequirement, model)).toBe(true)
+      })
+    })
+
+    describe('resolveCandidateModelForRequest (T5)', () => {
+      it('returns resolved ModelInfo when request.model is in models_json', () => {
+        const provider = createMockProvider({
+          providerId: 'multi-model',
+          providerType: 'custom',
+          apiKey: 'sk-multi',
+          baseUrl: 'https://api.example.com/v1',
+          selectedModel: 'a',
+          models: [
+            { modelId: 'a', capabilities: { functionCalling: false } },
+            { modelId: 'b', capabilities: { functionCalling: true } },
+          ],
+        })
+        const catalog = getProviderCatalogEntry('custom')
+
+        const model = resolveCandidateModelForRequest(provider, 'b', catalog)
+
+        expect(model).not.toBeNull()
+        expect(model!.modelId).toBe('b')
+        expect(model!.capabilities.functionCalling).toBe(true)
+      })
+
+      it('returns null when request.model is not owned by provider', () => {
+        const provider = createMockProvider({
+          providerId: 'multi-model',
+          providerType: 'custom',
+          apiKey: 'sk-multi',
+          baseUrl: 'https://api.example.com/v1',
+          selectedModel: 'a',
+          models: [
+            { modelId: 'a', capabilities: { functionCalling: true } },
+            { modelId: 'b', capabilities: { functionCalling: true } },
+          ],
+        })
+        const catalog = getProviderCatalogEntry('custom')
+
+        const model = resolveCandidateModelForRequest(provider, 'c', catalog)
+        expect(model).toBeNull()
+      })
+
+      it('returns resolved ModelInfo when request.model equals selectedModel', () => {
+        const provider = createMockProvider({
+          providerId: 'single-model',
+          providerType: 'openai',
+          apiKey: 'sk-openai',
+          selectedModel: 'gpt-4o-mini',
+        })
+        const catalog = getProviderCatalogEntry('openai')
+
+        const model = resolveCandidateModelForRequest(provider, 'gpt-4o-mini', catalog)
+
+        expect(model).not.toBeNull()
+        expect(model!.modelId).toBe('gpt-4o-mini')
+      })
+
+      it('applies provider-level capabilities_json overrides after models_json overrides', () => {
+        const provider = createMockProvider({
+          providerId: 'override-provider',
+          providerType: 'custom',
+          apiKey: 'sk-override',
+          baseUrl: 'https://api.example.com/v1',
+          selectedModel: 'a',
+          capabilities: { functionCalling: false },
+          models: [
+            {
+              modelId: 'a',
+              capabilities: { functionCalling: true, jsonMode: true },
+            },
+          ],
+        })
+        const catalog = getProviderCatalogEntry('custom')
+
+        const model = resolveCandidateModelForRequest(provider, 'a', catalog)
+
+        expect(model).not.toBeNull()
+        // models_json sets FC=true, but provider capabilities_json overrides
+        // FC=false (provider-level wins, mirroring resolveProviderCandidates).
+        expect(model!.capabilities.functionCalling).toBe(false)
+        expect(model!.capabilities.jsonMode).toBe(true)
+      })
+
+      it('resolves unknown model via fallback when provider owns it via selectedModel', () => {
+        const provider = createMockProvider({
+          providerId: 'unknown-model-provider',
+          providerType: 'custom',
+          apiKey: 'sk-unknown',
+          baseUrl: 'https://api.example.com/v1',
+          selectedModel: 'glm-5.2',
+          models: [],
+        })
+        const catalog = getProviderCatalogEntry('custom')
+
+        const model = resolveCandidateModelForRequest(provider, 'glm-5.2', catalog)
+
+        expect(model).not.toBeNull()
+        expect(model!.modelId).toBe('glm-5.2')
+        // T1: unknown models default to FC/streaming/jsonMode true.
+        expect(model!.capabilities.functionCalling).toBe(true)
+      })
     })
   })
-
-  describe('resolveCandidateModelForRequest (T5)', () => {
-    it('returns resolved ModelInfo when request.model is in models_json', () => {
-      const provider = createMockProvider({
-        providerId: 'multi-model',
-        providerType: 'custom',
-        apiKey: 'sk-multi',
-        baseUrl: 'https://api.example.com/v1',
-        selectedModel: 'a',
-        models: [
-          { modelId: 'a', capabilities: { functionCalling: false } },
-          { modelId: 'b', capabilities: { functionCalling: true } },
-        ],
-      })
-      const catalog = getProviderCatalogEntry('custom')
-
-      const model = resolveCandidateModelForRequest(provider, 'b', catalog)
-
-      expect(model).not.toBeNull()
-      expect(model!.modelId).toBe('b')
-      expect(model!.capabilities.functionCalling).toBe(true)
-    })
-
-    it('returns null when request.model is not owned by provider', () => {
-      const provider = createMockProvider({
-        providerId: 'multi-model',
-        providerType: 'custom',
-        apiKey: 'sk-multi',
-        baseUrl: 'https://api.example.com/v1',
-        selectedModel: 'a',
-        models: [
-          { modelId: 'a', capabilities: { functionCalling: true } },
-          { modelId: 'b', capabilities: { functionCalling: true } },
-        ],
-      })
-      const catalog = getProviderCatalogEntry('custom')
-
-      const model = resolveCandidateModelForRequest(provider, 'c', catalog)
-      expect(model).toBeNull()
-    })
-
-    it('returns resolved ModelInfo when request.model equals selectedModel', () => {
-      const provider = createMockProvider({
-        providerId: 'single-model',
-        providerType: 'openai',
-        apiKey: 'sk-openai',
-        selectedModel: 'gpt-4o-mini',
-      })
-      const catalog = getProviderCatalogEntry('openai')
-
-      const model = resolveCandidateModelForRequest(provider, 'gpt-4o-mini', catalog)
-
-      expect(model).not.toBeNull()
-      expect(model!.modelId).toBe('gpt-4o-mini')
-    })
-
-    it('applies provider-level capabilities_json overrides after models_json overrides', () => {
-      const provider = createMockProvider({
-        providerId: 'override-provider',
-        providerType: 'custom',
-        apiKey: 'sk-override',
-        baseUrl: 'https://api.example.com/v1',
-        selectedModel: 'a',
-        capabilities: { functionCalling: false },
-        models: [
-          {
-            modelId: 'a',
-            capabilities: { functionCalling: true, jsonMode: true },
-          },
-        ],
-      })
-      const catalog = getProviderCatalogEntry('custom')
-
-      const model = resolveCandidateModelForRequest(provider, 'a', catalog)
-
-      expect(model).not.toBeNull()
-      // models_json sets FC=true, but provider capabilities_json overrides
-      // FC=false (provider-level wins, mirroring resolveProviderCandidates).
-      expect(model!.capabilities.functionCalling).toBe(false)
-      expect(model!.capabilities.jsonMode).toBe(true)
-    })
-
-    it('resolves unknown model via fallback when provider owns it via selectedModel', () => {
-      const provider = createMockProvider({
-        providerId: 'unknown-model-provider',
-        providerType: 'custom',
-        apiKey: 'sk-unknown',
-        baseUrl: 'https://api.example.com/v1',
-        selectedModel: 'glm-5.2',
-        models: [],
-      })
-      const catalog = getProviderCatalogEntry('custom')
-
-      const model = resolveCandidateModelForRequest(provider, 'glm-5.2', catalog)
-
-      expect(model).not.toBeNull()
-      expect(model!.modelId).toBe('glm-5.2')
-      // T1: unknown models default to FC/streaming/jsonMode true.
-      expect(model!.capabilities.functionCalling).toBe(true)
-    })
-  })
-})
 })

@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { PostgresAdapter } from '../../../src/storage/adapters/postgres/postgres-adapter.js'
-import { createPgMigrationRunner, type PgMigrationRunner } from '../../../src/storage/adapters/postgres/migration-runner.js'
+import {
+  createPgMigrationRunner,
+  type PgMigrationRunner,
+} from '../../../src/storage/adapters/postgres/migration-runner.js'
 import { pgStoreMigrations } from '../../../src/storage/adapters/postgres/pg-migrations.js'
 
 /**
@@ -123,7 +126,12 @@ async function getColumns(adapter: PostgresAdapter, table: string): Promise<Map<
       WHERE table_schema = 'public' AND table_name = $1`,
     [table],
   )
-  return new Map(rows.map((r) => [r.column_name, { dataType: r.data_type, isNullable: r.is_nullable, columnDefault: r.column_default }]))
+  return new Map(
+    rows.map((r) => [
+      r.column_name,
+      { dataType: r.data_type, isNullable: r.is_nullable, columnDefault: r.column_default },
+    ]),
+  )
 }
 
 async function getIndexes(adapter: PostgresAdapter, table: string): Promise<Set<string>> {
@@ -196,10 +204,26 @@ describe.skipIf(!hasDatabase)('PostgreSQL child-session schema (Todo 2)', () => 
     it('creates subagent_runs with all feature-required columns', async () => {
       const cols = await getColumns(adapter, 'subagent_runs')
       const expected = [
-        'subagent_run_id', 'user_id', 'session_id', 'parent_run_id', 'root_run_id',
-        'background_run_id', 'agent_type', 'agent_profile', 'status', 'task_spec_json',
-        'context_bundle_json', 'provider_id', 'model', 'result_json', 'error_code',
-        'error_message', 'created_at', 'started_at', 'completed_at', 'updated_at',
+        'subagent_run_id',
+        'user_id',
+        'session_id',
+        'parent_run_id',
+        'root_run_id',
+        'background_run_id',
+        'agent_type',
+        'agent_profile',
+        'status',
+        'task_spec_json',
+        'context_bundle_json',
+        'provider_id',
+        'model',
+        'result_json',
+        'error_code',
+        'error_message',
+        'created_at',
+        'started_at',
+        'completed_at',
+        'updated_at',
       ]
       for (const name of expected) {
         expect(cols.has(name), `subagent_runs.${name}`).toBe(true)
@@ -261,10 +285,14 @@ describe.skipIf(!hasDatabase)('PostgreSQL child-session schema (Todo 2)', () => 
          VALUES ('transcript_parity_1', '${PROBE_RUN_ID}', 'text', '{"text":"hello"}', now()::text)`,
       )
 
-      const child = await adapter.asyncQuery<{ parent_session_id: string; task_id: string; subagent_depth: number; session_kind: string }>(
-        `SELECT parent_session_id, task_id, subagent_depth, session_kind FROM sessions WHERE session_id = $1`,
-        [CHILD_SESSION_ID],
-      )
+      const child = await adapter.asyncQuery<{
+        parent_session_id: string
+        task_id: string
+        subagent_depth: number
+        session_kind: string
+      }>(`SELECT parent_session_id, task_id, subagent_depth, session_kind FROM sessions WHERE session_id = $1`, [
+        CHILD_SESSION_ID,
+      ])
       expect(child[0].parent_session_id).toBe(PROBE_SESSION_ID)
       expect(child[0].task_id).toBe('task_parity_1')
       expect(child[0].subagent_depth).toBe(1)

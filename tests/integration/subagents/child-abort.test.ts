@@ -18,11 +18,7 @@ import type { FastifyInstance } from 'fastify'
 import { createApiServer } from '../../../src/api/server.js'
 import { createApiContext, isApiContextError, type ApiContext } from '../../../src/api/context.js'
 import { createLLMAdapter } from '../../../src/llm/adapter.js'
-import type {
-  LLMProvider,
-  ProviderHealthStatus,
-  ProviderStats,
-} from '../../../src/llm/provider.js'
+import type { LLMProvider, ProviderHealthStatus, ProviderStats } from '../../../src/llm/provider.js'
 import type { LLMRequest, LLMResult } from '../../../src/llm/types.js'
 import type { CircuitBreaker } from '../../../src/llm/circuit-breaker.js'
 

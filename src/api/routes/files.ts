@@ -4,13 +4,9 @@ import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
 import { getUploadConfig } from '../../config/upload-config.js'
-import type {
-  FileUploadRecord,
-  FileUploadStore,
-} from '../../storage/file-upload-store.js'
+import type { FileUploadRecord, FileUploadStore } from '../../storage/file-upload-store.js'
 import type { SessionStore } from '../../storage/session-store.js'
 import { StorageSizeExceededError, StorageNotFoundError } from '../../storage/upload-file-service.js'
-
 
 // ── Response DTO (excludes storageRef and internal fields) ──────────────────
 
@@ -107,7 +103,15 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
       } catch (err) {
         const errWithStatus = err as Error & { statusCode?: number }
         if (errWithStatus.statusCode === 413) {
-          return reply.code(413).send(envelopeError('FILE_TOO_LARGE', `File exceeds maximum size of ${uploadConfig.maxFileSizeBytes} bytes`, request.requestId))
+          return reply
+            .code(413)
+            .send(
+              envelopeError(
+                'FILE_TOO_LARGE',
+                `File exceeds maximum size of ${uploadConfig.maxFileSizeBytes} bytes`,
+                request.requestId,
+              ),
+            )
         }
         const message = err instanceof Error ? err.message : 'Failed to parse multipart upload'
         return reply.code(400).send(envelopeError('BAD_REQUEST', message, request.requestId))
@@ -119,25 +123,29 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
 
       // Validate MIME type
       if (!isAllowedMimeType(file.mimetype)) {
-        return reply.code(415).send(
-          envelopeError(
-            'UNSUPPORTED_MEDIA_TYPE',
-            `MIME type '${file.mimetype}' is not allowed. Allowed types: ${uploadConfig.allowedMimeTypes.join(', ')}`,
-            request.requestId,
-          ),
-        )
+        return reply
+          .code(415)
+          .send(
+            envelopeError(
+              'UNSUPPORTED_MEDIA_TYPE',
+              `MIME type '${file.mimetype}' is not allowed. Allowed types: ${uploadConfig.allowedMimeTypes.join(', ')}`,
+              request.requestId,
+            ),
+          )
       }
 
       // Validate extension
       const extension = extractExtension(file.filename ?? '')
       if (!isAllowedExtension(extension)) {
-        return reply.code(415).send(
-          envelopeError(
-            'UNSUPPORTED_MEDIA_TYPE',
-            `File extension '${extension}' is not allowed. Allowed extensions: ${uploadConfig.allowedExtensions.join(', ')}`,
-            request.requestId,
-          ),
-        )
+        return reply
+          .code(415)
+          .send(
+            envelopeError(
+              'UNSUPPORTED_MEDIA_TYPE',
+              `File extension '${extension}' is not allowed. Allowed extensions: ${uploadConfig.allowedExtensions.join(', ')}`,
+              request.requestId,
+            ),
+          )
       }
 
       // Read file into buffer and validate size
@@ -147,32 +155,44 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
       } catch (err) {
         const errWithStatus = err as Error & { statusCode?: number }
         if (errWithStatus.statusCode === 413) {
-          return reply.code(413).send(envelopeError('FILE_TOO_LARGE', `File exceeds maximum size of ${uploadConfig.maxFileSizeBytes} bytes`, request.requestId))
+          return reply
+            .code(413)
+            .send(
+              envelopeError(
+                'FILE_TOO_LARGE',
+                `File exceeds maximum size of ${uploadConfig.maxFileSizeBytes} bytes`,
+                request.requestId,
+              ),
+            )
         }
         return reply.code(400).send(envelopeError('BAD_REQUEST', 'Failed to read uploaded file', request.requestId))
       }
 
       if (fileBuffer.length > uploadConfig.maxFileSizeBytes) {
-        return reply.code(413).send(
-          envelopeError(
-            'FILE_TOO_LARGE',
-            `File size ${fileBuffer.length} bytes exceeds maximum of ${uploadConfig.maxFileSizeBytes} bytes`,
-            request.requestId,
-          ),
-        )
+        return reply
+          .code(413)
+          .send(
+            envelopeError(
+              'FILE_TOO_LARGE',
+              `File size ${fileBuffer.length} bytes exceeds maximum of ${uploadConfig.maxFileSizeBytes} bytes`,
+              request.requestId,
+            ),
+          )
       }
 
       // Enforce per-session upload quota
       const existingFiles = fileUploadStore.listBySession(sessionId)
       const currentSessionBytes = existingFiles.reduce((sum, f) => sum + f.sizeBytes, 0)
       if (currentSessionBytes + fileBuffer.length > uploadConfig.perSessionQuotaBytes) {
-        return reply.code(413).send(
-          envelopeError(
-            'SESSION_QUOTA_EXCEEDED',
-            `Session upload quota of ${uploadConfig.perSessionQuotaBytes} bytes would be exceeded. Current usage: ${currentSessionBytes} bytes, upload size: ${fileBuffer.length} bytes`,
-            request.requestId,
-          ),
-        )
+        return reply
+          .code(413)
+          .send(
+            envelopeError(
+              'SESSION_QUOTA_EXCEEDED',
+              `Session upload quota of ${uploadConfig.perSessionQuotaBytes} bytes would be exceeded. Current usage: ${currentSessionBytes} bytes, upload size: ${fileBuffer.length} bytes`,
+              request.requestId,
+            ),
+          )
       }
 
       const originalFilename = file.filename ?? 'unnamed'
@@ -198,17 +218,11 @@ export async function registerFileRoutes(server: FastifyInstance, context: ApiCo
       let writeResult
       try {
         const webStream = new Blob([fileBuffer]).stream() as ReadableStream<Uint8Array>
-        writeResult = await uploadFileService.write(
-          preliminaryRecord.fileId,
-          webStream,
-          fileBuffer.length,
-        )
+        writeResult = await uploadFileService.write(preliminaryRecord.fileId, webStream, fileBuffer.length)
       } catch (err) {
         fileUploadStore.delete(preliminaryRecord.fileId)
         if (err instanceof StorageSizeExceededError) {
-          return reply.code(413).send(
-            envelopeError('FILE_TOO_LARGE', err.message, request.requestId),
-          )
+          return reply.code(413).send(envelopeError('FILE_TOO_LARGE', err.message, request.requestId))
         }
         throw err
       }

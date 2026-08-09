@@ -347,8 +347,8 @@ describe('No Legacy Prompt Path', () => {
         const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
         throw new Error(
           `Found ${violations.length} file(s) with agentKind: 'kernel' outside normalizer/compat modules:\n${formatted}\n` +
-          `Use agentType + agentProfile from the seven-layer taxonomy instead.\n` +
-          `Allowed files: ${AGENT_KIND_KERNEL_ALLOWLIST.join(', ')}`,
+            `Use agentType + agentProfile from the seven-layer taxonomy instead.\n` +
+            `Allowed files: ${AGENT_KIND_KERNEL_ALLOWLIST.join(', ')}`,
         )
       }
 
@@ -413,8 +413,8 @@ describe('No Legacy Prompt Path', () => {
         const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
         throw new Error(
           `Found ${violations.length} file(s) with free-form agentType: string outside compat modules:\n${formatted}\n` +
-          `Use the AgentType union from context/types.ts instead of free-form string.\n` +
-          `Allowed files: ${AGENT_TYPE_STRING_ALLOWLIST.join(', ')}`,
+            `Use the AgentType union from context/types.ts instead of free-form string.\n` +
+            `Allowed files: ${AGENT_TYPE_STRING_ALLOWLIST.join(', ')}`,
         )
       }
 
@@ -448,7 +448,7 @@ describe('No Legacy Prompt Path', () => {
         const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
         throw new Error(
           `Found ${violations.length} file(s) with buildSystemPrompt in src/:\n${formatted}\n` +
-          `buildSystemPrompt() was removed during the prompt migration. Use ModelInputBuilder.build() instead.`,
+            `buildSystemPrompt() was removed during the prompt migration. Use ModelInputBuilder.build() instead.`,
         )
       }
 
@@ -477,7 +477,7 @@ describe('No Legacy Prompt Path', () => {
         const formatted = violations.map((v) => `  - ${v.file}:${v.line}: ${v.match}`).join('\n')
         throw new Error(
           `Found ${violations.length} file(s) with stale template path references:\n${formatted}\n` +
-          `Legacy template paths 'agents/prompt-builder' and 'agents/prompt-registry' are removed.`,
+            `Legacy template paths 'agents/prompt-builder' and 'agents/prompt-registry' are removed.`,
         )
       }
 
@@ -506,7 +506,7 @@ describe('No Legacy Prompt Path', () => {
         const formatted = violations.map((v) => `  - ${v.file}:${v.line}`).join('\n')
         throw new Error(
           `Found ${violations.length} file(s) referencing buildSystemPrompt as active usage:\n${formatted}\n` +
-          `buildSystemPrompt() is removed. Use ModelInputBuilder.build() instead.`,
+            `buildSystemPrompt() is removed. Use ModelInputBuilder.build() instead.`,
         )
       }
 
@@ -624,9 +624,7 @@ describe('No Legacy Prompt Path', () => {
     it('tests/golden/cases/ directory has at least 7 case files', () => {
       const casesDir = join(process.cwd(), 'tests', 'golden', 'cases')
       expect(existsSync(casesDir)).toBe(true)
-      const caseFiles = readdirSync(casesDir).filter(
-        (f) => f.endsWith('.ts') && f !== 'index.ts',
-      )
+      const caseFiles = readdirSync(casesDir).filter((f) => f.endsWith('.ts') && f !== 'index.ts')
       expect(caseFiles.length).toBeGreaterThanOrEqual(7)
     })
 

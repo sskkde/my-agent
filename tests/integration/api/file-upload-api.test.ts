@@ -690,10 +690,9 @@ describe('File Upload API', () => {
       }> = []
 
       for (let attempt = 0; attempt < 30; attempt++) {
-        const transcriptResponse = await fetch(
-          `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/transcripts`,
-          { headers: { Cookie: authCookie } },
-        )
+        const transcriptResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/transcripts`, {
+          headers: { Cookie: authCookie },
+        })
         const transcriptBody = (await transcriptResponse.json()) as ApiEnvelope<{
           transcripts: typeof transcripts
           total: number
@@ -701,9 +700,7 @@ describe('File Upload API', () => {
         transcripts = transcriptBody.data?.transcripts ?? []
 
         // Look for a transcript turn that has our attachment contentRef
-        const found = transcripts.some(
-          (t) => t.input.contentRefs?.includes(`attachment:${fileId}`),
-        )
+        const found = transcripts.some((t) => t.input.contentRefs?.includes(`attachment:${fileId}`))
         if (found) break
 
         // Wait 200ms before retry
@@ -711,18 +708,15 @@ describe('File Upload API', () => {
       }
 
       // Verify transcript contains contentRef for our attachment
-      const matchingTurn = transcripts.find((t) =>
-        t.input.contentRefs?.includes(`attachment:${fileId}`),
-      )
+      const matchingTurn = transcripts.find((t) => t.input.contentRefs?.includes(`attachment:${fileId}`))
       expect(matchingTurn, 'transcript should contain a turn referencing our attachment').toBeDefined()
       expect(matchingTurn!.input.userMessageSummary).toBe('Please analyze this file')
       expect(matchingTurn!.input.contentRefs).toContain(`attachment:${fileId}`)
 
       // ── Step 4: Verify timeline includes attachment metadata ────────
-      const timelineResponse = await fetch(
-        `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/timeline`,
-        { headers: { Cookie: authCookie } },
-      )
+      const timelineResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/timeline`, {
+        headers: { Cookie: authCookie },
+      })
       expect(timelineResponse.status).toBe(200)
 
       const timelineBody = (await timelineResponse.json()) as ApiEnvelope<{
@@ -745,18 +739,11 @@ describe('File Upload API', () => {
 
       // Find the user_message event that references our attachment
       const userMessageEvent = timelineBody.data!.items.find(
-        (e) =>
-          e.eventType === 'user_message' &&
-          e.metadata?.attachments?.some((a) => a.fileId === fileId),
+        (e) => e.eventType === 'user_message' && e.metadata?.attachments?.some((a) => a.fileId === fileId),
       )
-      expect(
-        userMessageEvent,
-        'timeline should contain a user_message event with attachment metadata',
-      ).toBeDefined()
+      expect(userMessageEvent, 'timeline should contain a user_message event with attachment metadata').toBeDefined()
 
-      const attachmentMeta = userMessageEvent!.metadata!.attachments!.find(
-        (a) => a.fileId === fileId,
-      )
+      const attachmentMeta = userMessageEvent!.metadata!.attachments!.find((a) => a.fileId === fileId)
       expect(attachmentMeta).toBeDefined()
       expect(attachmentMeta!.originalFilename).toBe(DETERMINISTIC_FILENAME)
       expect(attachmentMeta!.sizeBytes).toBe(EXPECTED_BYTES.length)
@@ -837,33 +824,27 @@ describe('File Upload API', () => {
       }> = []
 
       for (let attempt = 0; attempt < 30; attempt++) {
-        const transcriptResponse = await fetch(
-          `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/transcripts`,
-          { headers: { Cookie: authCookie } },
-        )
+        const transcriptResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/transcripts`, {
+          headers: { Cookie: authCookie },
+        })
         const transcriptBody = (await transcriptResponse.json()) as ApiEnvelope<{
           transcripts: typeof transcripts
         }>
         transcripts = transcriptBody.data?.transcripts ?? []
 
-        const found = transcripts.some((t) =>
-          t.input.contentRefs?.includes(`attachment:${imageFileId}`),
-        )
+        const found = transcripts.some((t) => t.input.contentRefs?.includes(`attachment:${imageFileId}`))
         if (found) break
         await new Promise((resolve) => setTimeout(resolve, 200))
       }
 
       // Verify transcript references the image attachment
-      const imageTurn = transcripts.find((t) =>
-        t.input.contentRefs?.includes(`attachment:${imageFileId}`),
-      )
+      const imageTurn = transcripts.find((t) => t.input.contentRefs?.includes(`attachment:${imageFileId}`))
       expect(imageTurn).toBeDefined()
 
       // Verify the timeline includes the image attachment metadata
-      const timelineResponse = await fetch(
-        `${baseUrl}/api/v1/sessions/${lifecycleSessionId}/timeline`,
-        { headers: { Cookie: authCookie } },
-      )
+      const timelineResponse = await fetch(`${baseUrl}/api/v1/sessions/${lifecycleSessionId}/timeline`, {
+        headers: { Cookie: authCookie },
+      })
       const timelineBody = (await timelineResponse.json()) as ApiEnvelope<{
         items: Array<{
           eventType: string
@@ -877,14 +858,10 @@ describe('File Upload API', () => {
       }>
 
       const imageEvent = timelineBody.data!.items.find(
-        (e) =>
-          e.eventType === 'user_message' &&
-          e.metadata?.attachments?.some((a) => a.fileId === imageFileId),
+        (e) => e.eventType === 'user_message' && e.metadata?.attachments?.some((a) => a.fileId === imageFileId),
       )
       expect(imageEvent, 'timeline should include image attachment metadata').toBeDefined()
-      expect(
-        imageEvent!.metadata!.attachments!.find((a) => a.fileId === imageFileId)?.mimeType,
-      ).toBe('image/png')
+      expect(imageEvent!.metadata!.attachments!.find((a) => a.fileId === imageFileId)?.mimeType).toBe('image/png')
 
       // Download the image and verify bytes match (binary round-trip)
       const dlResponse = await fetch(`${baseUrl}/api/v1/files/${imageFileId}/download`, {

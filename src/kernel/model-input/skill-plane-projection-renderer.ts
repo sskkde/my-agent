@@ -43,10 +43,7 @@ export function renderSkillPlaneProjection(
   return parts.join('\n\n')
 }
 
-function renderSkillDocuments(
-  documents: SkillDocumentEntry[],
-  tokenBudget?: number,
-): string {
+function renderSkillDocuments(documents: SkillDocumentEntry[], tokenBudget?: number): string {
   const parts: string[] = ['## Skill Documents']
 
   let remainingBudget = tokenBudget ?? Number.POSITIVE_INFINITY

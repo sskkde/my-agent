@@ -120,9 +120,7 @@ export class AMapStreamableHttpTransport implements McpTransport, McpToolTranspo
       const result = await this.client!.listTools()
       return result.tools.map((tool) => this.normalizeTool(tool))
     } catch (error) {
-      throw new Error(
-        `AMap MCP listTools failed: ${this.redactError(this.extractMessage(error))}`,
-      )
+      throw new Error(`AMap MCP listTools failed: ${this.redactError(this.extractMessage(error))}`)
     }
   }
 
@@ -136,9 +134,7 @@ export class AMapStreamableHttpTransport implements McpTransport, McpToolTranspo
     try {
       return await this.client!.callTool({ name: toolName, arguments: params })
     } catch (error) {
-      throw new Error(
-        `AMap MCP callTool(${toolName}) failed: ${this.redactError(this.extractMessage(error))}`,
-      )
+      throw new Error(`AMap MCP callTool(${toolName}) failed: ${this.redactError(this.extractMessage(error))}`)
     }
   }
 

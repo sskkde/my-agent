@@ -20,18 +20,10 @@ import { createTelegramAdapter } from '../../../../src/connectors/messaging/prov
 import { createQQAdapter } from '../../../../src/connectors/messaging/providers/qq.js'
 import { createWeChatAdapter } from '../../../../src/connectors/messaging/providers/wechat.js'
 import { DingTalkAdapter } from '../../../../src/connectors/messaging/providers/dingtalk.js'
-import {
-  MockMessagingTransport,
-  createMockTransport,
-} from '../../../../src/connectors/messaging/mock-transport.js'
+import { MockMessagingTransport, createMockTransport } from '../../../../src/connectors/messaging/mock-transport.js'
 import { redactSecrets } from '../../../../src/connectors/messaging/secret-redaction.js'
-import {
-  createChannelRegistry,
-  createWebUIChannelHandler,
-} from '../../../../src/gateway/channel-registry.js'
-import {
-  createMessagingChannelBridge,
-} from '../../../../src/connectors/messaging/channel-bridge.js'
+import { createChannelRegistry, createWebUIChannelHandler } from '../../../../src/gateway/channel-registry.js'
+import { createMessagingChannelBridge } from '../../../../src/connectors/messaging/channel-bridge.js'
 
 import type {
   MessagingAdapter,
@@ -82,10 +74,7 @@ function makeInstance(provider: string, instanceId: string): ConnectorInstance {
   }
 }
 
-function createStubConnectorStore(
-  definitions: ConnectorDefinition[],
-  instances: ConnectorInstance[],
-): ConnectorStore {
+function createStubConnectorStore(definitions: ConnectorDefinition[], instances: ConnectorInstance[]): ConnectorStore {
   const defMap = new Map(definitions.map((d) => [d.id, d]))
   return {
     findInstancesByStatus(status: ConnectorStatus): ConnectorInstance[] {
@@ -233,10 +222,7 @@ function wechatOfficialInbound(): InboundRawEvent {
 
 function makeSuccessfulTransport(): MessagingTransport {
   return {
-    sendText: async (
-      _target: DeliveryTarget,
-      _message: OutboundTextMessage,
-    ): Promise<MessagingTransportResult> => ({
+    sendText: async (_target: DeliveryTarget, _message: OutboundTextMessage): Promise<MessagingTransportResult> => ({
       success: true,
       messageId: 'mock-delivered-1',
     }),
@@ -284,11 +270,7 @@ describe('Cross-Provider E2E Mock Flow', () => {
     },
     {
       name: 'telegram',
-      createAdapter: (t) =>
-        createTelegramAdapter(
-          { botToken: 'bot-token-tg', webhookSecret: 'wh-secret-tg' },
-          t,
-        ),
+      createAdapter: (t) => createTelegramAdapter({ botToken: 'bot-token-tg', webhookSecret: 'wh-secret-tg' }, t),
       inbound: telegramInbound,
       expectedProvider: 'telegram',
       expectedText: 'Hello from Telegram',
@@ -298,10 +280,7 @@ describe('Cross-Provider E2E Mock Flow', () => {
     {
       name: 'dingtalk',
       createAdapter: (t) =>
-        new DingTalkAdapter(
-          { appKey: 'dt-key', appSecret: 'dt-secret', robotCode: 'dt-robot-1' },
-          t,
-        ),
+        new DingTalkAdapter({ appKey: 'dt-key', appSecret: 'dt-secret', robotCode: 'dt-robot-1' }, t),
       inbound: dingtalkInbound,
       expectedProvider: 'dingtalk',
       expectedText: 'Hello from DingTalk',
@@ -311,11 +290,7 @@ describe('Cross-Provider E2E Mock Flow', () => {
     {
       name: 'qq',
       createAdapter: (t) =>
-        createQQAdapter(
-          { appId: 'qq-app', appSecret: 'qq-secret', sandbox: true },
-          t,
-          createSuccessfulQQFetch(),
-        ),
+        createQQAdapter({ appId: 'qq-app', appSecret: 'qq-secret', sandbox: true }, t, createSuccessfulQQFetch()),
       inbound: qqC2cInbound,
       expectedProvider: 'qq',
       expectedText: 'Hello from QQ',
@@ -324,11 +299,7 @@ describe('Cross-Provider E2E Mock Flow', () => {
     },
     {
       name: 'wechat',
-      createAdapter: (t) =>
-        createWeChatAdapter(
-          { botToken: 'wx-token', appSecret: 'wx-secret', mode: 'official' },
-          t,
-        ),
+      createAdapter: (t) => createWeChatAdapter({ botToken: 'wx-token', appSecret: 'wx-secret', mode: 'official' }, t),
       inbound: wechatOfficialInbound,
       expectedProvider: 'wechat',
       expectedText: 'Hello from WeChat',
@@ -499,17 +470,13 @@ describe('No-Network Guard', () => {
       targetConversationId: 'conv-1',
     }
 
-    await expect(transport.sendText(target, message)).rejects.toThrow(
-      'MockMessagingTransport: real network blocked',
-    )
+    await expect(transport.sendText(target, message)).rejects.toThrow('MockMessagingTransport: real network blocked')
   })
 
   it('MockMessagingTransport without overrides throws on verifyWebhook', async () => {
     const transport = new MockMessagingTransport()
 
-    await expect(
-      transport.verifyWebhook({}, {}, {}),
-    ).rejects.toThrow('MockMessagingTransport: real network blocked')
+    await expect(transport.verifyWebhook({}, {}, {})).rejects.toThrow('MockMessagingTransport: real network blocked')
   })
 
   it('createMockTransport() without overrides throws on sendText', async () => {
@@ -617,38 +584,26 @@ describe('Channel-Boundary Guard', () => {
   const processingDir = path.join(process.cwd(), 'src/processing')
 
   it('processing modules do not import channel-registry', () => {
-    const files = fs
-      .readdirSync(processingDir)
-      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+    const files = fs.readdirSync(processingDir).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
 
     for (const file of files) {
       const content = fs.readFileSync(path.join(processingDir, file), 'utf-8')
       const badImports = content
         .split('\n')
         .filter((line) => line.includes('import') && line.includes('channel-registry'))
-      expect(
-        badImports,
-        `${file} should not import channel-registry`,
-      ).toHaveLength(0)
+      expect(badImports, `${file} should not import channel-registry`).toHaveLength(0)
     }
   })
 
   it('processing modules do not import timeline-broadcaster', () => {
-    const files = fs
-      .readdirSync(processingDir)
-      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+    const files = fs.readdirSync(processingDir).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
 
     for (const file of files) {
       const content = fs.readFileSync(path.join(processingDir, file), 'utf-8')
       const badImports = content
         .split('\n')
-        .filter(
-          (line) => line.includes('import') && line.includes('timeline-broadcaster'),
-        )
-      expect(
-        badImports,
-        `${file} should not import timeline-broadcaster`,
-      ).toHaveLength(0)
+        .filter((line) => line.includes('import') && line.includes('timeline-broadcaster'))
+      expect(badImports, `${file} should not import timeline-broadcaster`).toHaveLength(0)
     }
   })
 
@@ -702,10 +657,7 @@ describe('Secret Grep Assertions', () => {
       const content = fs.readFileSync(filePath, 'utf-8')
       for (const pattern of secretPatterns) {
         const matches = content.match(pattern)
-        expect(
-          matches,
-          `${relPath} contains potential secret: ${matches?.[0]?.substring(0, 30)}...`,
-        ).toBeNull()
+        expect(matches, `${relPath} contains potential secret: ${matches?.[0]?.substring(0, 30)}...`).toBeNull()
       }
     })
   }
@@ -718,10 +670,7 @@ describe('Secret Grep Assertions', () => {
       const content = fs.readFileSync(path.join(testDir, file), 'utf-8')
       for (const pattern of secretPatterns) {
         const matches = content.match(pattern)
-        expect(
-          matches,
-          `Test ${file} contains potential real secret: ${matches?.[0]?.substring(0, 30)}...`,
-        ).toBeNull()
+        expect(matches, `Test ${file} contains potential real secret: ${matches?.[0]?.substring(0, 30)}...`).toBeNull()
       }
     }
   })
@@ -736,10 +685,7 @@ describe('Full Pipeline: inbound → channel-bridge → registry → outbound', 
     const transport = createMockTransport({
       sendText: async () => ({ success: true, messageId: 'pipe-1' }),
     })
-    const adapter = createTelegramAdapter(
-      { botToken: 'bot-token', webhookSecret: 'wh-secret' },
-      transport,
-    )
+    const adapter = createTelegramAdapter({ botToken: 'bot-token', webhookSecret: 'wh-secret' }, transport)
 
     // Step 1: Inbound
     const inboundEvent = telegramInbound()
@@ -896,11 +842,7 @@ describe('Full Pipeline: inbound → channel-bridge → registry → outbound', 
     const transport = createMockTransport({
       sendText: async () => ({ success: true, messageId: 'pipe-qq-1' }),
     })
-    const adapter = createQQAdapter(
-      { appId: 'qq-app', appSecret: 'qq-secret', sandbox: true },
-      transport,
-      fetchFn,
-    )
+    const adapter = createQQAdapter({ appId: 'qq-app', appSecret: 'qq-secret', sandbox: true }, transport, fetchFn)
 
     const normalized = await adapter.handleInbound(qqC2cInbound())
     expect(normalized).not.toBeNull()
@@ -945,10 +887,7 @@ describe('Full Pipeline: inbound → channel-bridge → registry → outbound', 
     const transport = createMockTransport({
       sendText: async () => ({ success: true, messageId: 'pipe-wx-1' }),
     })
-    const adapter = createWeChatAdapter(
-      { botToken: 'wx-token', appSecret: 'wx-secret', mode: 'official' },
-      transport,
-    )
+    const adapter = createWeChatAdapter({ botToken: 'wx-token', appSecret: 'wx-secret', mode: 'official' }, transport)
 
     const normalized = await adapter.handleInbound(wechatOfficialInbound())
     expect(normalized).not.toBeNull()
@@ -1021,31 +960,15 @@ describe('Multi-Provider Channel Bridge Registration', () => {
 
       let adapter: MessagingAdapter
       if (p === 'feishu') {
-        adapter = createFeishuAdapter(
-          { appId: 'a', appSecret: 's', verificationToken: 'v' },
-          transport,
-        )
+        adapter = createFeishuAdapter({ appId: 'a', appSecret: 's', verificationToken: 'v' }, transport)
       } else if (p === 'telegram') {
-        adapter = createTelegramAdapter(
-          { botToken: 'b', webhookSecret: 'w' },
-          transport,
-        )
+        adapter = createTelegramAdapter({ botToken: 'b', webhookSecret: 'w' }, transport)
       } else if (p === 'dingtalk') {
-        adapter = new DingTalkAdapter(
-          { appKey: 'k', appSecret: 's', robotCode: 'r' },
-          transport,
-        )
+        adapter = new DingTalkAdapter({ appKey: 'k', appSecret: 's', robotCode: 'r' }, transport)
       } else if (p === 'qq') {
-        adapter = createQQAdapter(
-          { appId: 'a', appSecret: 's' },
-          transport,
-          createSuccessfulQQFetch(),
-        )
+        adapter = createQQAdapter({ appId: 'a', appSecret: 's' }, transport, createSuccessfulQQFetch())
       } else {
-        adapter = createWeChatAdapter(
-          { botToken: 'b', appSecret: 's', mode: 'official' },
-          transport,
-        )
+        adapter = createWeChatAdapter({ botToken: 'b', appSecret: 's', mode: 'official' }, transport)
       }
       adapters.set(p, adapter)
     }

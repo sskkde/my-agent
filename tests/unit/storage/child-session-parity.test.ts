@@ -25,19 +25,55 @@ interface ChildSessionCapability {
 
 export const CHILD_SESSION_CAPABILITY_LIST: ChildSessionCapability[] = [
   // ── Child-session columns on `sessions` (PG v57 ⇄ SQLite v74)
-  { name: 'sessions.parent_session_id', pgPattern: 'sessions ADD COLUMN parent_session_id', sqlitePattern: 'sessions ADD COLUMN parent_session_id' },
+  {
+    name: 'sessions.parent_session_id',
+    pgPattern: 'sessions ADD COLUMN parent_session_id',
+    sqlitePattern: 'sessions ADD COLUMN parent_session_id',
+  },
   { name: 'sessions.task_id', pgPattern: 'sessions ADD COLUMN task_id', sqlitePattern: 'sessions ADD COLUMN task_id' },
-  { name: 'sessions.agent_profile', pgPattern: 'sessions ADD COLUMN agent_profile', sqlitePattern: 'sessions ADD COLUMN agent_profile' },
-  { name: 'sessions.launch_mode', pgPattern: 'sessions ADD COLUMN launch_mode', sqlitePattern: 'sessions ADD COLUMN launch_mode' },
-  { name: 'sessions.subagent_depth (INTEGER NOT NULL DEFAULT 0)', pgPattern: 'sessions ADD COLUMN subagent_depth', sqlitePattern: 'sessions ADD COLUMN subagent_depth' },
-  { name: 'sessions.session_kind (TEXT NOT NULL DEFAULT foreground)', pgPattern: 'sessions ADD COLUMN session_kind', sqlitePattern: 'sessions ADD COLUMN session_kind' },
-  { name: 'sessions parent index', pgPattern: 'idx_sessions_parent_session_id', sqlitePattern: 'idx_sessions_parent_session_id' },
+  {
+    name: 'sessions.agent_profile',
+    pgPattern: 'sessions ADD COLUMN agent_profile',
+    sqlitePattern: 'sessions ADD COLUMN agent_profile',
+  },
+  {
+    name: 'sessions.launch_mode',
+    pgPattern: 'sessions ADD COLUMN launch_mode',
+    sqlitePattern: 'sessions ADD COLUMN launch_mode',
+  },
+  {
+    name: 'sessions.subagent_depth (INTEGER NOT NULL DEFAULT 0)',
+    pgPattern: 'sessions ADD COLUMN subagent_depth',
+    sqlitePattern: 'sessions ADD COLUMN subagent_depth',
+  },
+  {
+    name: 'sessions.session_kind (TEXT NOT NULL DEFAULT foreground)',
+    pgPattern: 'sessions ADD COLUMN session_kind',
+    sqlitePattern: 'sessions ADD COLUMN session_kind',
+  },
+  {
+    name: 'sessions parent index',
+    pgPattern: 'idx_sessions_parent_session_id',
+    sqlitePattern: 'idx_sessions_parent_session_id',
+  },
   { name: 'sessions task index', pgPattern: 'idx_sessions_task_id', sqlitePattern: 'idx_sessions_task_id' },
   // ── Shared subagent surface (PG v54/v55 ⇄ SQLite v56/v57)
-  { name: 'subagent_runs table', pgPattern: 'CREATE TABLE IF NOT EXISTS subagent_runs', sqlitePattern: 'CREATE TABLE IF NOT EXISTS subagent_runs' },
-  { name: 'subagent_transcripts table', pgPattern: 'CREATE TABLE IF NOT EXISTS subagent_transcripts', sqlitePattern: 'CREATE TABLE IF NOT EXISTS subagent_transcripts' },
+  {
+    name: 'subagent_runs table',
+    pgPattern: 'CREATE TABLE IF NOT EXISTS subagent_runs',
+    sqlitePattern: 'CREATE TABLE IF NOT EXISTS subagent_runs',
+  },
+  {
+    name: 'subagent_transcripts table',
+    pgPattern: 'CREATE TABLE IF NOT EXISTS subagent_transcripts',
+    sqlitePattern: 'CREATE TABLE IF NOT EXISTS subagent_transcripts',
+  },
   // ── sessions.reasoning_depth (PG v56 ⇄ SQLite v73)
-  { name: 'sessions.reasoning_depth', pgPattern: 'sessions ADD COLUMN reasoning_depth', sqlitePattern: 'sessions ADD COLUMN reasoning_depth' },
+  {
+    name: 'sessions.reasoning_depth',
+    pgPattern: 'sessions ADD COLUMN reasoning_depth',
+    sqlitePattern: 'sessions ADD COLUMN reasoning_depth',
+  },
 ]
 
 function collectUpSql(migrations: { up: string }[]): string {

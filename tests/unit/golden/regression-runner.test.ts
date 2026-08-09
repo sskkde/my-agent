@@ -8,45 +8,93 @@ import type { BuiltModelInput } from '../../../src/kernel/model-input/model-inpu
 
 function makeMinimalTestTemplates(): Map<string, PromptTemplateRecord> {
   return new Map([
-    ['platform:base', {
-      id: 'platform:base', version: '2026-06-01', path: 'platform/base.md',
-      agentKind: '*', providerFamily: '*', layer: 1, taxonomyLayer: 'platform' as const,
-      content: 'You are a helpful assistant.',
-      description: 'Test platform base',
-    }],
-    ['platform:safety', {
-      id: 'platform:safety', version: '2026-06-01', path: 'platform/safety.md',
-      agentKind: '*', providerFamily: '*', layer: 1, taxonomyLayer: 'platform' as const,
-      content: 'Safety rules.',
-      description: 'Test safety',
-    }],
-    ['provider:openai', {
-      id: 'provider:openai', version: '2026-06-01', path: 'provider/openai.md',
-      agentKind: '*', providerFamily: 'openai', layer: 2, taxonomyLayer: 'provider' as const,
-      content: '',
-      description: 'Test openai provider',
-    }],
-    ['agentProfile:default_main', {
-      id: 'agentProfile:default_main', version: '2026-06-01', path: 'agents/default_main.md',
-      agentKind: 'kernel', providerFamily: '*', layer: 3, taxonomyLayer: 'agentProfile' as const,
-      agentProfile: 'default_main',
-      content: '',
-      description: 'Test default main agent',
-    }],
-    ['agentProfile:memory', {
-      id: 'agentProfile:memory', version: '2026-06-01', path: 'agents/memory.md',
-      agentKind: 'kernel', providerFamily: '*', layer: 3, taxonomyLayer: 'agentProfile' as const,
-      agentProfile: 'memory',
-      content: '',
-      description: 'Test memory agent',
-    }],
-    ['agentProfile:search', {
-      id: 'agentProfile:search', version: '2026-06-01', path: 'agents/search.md',
-      agentKind: 'kernel', providerFamily: '*', layer: 3, taxonomyLayer: 'agentProfile' as const,
-      agentProfile: 'search',
-      content: '',
-      description: 'Test search agent',
-    }],
+    [
+      'platform:base',
+      {
+        id: 'platform:base',
+        version: '2026-06-01',
+        path: 'platform/base.md',
+        agentKind: '*',
+        providerFamily: '*',
+        layer: 1,
+        taxonomyLayer: 'platform' as const,
+        content: 'You are a helpful assistant.',
+        description: 'Test platform base',
+      },
+    ],
+    [
+      'platform:safety',
+      {
+        id: 'platform:safety',
+        version: '2026-06-01',
+        path: 'platform/safety.md',
+        agentKind: '*',
+        providerFamily: '*',
+        layer: 1,
+        taxonomyLayer: 'platform' as const,
+        content: 'Safety rules.',
+        description: 'Test safety',
+      },
+    ],
+    [
+      'provider:openai',
+      {
+        id: 'provider:openai',
+        version: '2026-06-01',
+        path: 'provider/openai.md',
+        agentKind: '*',
+        providerFamily: 'openai',
+        layer: 2,
+        taxonomyLayer: 'provider' as const,
+        content: '',
+        description: 'Test openai provider',
+      },
+    ],
+    [
+      'agentProfile:default_main',
+      {
+        id: 'agentProfile:default_main',
+        version: '2026-06-01',
+        path: 'agents/default_main.md',
+        agentKind: 'kernel',
+        providerFamily: '*',
+        layer: 3,
+        taxonomyLayer: 'agentProfile' as const,
+        agentProfile: 'default_main',
+        content: '',
+        description: 'Test default main agent',
+      },
+    ],
+    [
+      'agentProfile:memory',
+      {
+        id: 'agentProfile:memory',
+        version: '2026-06-01',
+        path: 'agents/memory.md',
+        agentKind: 'kernel',
+        providerFamily: '*',
+        layer: 3,
+        taxonomyLayer: 'agentProfile' as const,
+        agentProfile: 'memory',
+        content: '',
+        description: 'Test memory agent',
+      },
+    ],
+    [
+      'agentProfile:search',
+      {
+        id: 'agentProfile:search',
+        version: '2026-06-01',
+        path: 'agents/search.md',
+        agentKind: 'kernel',
+        providerFamily: '*',
+        layer: 3,
+        taxonomyLayer: 'agentProfile' as const,
+        agentProfile: 'search',
+        content: '',
+        description: 'Test search agent',
+      },
+    ],
   ]) as Map<string, PromptTemplateRecord>
 }
 
@@ -113,7 +161,11 @@ describe('runGoldenCase', () => {
 
     expect(result.passed).toBe(false)
     expect(result.diffs.length).toBeGreaterThan(0)
-    expect(result.diffs.some((d) => d.path === 'forbiddenTools' && Array.isArray(d.expected) && d.expected.includes('file.delete'))).toBe(true)
+    expect(
+      result.diffs.some(
+        (d) => d.path === 'forbiddenTools' && Array.isArray(d.expected) && d.expected.includes('file.delete'),
+      ),
+    ).toBe(true)
   })
 
   it('detects missing expected tools in the projection', async () => {
@@ -134,9 +186,7 @@ describe('runGoldenCase', () => {
         currentUserMessage: 'Search the web',
         toolProjection: {
           toolIds: ['file.read'],
-          tools: [
-            { type: 'function', function: { name: 'file.read', description: 'Read a file', parameters: {} } },
-          ],
+          tools: [{ type: 'function', function: { name: 'file.read', description: 'Read a file', parameters: {} } }],
         },
       },
       expectations: {
@@ -148,7 +198,11 @@ describe('runGoldenCase', () => {
 
     expect(result.passed).toBe(false)
     expect(result.diffs.length).toBeGreaterThan(0)
-    expect(result.diffs.some((d) => d.path === 'expectedTools' && Array.isArray(d.expected) && d.expected.includes('web.search'))).toBe(true)
+    expect(
+      result.diffs.some(
+        (d) => d.path === 'expectedTools' && Array.isArray(d.expected) && d.expected.includes('web.search'),
+      ),
+    ).toBe(true)
   })
 
   it('detects expectedSegmentHashes match and mismatch', async () => {
@@ -157,13 +211,13 @@ describe('runGoldenCase', () => {
     const loader = new TemplateLoader('/nonexistent')
     const builder = new ModelInputBuilder({ templateRegistry: registry, templateLoader: loader })
 
-    const built = await builder.build({
+    const built = (await builder.build({
       mode: 'function_calling',
       agentType: 'main',
       agentProfile: 'default_main',
       providerFamily: 'openai',
       currentUserMessage: 'Hello',
-    }) as BuiltModelInput
+    })) as BuiltModelInput
 
     const baseInput = {
       mode: 'function_calling' as const,

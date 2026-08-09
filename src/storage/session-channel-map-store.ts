@@ -128,10 +128,11 @@ class SessionChannelMapStoreImpl implements SessionChannelMapStore {
 
   updateLastSeen(id: string, tenantId: string = DEFAULT_TENANT_ID): SessionChannelMapping | undefined {
     const now = new Date().toISOString()
-    this.connection.exec(
-      'UPDATE session_channel_mappings SET last_seen_at = ? WHERE tenant_id = ? AND id = ?',
-      [now, tenantId, id],
-    )
+    this.connection.exec('UPDATE session_channel_mappings SET last_seen_at = ? WHERE tenant_id = ? AND id = ?', [
+      now,
+      tenantId,
+      id,
+    ])
 
     const rows = this.connection.query<MappingRow>(
       'SELECT * FROM session_channel_mappings WHERE tenant_id = ? AND id = ?',

@@ -55,10 +55,7 @@ export class UnknownAgentLabelError extends Error {
  * - `background`: memory
  * - `subagent`: planner, search, and all builtin subagent profile labels
  */
-const LABEL_MAP: ReadonlyMap<string, NormalizedAgentLabel> = new Map<
-  string,
-  NormalizedAgentLabel
->([
+const LABEL_MAP: ReadonlyMap<string, NormalizedAgentLabel> = new Map<string, NormalizedAgentLabel>([
   // ── main agents ────────────────────────────────────────────────────────
   ['kernel', { agentType: 'main', agentProfile: 'default_main' }],
   ['foreground', { agentType: 'main', agentProfile: 'foreground' }],

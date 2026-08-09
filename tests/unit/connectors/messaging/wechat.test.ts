@@ -20,14 +20,16 @@ import type { WeChatConfig } from '../../../../src/connectors/messaging/provider
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function makeXmlPayload(overrides: Partial<{
-  toUser: string
-  fromUser: string
-  createTime: string
-  msgType: string
-  content: string
-  msgId: string
-}> = {}): string {
+function makeXmlPayload(
+  overrides: Partial<{
+    toUser: string
+    fromUser: string
+    createTime: string
+    msgType: string
+    content: string
+    msgId: string
+  }> = {},
+): string {
   const to = overrides.toUser ?? 'gh_xxx'
   const from = overrides.fromUser ?? 'oxxxxx'
   const time = overrides.createTime ?? '1234567890'
@@ -46,14 +48,16 @@ function makeXmlPayload(overrides: Partial<{
   ].join('')
 }
 
-function makeILinkPayload(overrides: Partial<{
-  fromUser: string
-  toUser: string
-  createTime: number
-  msgType: string
-  content: string
-  msgId: string
-}> = {}): Record<string, unknown> {
+function makeILinkPayload(
+  overrides: Partial<{
+    fromUser: string
+    toUser: string
+    createTime: number
+    msgType: string
+    content: string
+    msgId: string
+  }> = {},
+): Record<string, unknown> {
   return {
     FromUserName: overrides.fromUser ?? 'oxxxxx',
     ToUserName: overrides.toUser ?? 'gh_xxx',
@@ -97,11 +101,18 @@ describe('WeChatAdapter', () => {
   let sendTextMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    sendTextMock = vi.fn(async (): Promise<MessagingTransportResult> => ({
-      success: true,
-      messageId: 'sent-msg-1',
-    }))
-    const transport = createMockTransport({ sendText: sendTextMock as (target: DeliveryTarget, message: OutboundTextMessage) => Promise<MessagingTransportResult> })
+    sendTextMock = vi.fn(
+      async (): Promise<MessagingTransportResult> => ({
+        success: true,
+        messageId: 'sent-msg-1',
+      }),
+    )
+    const transport = createMockTransport({
+      sendText: sendTextMock as (
+        target: DeliveryTarget,
+        message: OutboundTextMessage,
+      ) => Promise<MessagingTransportResult>,
+    })
     adapter = new WeChatAdapter(defaultConfig, transport)
   })
 
@@ -119,7 +130,12 @@ describe('WeChatAdapter', () => {
     })
 
     it('createWeChatAdapter factory should return a WeChatAdapter', () => {
-      const transport = createMockTransport({ sendText: sendTextMock as (target: DeliveryTarget, message: OutboundTextMessage) => Promise<MessagingTransportResult> })
+      const transport = createMockTransport({
+        sendText: sendTextMock as (
+          target: DeliveryTarget,
+          message: OutboundTextMessage,
+        ) => Promise<MessagingTransportResult>,
+      })
       const instance = createWeChatAdapter(defaultConfig, transport)
       expect(instance).toBeInstanceOf(WeChatAdapter)
     })
@@ -225,9 +241,7 @@ describe('WeChatAdapter', () => {
       // Craft XML without CreateTime but with MsgType — won't parse due to missing fields
       // Instead test with valid XML but zero createTime
       const xml = makeXmlPayload({ createTime: '0' })
-      const result = await adapter.handleInbound(
-        makeInboundEvent(xml, {}),
-      )
+      const result = await adapter.handleInbound(makeInboundEvent(xml, {}))
       expect(result).not.toBeNull()
       expect(result!.timestamp).toBe(new Date(0).toISOString())
     })
@@ -261,7 +275,12 @@ describe('WeChatAdapter', () => {
         ...defaultConfig,
         mode: 'ilink',
       }
-      const transport = createMockTransport({ sendText: sendTextMock as (target: DeliveryTarget, message: OutboundTextMessage) => Promise<MessagingTransportResult> })
+      const transport = createMockTransport({
+        sendText: sendTextMock as (
+          target: DeliveryTarget,
+          message: OutboundTextMessage,
+        ) => Promise<MessagingTransportResult>,
+      })
       iLinkAdapter = new WeChatAdapter(config, transport)
     })
 
@@ -336,7 +355,12 @@ describe('WeChatAdapter', () => {
 
     it('should propagate transport errors', async () => {
       sendTextMock.mockRejectedValueOnce(new Error('network down'))
-      const transport = createMockTransport({ sendText: sendTextMock as (target: DeliveryTarget, message: OutboundTextMessage) => Promise<MessagingTransportResult> })
+      const transport = createMockTransport({
+        sendText: sendTextMock as (
+          target: DeliveryTarget,
+          message: OutboundTextMessage,
+        ) => Promise<MessagingTransportResult>,
+      })
       const failingAdapter = new WeChatAdapter(defaultConfig, transport)
 
       const target: DeliveryTarget = {
@@ -425,7 +449,12 @@ describe('WeChatAdapter', () => {
         ...defaultConfig,
         mode: 'ilink',
       }
-      const transport = createMockTransport({ sendText: sendTextMock as (target: DeliveryTarget, message: OutboundTextMessage) => Promise<MessagingTransportResult> })
+      const transport = createMockTransport({
+        sendText: sendTextMock as (
+          target: DeliveryTarget,
+          message: OutboundTextMessage,
+        ) => Promise<MessagingTransportResult>,
+      })
       iLinkAdapter = new WeChatAdapter(config, transport)
     })
 

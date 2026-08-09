@@ -17,9 +17,7 @@ import type { AgentlyMailAttachment } from '../../../../src/connectors/agently-m
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeAttachment(
-  overrides: Partial<AgentlyMailAttachment> = {},
-): AgentlyMailAttachment {
+function makeAttachment(overrides: Partial<AgentlyMailAttachment> = {}): AgentlyMailAttachment {
   return {
     untrusted: true,
     attachment_id: 'att_abc123' as AgentlyMailAttachment['attachment_id'],

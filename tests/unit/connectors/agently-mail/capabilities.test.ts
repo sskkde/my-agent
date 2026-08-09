@@ -32,7 +32,9 @@ describe('createAgentlyMailCapabilities', () => {
   })
 
   it('matches snapshot of all capabilityIds', () => {
-    const ids = caps().map((c) => c.capabilityId).sort()
+    const ids = caps()
+      .map((c) => c.capabilityId)
+      .sort()
     expect(ids).toMatchInlineSnapshot(`
       [
         "agently_mail.auth_status",
@@ -50,7 +52,9 @@ describe('createAgentlyMailCapabilities', () => {
   })
 
   it('matches snapshot of all categories', () => {
-    const cats = caps().map((c) => `${c.capabilityId}:${c.category}`).sort()
+    const cats = caps()
+      .map((c) => `${c.capabilityId}:${c.category}`)
+      .sort()
     expect(cats).toMatchInlineSnapshot(`
       [
         "agently_mail.auth_status:read",
@@ -68,7 +72,9 @@ describe('createAgentlyMailCapabilities', () => {
   })
 
   it('matches snapshot of all risk levels', () => {
-    const risks = caps().map((c) => `${c.capabilityId}:${c.riskLevel}`).sort()
+    const risks = caps()
+      .map((c) => `${c.capabilityId}:${c.riskLevel}`)
+      .sort()
     expect(risks).toMatchInlineSnapshot(`
       [
         "agently_mail.auth_status:low",
@@ -112,11 +118,7 @@ describe('risk levels', () => {
   })
 
   it('write/send operations have riskLevel=medium', () => {
-    for (const id of [
-      'agently_mail.send_message',
-      'agently_mail.reply_message',
-      'agently_mail.forward_message',
-    ]) {
+    for (const id of ['agently_mail.send_message', 'agently_mail.reply_message', 'agently_mail.forward_message']) {
       expect(capById(id).riskLevel).toBe('medium')
     }
   })

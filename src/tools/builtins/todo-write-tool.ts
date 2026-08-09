@@ -83,9 +83,9 @@ function makeStructuredContent(result: TodowriteResult): Record<string, unknown>
 
 function createContextDelta(sessionId: string, todos: Todo[]): RuntimeContextDelta {
   // Only include active (non-completed, non-cancelled) todos
-  const activeTodos = todos.filter(t => t.status === TodoStatus.pending || t.status === TodoStatus.in_progress)
-  
-  const items: ContextItem[] = activeTodos.map(todo => ({
+  const activeTodos = todos.filter((t) => t.status === TodoStatus.pending || t.status === TodoStatus.in_progress)
+
+  const items: ContextItem[] = activeTodos.map((todo) => ({
     itemId: `todo-${todo.id}`,
     sourceType: 'system_note' as const,
     semanticType: 'entity_state' as const,
@@ -185,7 +185,13 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
         if (!todoStore) {
           const fakeTodos: Todo[] = inputTodos.map((todo) => makeEphemeralTodo(todo, effectiveSessionId, ownerAgentId))
           result = {
-            todos: inputTodos.map(t => ({ id: t.id, content: t.content, status: t.status, priority: t.priority, parentId: t.parentId })),
+            todos: inputTodos.map((t) => ({
+              id: t.id,
+              content: t.content,
+              status: t.status,
+              priority: t.priority,
+              parentId: t.parentId,
+            })),
             addedCount: inputTodos.length,
           }
           allTodos = fakeTodos
@@ -228,7 +234,13 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
         if (!todoStore) {
           const fakeTodos: Todo[] = inputTodos.map((todo) => makeEphemeralTodo(todo, effectiveSessionId, ownerAgentId))
           result = {
-            todos: inputTodos.map(t => ({ id: t.id, content: t.content, status: t.status, priority: t.priority, parentId: t.parentId })),
+            todos: inputTodos.map((t) => ({
+              id: t.id,
+              content: t.content,
+              status: t.status,
+              priority: t.priority,
+              parentId: t.parentId,
+            })),
             addedCount: inputTodos.length,
           }
           allTodos = fakeTodos
@@ -249,7 +261,13 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
         if (!todoStore) {
           const fakeTodos: Todo[] = inputTodos.map((todo) => makeEphemeralTodo(todo, effectiveSessionId, ownerAgentId))
           result = {
-            todos: inputTodos.map(t => ({ id: t.id, content: t.content, status: t.status, priority: t.priority, parentId: t.parentId })),
+            todos: inputTodos.map((t) => ({
+              id: t.id,
+              content: t.content,
+              status: t.status,
+              priority: t.priority,
+              parentId: t.parentId,
+            })),
             updatedCount: inputTodos.length,
           }
           allTodos = fakeTodos
@@ -286,7 +304,11 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
           let removed = 0
           for (const input of inputTodos) {
             const existing = todoStore.findById(input.id)
-            if (existing?.sessionId === effectiveSessionId && existing.ownerAgentId === ownerAgentId && todoStore.remove(input.id)) {
+            if (
+              existing?.sessionId === effectiveSessionId &&
+              existing.ownerAgentId === ownerAgentId &&
+              todoStore.remove(input.id)
+            ) {
               removed++
             }
           }
@@ -331,7 +353,8 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
 
   return {
     name: 'todowrite',
-    description: 'Write todos with explicit mode. Modes: append (add new), replace (owner-scoped replace — only replaces todos owned by the calling agent), update (modify existing), remove (delete by ID). The mode parameter is REQUIRED on every call. Session and owner are derived from execution context.',
+    description:
+      'Write todos with explicit mode. Modes: append (add new), replace (owner-scoped replace — only replaces todos owned by the calling agent), update (modify existing), remove (delete by ID). The mode parameter is REQUIRED on every call. Session and owner are derived from execution context.',
     category: 'write',
     sensitivity: 'low',
     schema: {
@@ -349,7 +372,11 @@ export function createTodowriteTool(todoStore?: TodoStore): ToolDefinition {
             properties: {
               id: { type: 'string', description: 'Todo ID' },
               content: { type: 'string', description: 'Todo content/description' },
-              status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'cancelled'], description: 'Todo status' },
+              status: {
+                type: 'string',
+                enum: ['pending', 'in_progress', 'completed', 'cancelled'],
+                description: 'Todo status',
+              },
               priority: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Priority level' },
               parentId: { type: 'string', description: 'Parent todo ID for nesting' },
             },

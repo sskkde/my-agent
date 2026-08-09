@@ -39,12 +39,7 @@ export type SkillSource =
 // main, subagent, background, workflow_step, remote.
 // ---------------------------------------------------------------------------
 
-export type SkillAgentType =
-  | 'main'
-  | 'subagent'
-  | 'background'
-  | 'workflow_step'
-  | 'remote'
+export type SkillAgentType = 'main' | 'subagent' | 'background' | 'workflow_step' | 'remote'
 
 // ---------------------------------------------------------------------------
 // SkillDefinition — the documentation-only record.

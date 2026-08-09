@@ -47,9 +47,7 @@ class FakeLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'fake-provider' }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -79,10 +77,18 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider) }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId) }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId) }
-  getHealthyProviders(): LLMProvider[] { return this.providers }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(providerId: string, priority: number): void {
     const p = this.getProvider(providerId)
     if (p) p.updateConfig({ ...p.config, priority })
@@ -98,7 +104,12 @@ class FakeToolExecutor {
     sessionId?: string
     kernelRunId?: string
     permissionContext: { userId: string; permissions: string[] }
-  }): Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean }; resultPreview?: string }> {
+  }): Promise<{
+    success: boolean
+    data?: unknown
+    error?: { code: string; message: string; recoverable: boolean }
+    resultPreview?: string
+  }> {
     return { success: true, data: {}, resultPreview: '{}' }
   }
 }
@@ -106,8 +117,12 @@ class FakeToolExecutor {
 class FakeContextManager {
   private contextItems: ContextItem[] = []
 
-  addItem(item: ContextItem): void { this.contextItems.push(item) }
-  getItems(): ContextItem[] { return this.contextItems }
+  addItem(item: ContextItem): void {
+    this.contextItems.push(item)
+  }
+  getItems(): ContextItem[] {
+    return this.contextItems
+  }
 
   assembleBundle(): ContextBundle {
     return {
@@ -289,9 +304,7 @@ describe('Invalid tool argument JSON guard', () => {
     ])
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('test-tool') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('test-tool') }))
 
     // (a) dispatcher should NOT have been called for invalid JSON args
     expect(fakeDispatcher.dispatchCalls).toHaveLength(0)
@@ -332,15 +345,10 @@ describe('Invalid tool argument JSON guard', () => {
       },
     ]
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Valid execution.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Valid execution.')])
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('test-tool') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('test-tool') }))
 
     // (a) dispatcher should have been called
     expect(fakeDispatcher.dispatchCalls.length).toBeGreaterThanOrEqual(1)
@@ -373,15 +381,10 @@ describe('Invalid tool argument JSON guard', () => {
       },
     ]
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Mixed batch done.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Mixed batch done.')])
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('test-tool') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('test-tool') }))
 
     // (a) Only the valid tool should have been dispatched
     expect(fakeDispatcher.dispatchCalls).toHaveLength(1)
@@ -433,15 +436,10 @@ describe('Invalid tool argument JSON guard', () => {
       { id: 'call-broken', type: 'function', function: { name: 'test-tool', arguments: '{broken' } },
     ]
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('All malformed handled.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('All malformed handled.')])
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('test-tool') }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ toolProjection: toolProjectionFor('test-tool') }))
 
     // (a) No dispatches — all four are invalid
     expect(fakeDispatcher.dispatchCalls).toHaveLength(0)
@@ -462,9 +460,7 @@ describe('Invalid tool argument JSON guard', () => {
     }
 
     // (d) All four toolCallIds present
-    const resultIds = toolResultEntries
-      .map((e) => (e.content as { toolCallId: string }).toolCallId)
-      .sort()
+    const resultIds = toolResultEntries.map((e) => (e.content as { toolCallId: string }).toolCallId).sort()
     expect(resultIds).toEqual(['call-broken', 'call-extracomma', 'call-openbrace', 'call-plaintext'])
 
     // (e) Pairing valid

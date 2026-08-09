@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { inferSubagentType } from '../../../src/subagents/action-mapper.js'
-import { normalizeAgentLabel, isKnownAgentLabel, UnknownAgentLabelError } from '../../../src/taxonomy/agent-label-normalizer.js'
+import {
+  normalizeAgentLabel,
+  isKnownAgentLabel,
+  UnknownAgentLabelError,
+} from '../../../src/taxonomy/agent-label-normalizer.js'
 import { createAgentProfileRegistry, registerSystemProfiles } from '../../../src/taxonomy/agent-profile-registry.js'
 import type { AgentProfileRegistry } from '../../../src/taxonomy/agent-profile-registry.js'
 import { createSubagentRegistry, type SubagentRegistry } from '../../../src/subagents/registry.js'
@@ -147,7 +151,9 @@ describe('AgentProfileRegistry validation', () => {
   })
 
   it('should throw for unregistered profile IDs', () => {
-    expect(() => registry.assertAllowed('unregistered_profile')).toThrow('Unknown agent profile: "unregistered_profile"')
+    expect(() => registry.assertAllowed('unregistered_profile')).toThrow(
+      'Unknown agent profile: "unregistered_profile"',
+    )
   })
 
   it('should throw for arbitrary LLM-supplied strings', () => {

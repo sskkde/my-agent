@@ -1,10 +1,4 @@
-import type {
-  SkillDefinition,
-  SkillRegistry,
-  SkillRegistrationOptions,
-  SkillCategory,
-  SkillSource,
-} from './types.js'
+import type { SkillDefinition, SkillRegistry, SkillRegistrationOptions, SkillCategory, SkillSource } from './types.js'
 import { isValidSkillId } from './skill-name.js'
 
 class SkillRegistryImpl implements SkillRegistry {
@@ -12,9 +6,7 @@ class SkillRegistryImpl implements SkillRegistry {
 
   register(definition: SkillDefinition, options: SkillRegistrationOptions = {}): void {
     if (!isValidSkillId(definition.skillId)) {
-      throw new Error(
-        `Invalid skill ID: "${definition.skillId}". Skill IDs must match [A-Za-z0-9_-]{1,64}.`,
-      )
+      throw new Error(`Invalid skill ID: "${definition.skillId}". Skill IDs must match [A-Za-z0-9_-]{1,64}.`)
     }
 
     if (this.skills.has(definition.skillId) && !options.overwriteExisting) {
@@ -33,9 +25,7 @@ class SkillRegistryImpl implements SkillRegistry {
   }
 
   list(): SkillDefinition[] {
-    return Array.from(this.skills.values()).sort((a, b) =>
-      a.skillId.localeCompare(b.skillId),
-    )
+    return Array.from(this.skills.values()).sort((a, b) => a.skillId.localeCompare(b.skillId))
   }
 
   listByCategory(category: SkillCategory): SkillDefinition[] {

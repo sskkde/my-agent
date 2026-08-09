@@ -153,7 +153,9 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-      expect(result).toContain('Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.')
+      expect(result).toContain(
+        'Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.',
+      )
     })
 
     it('renders style guidelines', () => {
@@ -165,7 +167,7 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-    expect(result).toContain('## Style Guidelines')
+      expect(result).toContain('## Style Guidelines')
       expect(result).toContain('Use concise language.')
     })
 
@@ -178,7 +180,7 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-    expect(result).toContain('## Constraints')
+      expect(result).toContain('## Constraints')
       expect(result).toContain('- No personal opinions')
       expect(result).toContain('- Stay on topic')
     })
@@ -205,7 +207,7 @@ describe('PersonaProjection', () => {
 
       const result = renderPersonaProjection(projection)
 
-    expect(result).not.toContain('## Constraints')
+      expect(result).not.toContain('## Constraints')
     })
   })
 

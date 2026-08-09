@@ -445,8 +445,12 @@ describe('Prompt Template Runtime - Hash Stability & Flag Interaction Matrix', (
 
       expect(projections.personaProjection!.personaId).toBe('default-assistant')
       expect(projections.personaProjection!.styleGuidelines).toBe('Calm, clear, concise, and boundary-respecting.')
-      expect(projections.toolSelectionPolicy!.heuristics).toBe('Prefer direct answers when reliable; read before write; choose the lowest-risk sufficient action.')
-      expect(projections.memoryPolicyProjection!.useRules).toBe('Memory is private background context; do not mention it unless the user explicitly asks.')
+      expect(projections.toolSelectionPolicy!.heuristics).toBe(
+        'Prefer direct answers when reliable; read before write; choose the lowest-risk sufficient action.',
+      )
+      expect(projections.memoryPolicyProjection!.useRules).toBe(
+        'Memory is private background context; do not mention it unless the user explicitly asks.',
+      )
 
       const builder = makeBuilder()
       clearFlagEnv()

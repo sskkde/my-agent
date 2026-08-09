@@ -49,9 +49,7 @@ class FakeLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'fake-provider' }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -81,10 +79,18 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider) }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId) }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId) }
-  getHealthyProviders(): LLMProvider[] { return this.providers }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(providerId: string, priority: number): void {
     const p = this.getProvider(providerId)
     if (p) p.updateConfig({ ...p.config, priority })
@@ -100,7 +106,12 @@ class FakeToolExecutor {
     sessionId?: string
     kernelRunId?: string
     permissionContext: { userId: string; permissions: string[] }
-  }): Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean }; resultPreview?: string }> {
+  }): Promise<{
+    success: boolean
+    data?: unknown
+    error?: { code: string; message: string; recoverable: boolean }
+    resultPreview?: string
+  }> {
     return { success: true, data: {}, resultPreview: '{}' }
   }
 }
@@ -108,8 +119,12 @@ class FakeToolExecutor {
 class FakeContextManager {
   private contextItems: ContextItem[] = []
 
-  addItem(item: ContextItem): void { this.contextItems.push(item) }
-  getItems(): ContextItem[] { return this.contextItems }
+  addItem(item: ContextItem): void {
+    this.contextItems.push(item)
+  }
+  getItems(): ContextItem[] {
+    return this.contextItems
+  }
 
   assembleBundle(): ContextBundle {
     return {
@@ -229,7 +244,11 @@ describe('Kernel abort signal', () => {
     })
   })
 
-  function createConfig(llmAdapter: FakeLLMAdapter, maxIterations = 10, overrides?: Partial<KernelConfig>): KernelConfig {
+  function createConfig(
+    llmAdapter: FakeLLMAdapter,
+    maxIterations = 10,
+    overrides?: Partial<KernelConfig>,
+  ): KernelConfig {
     return {
       llmAdapter,
       toolExecutor: fakeToolExecutor as unknown as ToolExecutor,
@@ -278,9 +297,7 @@ describe('Kernel abort signal', () => {
     }
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result: KernelRunResult = await kernel.run(
-      createInput({ signal: controller.signal }),
-    )
+    const result: KernelRunResult = await kernel.run(createInput({ signal: controller.signal }))
 
     // Should return immediately with cancelled status
     expect(result.finalStatus).toBe('cancelled')
@@ -305,16 +322,11 @@ describe('Kernel abort signal', () => {
       model: 'test-model',
       content: '',
       role: 'assistant',
-      toolCalls: [
-        { id: 'call-abort', type: 'function', function: { name: 'blocking-tool', arguments: '{}' } },
-      ],
+      toolCalls: [{ id: 'call-abort', type: 'function', function: { name: 'blocking-tool', arguments: '{}' } }],
       finishReason: 'tool_calls',
       createdAt: new Date().toISOString(),
     }
-    const adapter = new FakeLLMAdapter([
-      toolCallResponse,
-      createTextResponse('Should not reach here'),
-    ])
+    const adapter = new FakeLLMAdapter([toolCallResponse, createTextResponse('Should not reach here')])
 
     function toolProjectionFor(...toolNames: string[]): ToolPlaneProjection {
       const tools: ToolDefinition[] = toolNames.map((name) => ({
@@ -357,9 +369,7 @@ describe('Kernel abort signal', () => {
   })
 
   it('should run normally to completion when no signal is provided', async () => {
-    const adapter = new FakeLLMAdapter([
-      createTextResponse('Normal response.'),
-    ])
+    const adapter = new FakeLLMAdapter([createTextResponse('Normal response.')])
 
     const kernel = new AgentKernel(createConfig(adapter))
     const result: KernelRunResult = await kernel.run(createInput())
@@ -382,9 +392,7 @@ describe('Kernel abort signal', () => {
       throw new Error('unreachable')
     }
 
-    const kernel = new AgentKernel(
-      createConfig(adapter, 10, { providerFamily: 'test-non-streaming' }),
-    )
+    const kernel = new AgentKernel(createConfig(adapter, 10, { providerFamily: 'test-non-streaming' }))
 
     const resultPromise = kernel.run(
       createInput({

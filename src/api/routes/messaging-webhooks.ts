@@ -142,9 +142,7 @@ export function registerMessagingWebhookRoutes(
       const resolved = findInstanceByConnectorId(connectorStore, connectorInstanceId)
 
       if (!resolved) {
-        return reply
-          .code(404)
-          .send(envelopeError('NOT_FOUND', 'Connector instance not found', request.requestId))
+        return reply.code(404).send(envelopeError('NOT_FOUND', 'Connector instance not found', request.requestId))
       }
 
       const { instance, definition } = resolved
@@ -159,9 +157,7 @@ export function registerMessagingWebhookRoutes(
       }
 
       if (instance.status !== 'active') {
-        return reply
-          .code(403)
-          .send(envelopeError('FORBIDDEN', 'Connector instance is not active', request.requestId))
+        return reply.code(403).send(envelopeError('FORBIDDEN', 'Connector instance is not active', request.requestId))
       }
 
       // Verify the URL provider matches the definition's connectorId
@@ -198,9 +194,7 @@ export function registerMessagingWebhookRoutes(
 
       const isValid = await adapter.verifyInbound(request.body, headers)
       if (!isValid) {
-        return reply
-          .code(401)
-          .send(envelopeError('UNAUTHORIZED', 'Invalid webhook signature', request.requestId))
+        return reply.code(401).send(envelopeError('UNAUTHORIZED', 'Invalid webhook signature', request.requestId))
       }
 
       // ---------------------------------------------------------------
@@ -301,9 +295,8 @@ export function registerMessagingWebhookRoutes(
           })
         } catch (error: unknown) {
           const rawError = error instanceof Error ? error.message : 'Unknown processing error'
-          const errorMessage = typeof redactSecrets(rawError) === 'string'
-            ? (redactSecrets(rawError) as string)
-            : rawError
+          const errorMessage =
+            typeof redactSecrets(rawError) === 'string' ? (redactSecrets(rawError) as string) : rawError
 
           try {
             const errorEnvelope = context.gateway.formatOutbound(

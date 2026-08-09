@@ -232,9 +232,17 @@ describe('transcript compact-aware skip', () => {
   it('filters transcript tool results whose toolCallIds match compacted items', () => {
     // Given: a transcript with tool results for compacted items
     const transcript = [
-      { role: 'assistant' as const, content: '', toolCalls: [{ id: 'tc-a', type: 'function' as const, function: { name: 'read_file', arguments: '{}' } }] },
+      {
+        role: 'assistant' as const,
+        content: '',
+        toolCalls: [{ id: 'tc-a', type: 'function' as const, function: { name: 'read_file', arguments: '{}' } }],
+      },
       { role: 'tool' as const, content: 'Result from tool a', toolCallId: 'tc-a' },
-      { role: 'assistant' as const, content: '', toolCalls: [{ id: 'tc-c', type: 'function' as const, function: { name: 'read_file', arguments: '{}' } }] },
+      {
+        role: 'assistant' as const,
+        content: '',
+        toolCalls: [{ id: 'tc-c', type: 'function' as const, function: { name: 'read_file', arguments: '{}' } }],
+      },
       { role: 'tool' as const, content: 'Result from tool c', toolCallId: 'tc-c' },
     ]
     const compactedToolCallIds = new Set(['tc-a'])
@@ -265,7 +273,11 @@ describe('transcript compact-aware skip', () => {
 
   it('returns empty when all entries are compacted', () => {
     const transcript = [
-      { role: 'assistant' as const, content: '', toolCalls: [{ id: 'tc-1', type: 'function' as const, function: { name: 'tool', arguments: '{}' } }] },
+      {
+        role: 'assistant' as const,
+        content: '',
+        toolCalls: [{ id: 'tc-1', type: 'function' as const, function: { name: 'tool', arguments: '{}' } }],
+      },
       { role: 'tool' as const, content: 'result', toolCallId: 'tc-1' },
     ]
     const compactedToolCallIds = new Set(['tc-1'])
@@ -278,4 +290,3 @@ describe('transcript compact-aware skip', () => {
 
 // ─── Import the helper under test for transcript filtering ──────────────────
 import { filterCompactedTranscript } from '../../../../src/kernel/model-input/compact-summary-rendering.js'
-

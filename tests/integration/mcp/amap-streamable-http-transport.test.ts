@@ -266,8 +266,9 @@ describe('AMapStreamableHttpTransport', () => {
       const transport = new AMapStreamableHttpTransport(CONFIG)
       await transport.connect()
 
-      await expect(transport.callTool('route_plan', { origin: 'A', destination: 'B' }))
-        .rejects.toThrow('callTool(route_plan)')
+      await expect(transport.callTool('route_plan', { origin: 'A', destination: 'B' })).rejects.toThrow(
+        'callTool(route_plan)',
+      )
     })
   })
 

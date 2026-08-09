@@ -425,9 +425,7 @@ describe('SQLite Infrastructure', () => {
       expect(r1).toBe('tx1')
       expect(r2).toBe('tx2')
 
-      const rows = connection.query<{ value: string }>(
-        'SELECT value FROM test_data ORDER BY value',
-      )
+      const rows = connection.query<{ value: string }>('SELECT value FROM test_data ORDER BY value')
       expect(rows.length).toBe(2)
       expect(rows[0]?.value).toBe('tx1')
       expect(rows[1]?.value).toBe('tx2')

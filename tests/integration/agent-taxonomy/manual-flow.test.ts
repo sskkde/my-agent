@@ -29,10 +29,7 @@ import {
 import { createAgentTypeToolEnvelopeRegistry } from '../../../src/permissions/agent-type-tool-envelope.js'
 import { computeEffectiveToolIdsWithEnvelope } from '../../../src/foreground/effective-tool-ids.js'
 import { SubagentRuntimeImpl } from '../../../src/subagents/subagent-runtime.js'
-import type {
-  ContextBundle,
-  ContextItem,
-} from '../../../src/context/types.js'
+import type { ContextBundle, ContextItem } from '../../../src/context/types.js'
 import type {
   SubagentTaskSpec,
   SubagentConfig,
@@ -57,13 +54,15 @@ class FakeKernelAdapter implements KernelAdapter {
   }
 
   async execute(): Promise<KernelRunResult> {
-    return this.results[this.currentIndex++] ?? {
-      finalStatus: 'completed',
-      finalResponse: 'Subagent completed',
-      iterationsUsed: 1,
-      toolCalls: [],
-      transcript: [],
-    }
+    return (
+      this.results[this.currentIndex++] ?? {
+        finalStatus: 'completed',
+        finalResponse: 'Subagent completed',
+        iterationsUsed: 1,
+        toolCalls: [],
+        transcript: [],
+      }
+    )
   }
 }
 
@@ -350,9 +349,7 @@ describe('Agent Taxonomy Manual Flow', () => {
       expect(run.contextBundle.runId).toBe(run.subagentRunId)
 
       // Parent items must not leak into subagent context
-      const parentItemIds = new Set(
-        [...parentContext.pinnedItems, ...parentContext.orderedItems].map((i) => i.itemId),
-      )
+      const parentItemIds = new Set([...parentContext.pinnedItems, ...parentContext.orderedItems].map((i) => i.itemId))
       const subagentItemIds = new Set(
         [...run.contextBundle.pinnedItems, ...run.contextBundle.orderedItems].map((i) => i.itemId),
       )
@@ -381,10 +378,7 @@ describe('Agent Taxonomy Manual Flow', () => {
       })
 
       // System messages must precede user messages
-      const lastSystemIdx = result.messages.reduce(
-        (lastIdx, m, idx) => (m.role === 'system' ? idx : lastIdx),
-        -1,
-      )
+      const lastSystemIdx = result.messages.reduce((lastIdx, m, idx) => (m.role === 'system' ? idx : lastIdx), -1)
       const firstUserIdx = result.messages.findIndex((m) => m.role === 'user')
       expect(lastSystemIdx).toBeLessThan(firstUserIdx)
 
@@ -454,9 +448,7 @@ describe('Agent Taxonomy Manual Flow', () => {
 
   describe('reject invalid profile', () => {
     it('assertAllowed throws for unknown profile ID', () => {
-      expect(() => registry.assertAllowed('malicious_profile')).toThrow(
-        'Unknown agent profile: "malicious_profile"',
-      )
+      expect(() => registry.assertAllowed('malicious_profile')).toThrow('Unknown agent profile: "malicious_profile"')
     })
 
     it('assertAllowed throws for empty profile ID', () => {
@@ -464,15 +456,11 @@ describe('Agent Taxonomy Manual Flow', () => {
     })
 
     it('assertAllowed throws for path traversal attempt', () => {
-      expect(() => registry.assertAllowed('../../etc/passwd')).toThrow(
-        'Unknown agent profile: "../../etc/passwd"',
-      )
+      expect(() => registry.assertAllowed('../../etc/passwd')).toThrow('Unknown agent profile: "../../etc/passwd"')
     })
 
     it('assertAllowed throws for profile mimicking system profile', () => {
-      expect(() => registry.assertAllowed('system_admin')).toThrow(
-        'Unknown agent profile: "system_admin"',
-      )
+      expect(() => registry.assertAllowed('system_admin')).toThrow('Unknown agent profile: "system_admin"')
     })
 
     it('normalizeAgentLabel throws for unknown label', () => {
@@ -546,7 +534,13 @@ describe('Agent Taxonomy Manual Flow', () => {
     it('policy cannot expand beyond envelope', () => {
       const profileToolIds = ['file_read', 'web_search']
       const policyToolIds = ['file_read', 'web_search', 'exec', 'admin_config']
-      const effective = computeEffectiveToolIdsWithEnvelope('main', catalog, envelopeRegistry, profileToolIds, policyToolIds)
+      const effective = computeEffectiveToolIdsWithEnvelope(
+        'main',
+        catalog,
+        envelopeRegistry,
+        profileToolIds,
+        policyToolIds,
+      )
 
       expect(effective).toContain('file_read')
       expect(effective).toContain('web_search')
@@ -557,7 +551,13 @@ describe('Agent Taxonomy Manual Flow', () => {
     it('envelope is the outermost boundary - no combination can expand beyond it', () => {
       const profileToolIds = ['file_read', 'web_search', 'exec', 'admin_config', 'artifact_create']
       const policyToolIds = ['file_read', 'web_search', 'exec', 'admin_config', 'artifact_create']
-      const effective = computeEffectiveToolIdsWithEnvelope('main', catalog, envelopeRegistry, profileToolIds, policyToolIds)
+      const effective = computeEffectiveToolIdsWithEnvelope(
+        'main',
+        catalog,
+        envelopeRegistry,
+        profileToolIds,
+        policyToolIds,
+      )
 
       expect(effective).toEqual(expect.arrayContaining(['file_read', 'web_search']))
       expect(effective).not.toContain('exec')

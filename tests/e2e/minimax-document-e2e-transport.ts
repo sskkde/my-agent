@@ -180,7 +180,12 @@ export class MiniMaxDocumentMockTransport implements McpToolTransport {
 
       case 'xlsx.validate':
         return {
-          content: [{ type: 'text', text: JSON.stringify({ valid: true, errors: [], summary: { totalRows: 3, validRows: 3, errorRows: 0 } }) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ valid: true, errors: [], summary: { totalRows: 3, validRows: 3, errorRows: 0 } }),
+            },
+          ],
           structuredContent: { valid: true, errors: [], summary: { totalRows: 3, validRows: 3, errorRows: 0 } },
         }
 

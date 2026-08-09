@@ -57,10 +57,7 @@ export function decryptSecret(encrypted: string, iv: string, authTag: string): s
 
     return decrypted.toString('utf8')
   } catch (error) {
-    throw new DecryptionError(
-      error instanceof Error ? error.message : 'Unknown error',
-      { cause: error },
-    )
+    throw new DecryptionError(error instanceof Error ? error.message : 'Unknown error', { cause: error })
   }
 }
 

@@ -22,9 +22,7 @@ import { createConnectorRuntime } from '../../../src/connectors/connector-runtim
 import { createConnectorToolBridge } from '../../../src/connectors/connector-tool-bridge.js'
 import type { ConnectorRuntime, ConnectorCallRequest, ConnectorResponse } from '../../../src/connectors/types.js'
 import type { ExecFileFn } from '../../../src/connectors/agently-mail/cli-runner.js'
-import {
-  registerAgentlyMailConnector,
-} from '../../../src/connectors/agently-mail/index.js'
+import { registerAgentlyMailConnector } from '../../../src/connectors/agently-mail/index.js'
 
 // ─── Fake execFile ────────────────────────────────────────────────────────────
 
@@ -40,49 +38,67 @@ function createFakeExecFile(): ExecFileFn {
     const cmd = argv[0] ?? ''
 
     if (cmd === '+me') {
-      callback(null, JSON.stringify({
-        data: {
-          user: { email: 'test@example.com', name: 'Test User' },
-          aliases: ['test+work@example.com'],
-        },
-      }), '')
+      callback(
+        null,
+        JSON.stringify({
+          data: {
+            user: { email: 'test@example.com', name: 'Test User' },
+            aliases: ['test+work@example.com'],
+          },
+        }),
+        '',
+      )
     } else if (cmd === 'message' && argv[1] === '+list') {
-      callback(null, JSON.stringify({
-        data: {
-          messages: [
-            { id: 'msg_001', subject: 'Hello', from: { name: 'Alice', address: 'alice@example.com' } },
-            { id: 'msg_002', subject: 'World', from: { name: 'Bob', address: 'bob@example.com' } },
-          ],
-          nextCursor: null,
-        },
-      }), '')
+      callback(
+        null,
+        JSON.stringify({
+          data: {
+            messages: [
+              { id: 'msg_001', subject: 'Hello', from: { name: 'Alice', address: 'alice@example.com' } },
+              { id: 'msg_002', subject: 'World', from: { name: 'Bob', address: 'bob@example.com' } },
+            ],
+            nextCursor: null,
+          },
+        }),
+        '',
+      )
     } else if (cmd === 'message' && argv[1] === '+read') {
-      callback(null, JSON.stringify({
-        data: {
-          id: argv[3] ?? 'msg_001',
-          subject: 'Hello',
-          from: { name: 'Alice', address: 'alice@example.com' },
-          to: [{ name: 'Test User', address: 'test@example.com' }],
-          body: 'Hello from integration test',
-          date: '2026-06-26T00:00:00Z',
-          is_read: false,
-          folder: 'inbox',
-          attachments: [],
-        },
-      }), '')
+      callback(
+        null,
+        JSON.stringify({
+          data: {
+            id: argv[3] ?? 'msg_001',
+            subject: 'Hello',
+            from: { name: 'Alice', address: 'alice@example.com' },
+            to: [{ name: 'Test User', address: 'test@example.com' }],
+            body: 'Hello from integration test',
+            date: '2026-06-26T00:00:00Z',
+            is_read: false,
+            folder: 'inbox',
+            attachments: [],
+          },
+        }),
+        '',
+      )
     } else if (cmd === 'message' && argv[1] === '+search') {
-      callback(null, JSON.stringify({
-        data: {
-          messages: [
-            { id: 'msg_003', subject: 'Search hit', from: { name: 'Charlie', address: 'charlie@example.com' } },
-          ],
-          nextCursor: null,
-        },
-      }), '')
+      callback(
+        null,
+        JSON.stringify({
+          data: {
+            messages: [
+              { id: 'msg_003', subject: 'Search hit', from: { name: 'Charlie', address: 'charlie@example.com' } },
+            ],
+            nextCursor: null,
+          },
+        }),
+        '',
+      )
     } else if (cmd === 'message' && (argv[1] === '+send' || argv[1] === '+trash')) {
       callback(
         { code: 8, message: 'confirmation required', killed: false, signal: undefined },
-        JSON.stringify({ error: { code: 'MISSING_CONFIRMATION_TOKEN', message: 'Confirmation required. Token: ctk_integration_123' } }),
+        JSON.stringify({
+          error: { code: 'MISSING_CONFIRMATION_TOKEN', message: 'Confirmation required. Token: ctk_integration_123' },
+        }),
         '',
       )
     } else {
@@ -324,9 +340,7 @@ describe('AgentlyMail Connector Integration', () => {
   describe('Read operations via executeCall', () => {
     it('me → returns success with user data and audit metadata', async () => {
       // When: executing the 'me' operation
-      const response = await runtime.executeCall(
-        makeRequest(instanceId, { operation: 'me' }),
-      ) as ConnectorResponse
+      const response = (await runtime.executeCall(makeRequest(instanceId, { operation: 'me' }))) as ConnectorResponse
 
       // Then: response is success with user data
       expect(response.status).toBe('success')
@@ -338,12 +352,12 @@ describe('AgentlyMail Connector Integration', () => {
 
     it('list_messages → returns success with message list', async () => {
       // When: executing the 'list_messages' operation
-      const response = await runtime.executeCall(
+      const response = (await runtime.executeCall(
         makeRequest(instanceId, {
           operation: 'list_messages',
           params: { dir: 'inbox', limit: 10 },
         }),
-      ) as ConnectorResponse
+      )) as ConnectorResponse
 
       // Then: response is success with data
       expect(response.status).toBe('success')
@@ -353,12 +367,12 @@ describe('AgentlyMail Connector Integration', () => {
 
     it('read_message → returns success with message body', async () => {
       // When: executing the 'read_message' operation
-      const response = await runtime.executeCall(
+      const response = (await runtime.executeCall(
         makeRequest(instanceId, {
           operation: 'read_message',
           params: { id: 'msg_001' },
         }),
-      ) as ConnectorResponse
+      )) as ConnectorResponse
 
       // Then: response is success with message data
       expect(response.status).toBe('success')
@@ -368,12 +382,12 @@ describe('AgentlyMail Connector Integration', () => {
 
     it('search_messages → returns success with search results', async () => {
       // When: executing the 'search_messages' operation
-      const response = await runtime.executeCall(
+      const response = (await runtime.executeCall(
         makeRequest(instanceId, {
           operation: 'search_messages',
           params: { q: 'integration test' },
         }),
-      ) as ConnectorResponse
+      )) as ConnectorResponse
 
       // Then: response is success with results
       expect(response.status).toBe('success')
@@ -387,12 +401,12 @@ describe('AgentlyMail Connector Integration', () => {
   describe('Write operations via executeCall', () => {
     it('send_message first stage → REQUIRES_CONFIRMATION', async () => {
       // When: executing send_message without a confirmation token
-      const response = await runtime.executeCall(
+      const response = (await runtime.executeCall(
         makeRequest(instanceId, {
           operation: 'send_message',
           params: { to: ['alice@example.com'], subject: 'Test', body: 'Hello' },
         }),
-      ) as ConnectorResponse
+      )) as ConnectorResponse
 
       // Then: the adapter starts the upstream confirmation flow
       expect(response.status).toBe('failed')
@@ -403,12 +417,12 @@ describe('AgentlyMail Connector Integration', () => {
 
     it('trash_message first stage → REQUIRES_CONFIRMATION', async () => {
       // When: executing trash_message without a confirmation token
-      const response = await runtime.executeCall(
+      const response = (await runtime.executeCall(
         makeRequest(instanceId, {
           operation: 'trash_message',
           params: { id: 'msg_001' },
         }),
-      ) as ConnectorResponse
+      )) as ConnectorResponse
 
       // Then: the adapter starts the upstream confirmation flow
       expect(response.status).toBe('failed')
@@ -441,9 +455,7 @@ describe('AgentlyMail Connector Integration', () => {
       const inst = rt.createInstance({ ...CONNECTOR_INSTANCE_BASE, connectorDefinitionId: d.id })
 
       // When: executing an operation
-      const response = await rt.executeCall(
-        makeRequest(inst.id, { operation: 'me' }),
-      ) as ConnectorResponse
+      const response = (await rt.executeCall(makeRequest(inst.id, { operation: 'me' }))) as ConnectorResponse
 
       // Then: response is rate_limited with retry metadata
       expect(response.status).toBe('rate_limited')
@@ -463,11 +475,7 @@ describe('AgentlyMail Connector Integration', () => {
       const { rt } = setupRuntime(conn)
 
       const execFileFn: ExecFileFn = (_file, _args, _options, callback) => {
-        callback(
-          { code: 3, message: 'auth expired', killed: false, signal: undefined },
-          '',
-          'Authentication expired',
-        )
+        callback({ code: 3, message: 'auth expired', killed: false, signal: undefined }, '', 'Authentication expired')
         return { kill: () => false }
       }
 
@@ -476,9 +484,7 @@ describe('AgentlyMail Connector Integration', () => {
       const inst = rt.createInstance({ ...CONNECTOR_INSTANCE_BASE, connectorDefinitionId: d.id })
 
       // When: executing an operation
-      const response = await rt.executeCall(
-        makeRequest(inst.id, { operation: 'me' }),
-      ) as ConnectorResponse
+      const response = (await rt.executeCall(makeRequest(inst.id, { operation: 'me' }))) as ConnectorResponse
 
       // Then: response is auth_required
       expect(response.status).toBe('auth_required')
@@ -511,9 +517,7 @@ describe('AgentlyMail Connector Integration', () => {
         const d = rt.registerDefinition(CONNECTOR_DEFINITION)
         const inst = rt.createInstance({ ...CONNECTOR_INSTANCE_BASE, connectorDefinitionId: d.id })
 
-        const response = await rt.executeCall(
-          makeRequest(inst.id, { operation: 'me' }),
-        ) as ConnectorResponse
+        const response = (await rt.executeCall(makeRequest(inst.id, { operation: 'me' }))) as ConnectorResponse
 
         expect(response.status).not.toBe('success')
 

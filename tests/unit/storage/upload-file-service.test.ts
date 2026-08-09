@@ -174,18 +174,14 @@ describe('UploadFileService', () => {
       const fileId = '550e8400-e29b-41d4-a716-446655440000'
       const content = new TextEncoder().encode('this is more than ten bytes')
 
-      await expect(tinyService.write(fileId, toWebStream(content))).rejects.toThrow(
-        StorageSizeExceededError,
-      )
+      await expect(tinyService.write(fileId, toWebStream(content))).rejects.toThrow(StorageSizeExceededError)
     })
 
     it('rejects writes exceeding caller-provided expectedSize', async () => {
       const fileId = '550e8400-e29b-41d4-a716-446655440000'
       const content = new TextEncoder().encode('exceeds expected')
 
-      await expect(service.write(fileId, toWebStream(content), 5)).rejects.toThrow(
-        StorageSizeExceededError,
-      )
+      await expect(service.write(fileId, toWebStream(content), 5)).rejects.toThrow(StorageSizeExceededError)
     })
 
     it('accepts writes at exactly the expected size', async () => {
@@ -209,9 +205,7 @@ describe('UploadFileService', () => {
 
       // The derived path would try to go up from uploadDir, but resolvePath
       // validates that the result stays within uploadDir
-      await expect(service.write(maliciousId, toWebStream(content))).rejects.toThrow(
-        StoragePathTraversalError,
-      )
+      await expect(service.write(maliciousId, toWebStream(content))).rejects.toThrow(StoragePathTraversalError)
     })
 
     it('normal paths stay within uploadDir', async () => {

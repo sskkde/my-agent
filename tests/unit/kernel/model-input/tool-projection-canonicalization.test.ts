@@ -3,7 +3,10 @@ import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../s
 import { TemplateLoader } from '../../../../src/prompt/template-loader.js'
 import { ModelInputBuilder } from '../../../../src/kernel/model-input/model-input-builder.js'
 import { computeTemplateHash } from '../../../../src/prompt/template-hash.js'
-import type { ModelInputBuildInput, SkillPlaneProjection } from '../../../../src/kernel/model-input/model-input-types.js'
+import type {
+  ModelInputBuildInput,
+  SkillPlaneProjection,
+} from '../../../../src/kernel/model-input/model-input-types.js'
 
 function makeTestTemplates(): Map<string, PromptTemplateRecord> {
   return new Map([

@@ -79,9 +79,7 @@ describe('ProviderCatalog', () => {
 
     it('should have all 13 domestic providers in catalog', () => {
       for (const domestic of DOMESTIC_PROVIDERS) {
-        const entry = BUILTIN_PROVIDER_CATALOG.find(
-          (e) => e.providerType === domestic.providerType,
-        )
+        const entry = BUILTIN_PROVIDER_CATALOG.find((e) => e.providerType === domestic.providerType)
         expect(entry).toBeDefined()
         expect(entry?.displayName).toBe(domestic.displayName)
         expect(entry?.family).toBe('openai_compatible')

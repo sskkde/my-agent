@@ -24,8 +24,7 @@ const PROVIDER_DEFS: readonly MessagingProviderDef[] = [
   {
     connectorId: 'feishu',
     name: 'Feishu',
-    description:
-      'Lark/Feishu bot connector for receiving and sending messages via Feishu Open Platform webhooks.',
+    description: 'Lark/Feishu bot connector for receiving and sending messages via Feishu Open Platform webhooks.',
     configSchema: {
       type: 'object',
       required: ['appId', 'appSecret'],
@@ -40,13 +39,16 @@ const PROVIDER_DEFS: readonly MessagingProviderDef[] = [
   {
     connectorId: 'telegram',
     name: 'Telegram',
-    description:
-      'Telegram Bot API connector for receiving updates via polling/webhook and sending messages.',
+    description: 'Telegram Bot API connector for receiving updates via polling/webhook and sending messages.',
     configSchema: {
       type: 'object',
       required: ['botToken'],
       properties: {
-        botToken: { type: 'string', description: 'Telegram bot token from @BotFather (store securely)', isSecret: true },
+        botToken: {
+          type: 'string',
+          description: 'Telegram bot token from @BotFather (store securely)',
+          isSecret: true,
+        },
         webhookSecret: { type: 'string', description: 'Optional webhook secret token for verification' },
       },
     },
@@ -54,8 +56,7 @@ const PROVIDER_DEFS: readonly MessagingProviderDef[] = [
   {
     connectorId: 'dingtalk',
     name: 'DingTalk',
-    description:
-      'DingTalk robot connector for receiving group and private messages via DingTalk Open Platform.',
+    description: 'DingTalk robot connector for receiving group and private messages via DingTalk Open Platform.',
     configSchema: {
       type: 'object',
       required: ['appId', 'appSecret'],
@@ -69,8 +70,7 @@ const PROVIDER_DEFS: readonly MessagingProviderDef[] = [
   {
     connectorId: 'qq',
     name: 'QQ',
-    description:
-      'QQ Official Bot connector for receiving and sending messages via QQ Open Platform.',
+    description: 'QQ Official Bot connector for receiving and sending messages via QQ Open Platform.',
     configSchema: {
       type: 'object',
       required: ['appId', 'appSecret'],
@@ -142,22 +142,18 @@ const TEXT_OUTBOUND: Omit<ConnectorCapability, 'capabilityId'> = {
 // Definitions array (exported for test inspection)
 // ---------------------------------------------------------------------------
 
-export type MessagingConnectorDefinitionInput = Omit<
-  ConnectorDefinition,
-  'id' | 'createdAt' | 'updatedAt'
->
+export type MessagingConnectorDefinitionInput = Omit<ConnectorDefinition, 'id' | 'createdAt' | 'updatedAt'>
 
-export const MESSAGING_CONNECTOR_DEFINITIONS: readonly MessagingConnectorDefinitionInput[] =
-  PROVIDER_DEFS.map((p) => ({
-    connectorId: p.connectorId,
-    name: p.name,
-    connectorType: 'messaging' as const,
-    version: '1.0.0',
-    description: p.description,
-    capabilities: ['text-inbound', 'text-outbound'],
-    configSchema: p.configSchema,
-    status: 'active' as const,
-  }))
+export const MESSAGING_CONNECTOR_DEFINITIONS: readonly MessagingConnectorDefinitionInput[] = PROVIDER_DEFS.map((p) => ({
+  connectorId: p.connectorId,
+  name: p.name,
+  connectorType: 'messaging' as const,
+  version: '1.0.0',
+  description: p.description,
+  capabilities: ['text-inbound', 'text-outbound'],
+  configSchema: p.configSchema,
+  status: 'active' as const,
+}))
 
 // ---------------------------------------------------------------------------
 // Registration

@@ -75,7 +75,9 @@ export async function registerAMapMcpTools(deps: RegisterAMapMcpToolsDeps): Prom
   const apiKey = env.AMAP_MAPS_API_KEY?.trim()
   if (!apiKey) {
     // Enabled but no key — warn and no-op. Never crash.
-    console.warn('[amap-mcp] AMAP_MCP_ENABLED=true but AMAP_MAPS_API_KEY is not set. Skipping AMap MCP tool registration.')
+    console.warn(
+      '[amap-mcp] AMAP_MCP_ENABLED=true but AMAP_MAPS_API_KEY is not set. Skipping AMap MCP tool registration.',
+    )
     return
   }
 
@@ -108,13 +110,10 @@ export async function registerAMapMcpTools(deps: RegisterAMapMcpToolsDeps): Prom
 
     // ── Create transport ───────────────────────────────────────────
     const transport: McpTransport & McpToolTransport =
-      deps.transportOverride ??
-      new AMapStreamableHttpTransport({ endpoint, apiKey })
+      deps.transportOverride ?? new AMapStreamableHttpTransport({ endpoint, apiKey })
 
     // ── Wire session manager with transport ────────────────────────
-    const transports = new Map<string, McpTransport & McpToolTransport>([
-      [AMAP_SERVER_ID, transport],
-    ])
+    const transports = new Map<string, McpTransport & McpToolTransport>([[AMAP_SERVER_ID, transport]])
     const sessionManager = createMcpSessionManager(deps.connection, transports as Map<string, McpTransport>)
 
     // ── Open session (connects transport) ──────────────────────────
@@ -123,7 +122,9 @@ export async function registerAMapMcpTools(deps: RegisterAMapMcpToolsDeps): Prom
     // If the session opened in error state (e.g. transport.connect() threw),
     // we still proceed — the bridge will handle unhealthy sessions gracefully.
     if (session.status === 'unhealthy') {
-      console.warn(`[amap-mcp] Session opened in error state: ${session.lastError ?? 'unknown'}. Tools may not be available.`)
+      console.warn(
+        `[amap-mcp] Session opened in error state: ${session.lastError ?? 'unknown'}. Tools may not be available.`,
+      )
     }
 
     // ── Create bridge and register tools ───────────────────────────
@@ -137,7 +138,9 @@ export async function registerAMapMcpTools(deps: RegisterAMapMcpToolsDeps): Prom
 
     await bridge.registerTools(deps.toolRegistry, session.sessionId)
 
-    const toolCount = deps.toolRegistry.listTools().filter((t) => t.metadata?.bridge === 'mcp' && t.metadata?.serverId === AMAP_SERVER_ID).length
+    const toolCount = deps.toolRegistry
+      .listTools()
+      .filter((t) => t.metadata?.bridge === 'mcp' && t.metadata?.serverId === AMAP_SERVER_ID).length
     console.log(`[amap-mcp] Registered ${toolCount} AMap MCP tool(s).`)
   } catch (error) {
     // Registration failure must never crash the API process.

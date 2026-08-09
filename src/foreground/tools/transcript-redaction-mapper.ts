@@ -74,10 +74,7 @@ export function mapKernelResultToTranscript(
  * Tool-call "running" is NOT a visible message (live SSE only); persisted parts
  * use tool-role messages representing terminal tool results with generic content.
  */
-export function mapKernelResultToVisibleMessages(
-  kernelResult: KernelRunResult,
-  turnId: string,
-): VisibleMessage[] {
+export function mapKernelResultToVisibleMessages(kernelResult: KernelRunResult, turnId: string): VisibleMessage[] {
   const calls = collectSafeToolCalls(kernelResult.transcript)
   const callById = new Map(calls.map((c) => [c.toolCallId, c]))
   const messages: VisibleMessage[] = []
@@ -166,9 +163,7 @@ function findLastIndex<T>(arr: T[], predicate: (item: T) => boolean): number {
 /**
  * Build per-tool summaries from transcript pairs (prefer over kernelResult.toolCalls alone).
  */
-export function buildToolCallSummaries(
-  kernelResult: KernelRunResult,
-): Array<{
+export function buildToolCallSummaries(kernelResult: KernelRunResult): Array<{
   toolCallId: string
   toolName: string
   status: ToolCallStatus
@@ -260,12 +255,7 @@ function mapKernelStatusToToolCallStatus(kernelStatus: KernelRunStatus): ToolCal
 }
 
 function isTerminalKernelStatus(status: KernelRunStatus): boolean {
-  return (
-    status === 'completed' ||
-    status === 'failed' ||
-    status === 'timeout' ||
-    status === 'max_iterations_reached'
-  )
+  return status === 'completed' || status === 'failed' || status === 'timeout' || status === 'max_iterations_reached'
 }
 
 function collectSafeToolCalls(transcript: KernelTranscriptEntry[]): SafeToolCall[] {

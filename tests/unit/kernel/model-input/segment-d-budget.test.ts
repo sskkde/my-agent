@@ -15,7 +15,7 @@ describe('enforceSegmentDBudget', () => {
 
   it('trims provenance subsection when over budget', () => {
     const parts = [
-      'pinned item with lots of text '.repeat(100),  // ~2600 chars ≈ 650 tokens > 2048 budget
+      'pinned item with lots of text '.repeat(100), // ~2600 chars ≈ 650 tokens > 2048 budget
     ]
     const budget: SegmentDBudgetConfig = {
       totalBudget: 4096,
@@ -25,7 +25,7 @@ describe('enforceSegmentDBudget', () => {
         summaryLayers: 512,
         dynamicFields: 128,
         runtimeEnvironment: 128,
-        contextItems: 100,  // small budget to trigger trimming
+        contextItems: 100, // small budget to trigger trimming
         userMessage: 0,
         transcript: 768,
       },
@@ -50,7 +50,7 @@ describe('enforceSegmentDBudget', () => {
         dynamicFields: 128,
         runtimeEnvironment: 128,
         contextItems: 2048,
-        userMessage: 0,   // unlimited
+        userMessage: 0, // unlimited
         transcript: 768,
       },
     }
@@ -69,7 +69,7 @@ describe('enforceSegmentDBudget', () => {
         provenance: 64,
         memoryPolicy: 256,
         summaryLayers: 512,
-        dynamicFields: 0,   // unlimited
+        dynamicFields: 0, // unlimited
         runtimeEnvironment: 128,
         contextItems: 2048,
         userMessage: 0,
@@ -82,7 +82,7 @@ describe('enforceSegmentDBudget', () => {
   })
 
   it('returns dropped reasons when trimming occurs', () => {
-    const longTranscript = 'transcript line '.repeat(500)  // ~7500 chars ≈ 1875 tokens > 768 budget
+    const longTranscript = 'transcript line '.repeat(500) // ~7500 chars ≈ 1875 tokens > 768 budget
     const parts = ['short', longTranscript]
     const budget: SegmentDBudgetConfig = {
       totalBudget: 4096,
@@ -94,7 +94,7 @@ describe('enforceSegmentDBudget', () => {
         runtimeEnvironment: 128,
         contextItems: 2048,
         userMessage: 0,
-        transcript: 100,  // very small to force trimming
+        transcript: 100, // very small to force trimming
       },
     }
     const result = enforceSegmentDBudget(parts, budget)

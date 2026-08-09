@@ -93,12 +93,7 @@ describe('Tool Catalog Consistency', () => {
   it('should mark mock connector tools with isMock: true', () => {
     const fallbackCatalog = getFallbackToolCatalog()
 
-    const mockConnectorToolNames = [
-      'calendar_list',
-      'calendar_create_event',
-      'contacts_search',
-      'docs_read',
-    ]
+    const mockConnectorToolNames = ['calendar_list', 'calendar_create_event', 'contacts_search', 'docs_read']
 
     for (const toolName of mockConnectorToolNames) {
       const entry = fallbackCatalog.find((e) => e.name === toolName)

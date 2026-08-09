@@ -37,10 +37,7 @@ export interface QQConfig {
 // ---------------------------------------------------------------------------
 
 /** QQ event types for different message sources. */
-type QQEventType =
-  | 'C2C_MESSAGE_CREATE'
-  | 'GROUP_AT_MESSAGE_CREATE'
-  | 'AT_MESSAGE_CREATE'
+type QQEventType = 'C2C_MESSAGE_CREATE' | 'GROUP_AT_MESSAGE_CREATE' | 'AT_MESSAGE_CREATE'
 
 interface QQEventAuthor {
   id: string
@@ -74,11 +71,7 @@ export class QQAdapter implements MessagingAdapter {
   private readonly transport: MessagingTransport
   private readonly fetchFn: typeof fetch
 
-  constructor(
-    config: QQConfig,
-    transport: MessagingTransport,
-    fetchFn?: typeof fetch,
-  ) {
+  constructor(config: QQConfig, transport: MessagingTransport, fetchFn?: typeof fetch) {
     this.config = config
     this.transport = transport
     this.fetchFn = fetchFn ?? fetch
@@ -88,9 +81,7 @@ export class QQAdapter implements MessagingAdapter {
   // Inbound
   // -------------------------------------------------------------------------
 
-  async handleInbound(
-    event: InboundRawEvent,
-  ): Promise<NormalizedInboundMessage | null> {
+  async handleInbound(event: InboundRawEvent): Promise<NormalizedInboundMessage | null> {
     const payload = this.parsePayload(event.rawPayload)
     if (!payload) {
       return null
@@ -103,17 +94,12 @@ export class QQAdapter implements MessagingAdapter {
       return null
     }
 
-    const externalConversationId = this.resolveConversationId(
-      event_type,
-      d,
-    )
+    const externalConversationId = this.resolveConversationId(event_type, d)
     if (!externalConversationId) {
       return null
     }
 
-    const timestamp = d.timestamp
-      ? new Date(Number(d.timestamp) * 1000).toISOString()
-      : event.receivedAt
+    const timestamp = d.timestamp ? new Date(Number(d.timestamp) * 1000).toISOString() : event.receivedAt
 
     return {
       provider: PROVIDER_ID,
@@ -138,15 +124,11 @@ export class QQAdapter implements MessagingAdapter {
   // Outbound
   // -------------------------------------------------------------------------
 
-  async sendOutbound(
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ): Promise<MessagingTransportResult> {
+  async sendOutbound(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> {
     // Token refresh seam: obtain access token before sending
     const tokenResult = await this.refreshAccessToken()
     if (!tokenResult.success) {
-      const errorMessage =
-        'error' in tokenResult ? tokenResult.error : 'Token refresh failed'
+      const errorMessage = 'error' in tokenResult ? tokenResult.error : 'Token refresh failed'
       return {
         success: false,
         error: {
@@ -164,13 +146,9 @@ export class QQAdapter implements MessagingAdapter {
   // Verification
   // -------------------------------------------------------------------------
 
-  async verifyInbound(
-    payload: unknown,
-    headers: Record<string, string>,
-  ): Promise<boolean> {
+  async verifyInbound(payload: unknown, headers: Record<string, string>): Promise<boolean> {
     // QQ Bot webhooks may include a signature header
-    const signature =
-      headers['x-qq-bot-signature'] ?? headers['X-QQ-Bot-Signature']
+    const signature = headers['x-qq-bot-signature'] ?? headers['X-QQ-Bot-Signature']
 
     if (!signature) {
       return false
@@ -178,9 +156,7 @@ export class QQAdapter implements MessagingAdapter {
 
     // Validate HMAC-SHA1 signature of the payload using appSecret
     const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload)
-    const expected = createHmac('sha1', this.config.appSecret)
-      .update(rawBody)
-      .digest('hex')
+    const expected = createHmac('sha1', this.config.appSecret).update(rawBody).digest('hex')
 
     return signature === expected
   }
@@ -219,11 +195,7 @@ export class QQAdapter implements MessagingAdapter {
     }
 
     const eventType = obj.event_type as QQEventType
-    const validTypes: QQEventType[] = [
-      'C2C_MESSAGE_CREATE',
-      'GROUP_AT_MESSAGE_CREATE',
-      'AT_MESSAGE_CREATE',
-    ]
+    const validTypes: QQEventType[] = ['C2C_MESSAGE_CREATE', 'GROUP_AT_MESSAGE_CREATE', 'AT_MESSAGE_CREATE']
 
     if (!validTypes.includes(eventType)) {
       return null
@@ -232,10 +204,7 @@ export class QQAdapter implements MessagingAdapter {
     return obj as unknown as QQEventPayload
   }
 
-  private resolveConversationId(
-    eventType: QQEventType,
-    data: QQEventData,
-  ): string | null {
+  private resolveConversationId(eventType: QQEventType, data: QQEventData): string | null {
     switch (eventType) {
       case 'C2C_MESSAGE_CREATE':
         // C2C: conversation is the channel_id (direct message channel)
@@ -251,9 +220,7 @@ export class QQAdapter implements MessagingAdapter {
     }
   }
 
-  private async refreshAccessToken(): Promise<
-    { success: true; token: string } | { success: false; error: string }
-  > {
+  private async refreshAccessToken(): Promise<{ success: true; token: string } | { success: false; error: string }> {
     try {
       const url = this.config.sandbox
         ? 'https://bots.qq.com/app/getAppAccessToken?sandbox=true'
@@ -282,8 +249,7 @@ export class QQAdapter implements MessagingAdapter {
 
       return { success: true, token: data.access_token }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Unknown token error'
+      const message = err instanceof Error ? err.message : 'Unknown token error'
       return { success: false, error: message }
     }
   }
@@ -293,10 +259,6 @@ export class QQAdapter implements MessagingAdapter {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createQQAdapter(
-  config: QQConfig,
-  transport: MessagingTransport,
-  fetchFn?: typeof fetch,
-): QQAdapter {
+export function createQQAdapter(config: QQConfig, transport: MessagingTransport, fetchFn?: typeof fetch): QQAdapter {
   return new QQAdapter(config, transport, fetchFn)
 }

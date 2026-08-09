@@ -72,7 +72,6 @@ describe('write tool risk levels', () => {
     expect(policy!.riskLevel).toBe('high')
     expect(policy!.auditLevel).toBe('high')
   })
-
 })
 
 describe('read tool risk levels', () => {

@@ -68,7 +68,16 @@ class UserStoreImpl implements UserStore {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
 
-    const params = [user.userId, user.username, user.passwordHash, user.role, user.status, user.createdAt, user.updatedAt, tenantId]
+    const params = [
+      user.userId,
+      user.username,
+      user.passwordHash,
+      user.role,
+      user.status,
+      user.createdAt,
+      user.updatedAt,
+      tenantId,
+    ]
 
     this.connection.exec(sql, params)
     return user
@@ -115,10 +124,12 @@ class UserStoreImpl implements UserStore {
 
   updateStatus(userId: string, status: UserStatus, tenantId: string = DEFAULT_TENANT_ID): User | null {
     const now = new Date().toISOString()
-    this.connection.exec(
-      'UPDATE users SET status = ?, updated_at = ? WHERE tenant_id = ? AND user_id = ?',
-      [status, now, tenantId, userId],
-    )
+    this.connection.exec('UPDATE users SET status = ?, updated_at = ? WHERE tenant_id = ? AND user_id = ?', [
+      status,
+      now,
+      tenantId,
+      userId,
+    ])
     return this.getById(userId, tenantId)
   }
 

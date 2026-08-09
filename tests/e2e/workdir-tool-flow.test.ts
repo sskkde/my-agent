@@ -28,11 +28,7 @@ import {
   createSessionWorkdirStateStore,
   type SessionWorkdirStateStore,
 } from '../../src/storage/session-workdir-state-store.js'
-import {
-  createWorkdirService,
-  type WorkdirService,
-  type FileSystemOps,
-} from '../../src/workdirs/workdir-service.js'
+import { createWorkdirService, type WorkdirService, type FileSystemOps } from '../../src/workdirs/workdir-service.js'
 import { createApprovalStore, type ApprovalStore } from '../../src/storage/approval-store.js'
 import { createPermissionGrantStore } from '../../src/storage/permission-grant-store.js'
 import { createEventStore, type EventStore } from '../../src/storage/event-store.js'
@@ -1021,13 +1017,11 @@ describe('E2E: Workdir Tool Flow', () => {
       )
 
       const events = fx.eventStore.query({ sessionId: session })
-      const permissionEvents = events.filter(
-        (e) => (e as { eventType: string }).eventType === 'permission_granted',
-      )
+      const permissionEvents = events.filter((e) => (e as { eventType: string }).eventType === 'permission_granted')
       expect(permissionEvents.length).toBeGreaterThan(0)
 
-      const workdirEvent = permissionEvents.find(
-        (e) => (e as { payload?: { reason?: string } }).payload?.reason?.includes('Workdir-scoped auto-allow'),
+      const workdirEvent = permissionEvents.find((e) =>
+        (e as { payload?: { reason?: string } }).payload?.reason?.includes('Workdir-scoped auto-allow'),
       )
       expect(workdirEvent).toBeDefined()
     })

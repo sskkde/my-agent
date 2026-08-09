@@ -15,12 +15,11 @@ describe('Skill Escalation - Subagent and Workflow Step', () => {
 
   describe('subagent envelope denies admin skills', () => {
     it('subagent cannot access admin-category skills', () => {
-      const effective = computeEffectiveSkillIdsWithEnvelope(
-        'subagent',
-        catalog,
-        envelopeRegistry,
-        ['admin_config', 'artifact_workflow', 'memory_research'],
-      )
+      const effective = computeEffectiveSkillIdsWithEnvelope('subagent', catalog, envelopeRegistry, [
+        'admin_config',
+        'artifact_workflow',
+        'memory_research',
+      ])
 
       expect(effective).toContain('artifact_workflow')
       expect(effective).toContain('memory_research')
@@ -28,12 +27,11 @@ describe('Skill Escalation - Subagent and Workflow Step', () => {
     })
 
     it('subagent can access write and automation skills', () => {
-      const effective = computeEffectiveSkillIdsWithEnvelope(
-        'subagent',
-        catalog,
-        envelopeRegistry,
-        ['artifact_workflow', 'custom_automation', 'memory_research'],
-      )
+      const effective = computeEffectiveSkillIdsWithEnvelope('subagent', catalog, envelopeRegistry, [
+        'artifact_workflow',
+        'custom_automation',
+        'memory_research',
+      ])
 
       expect(effective).toContain('artifact_workflow')
       expect(effective).toContain('custom_automation')
@@ -41,12 +39,10 @@ describe('Skill Escalation - Subagent and Workflow Step', () => {
     })
 
     it('subagent allows MiniMax skills (write category in SUBAGENT_CATEGORIES)', () => {
-      const effective = computeEffectiveSkillIdsWithEnvelope(
-        'subagent',
-        catalog,
-        envelopeRegistry,
-        [...MINIMAX_SKILL_IDS, 'memory_research'],
-      )
+      const effective = computeEffectiveSkillIdsWithEnvelope('subagent', catalog, envelopeRegistry, [
+        ...MINIMAX_SKILL_IDS,
+        'memory_research',
+      ])
 
       expect(effective).toContain('memory_research')
       for (const minimaxId of MINIMAX_SKILL_IDS) {
@@ -72,12 +68,11 @@ describe('Skill Escalation - Subagent and Workflow Step', () => {
 
   describe('workflow_step envelope denies admin skills', () => {
     it('workflow_step cannot access admin-category skills', () => {
-      const effective = computeEffectiveSkillIdsWithEnvelope(
-        'workflow_step',
-        catalog,
-        envelopeRegistry,
-        ['admin_config', 'artifact_workflow', 'custom_automation'],
-      )
+      const effective = computeEffectiveSkillIdsWithEnvelope('workflow_step', catalog, envelopeRegistry, [
+        'admin_config',
+        'artifact_workflow',
+        'custom_automation',
+      ])
 
       expect(effective).toContain('artifact_workflow')
       expect(effective).toContain('custom_automation')
@@ -85,12 +80,10 @@ describe('Skill Escalation - Subagent and Workflow Step', () => {
     })
 
     it('workflow_step allows MiniMax skills (write category in WORKFLOW_STEP_CATEGORIES)', () => {
-      const effective = computeEffectiveSkillIdsWithEnvelope(
-        'workflow_step',
-        catalog,
-        envelopeRegistry,
-        [...MINIMAX_SKILL_IDS, 'session_status'],
-      )
+      const effective = computeEffectiveSkillIdsWithEnvelope('workflow_step', catalog, envelopeRegistry, [
+        ...MINIMAX_SKILL_IDS,
+        'session_status',
+      ])
 
       expect(effective).toContain('session_status')
       for (const minimaxId of MINIMAX_SKILL_IDS) {

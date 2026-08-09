@@ -2,10 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { ApiContext } from '../context.js'
 import { success, envelopeError } from '../response-envelope.js'
 import { ResourceType, Action } from '../../permissions/rbac-types.js'
-import {
-  getMockProviderRegistry,
-  type MockResponseConfig,
-} from '../../llm/mock-provider-registry.js'
+import { getMockProviderRegistry, type MockResponseConfig } from '../../llm/mock-provider-registry.js'
 
 interface SetResponseQueueBody {
   responses: MockResponseConfig[]
@@ -48,16 +45,13 @@ export function registerMockProviderRoutes(server: FastifyInstance, _context: Ap
     },
   )
 
-  server.delete(
-    '/api/v1/mock-provider/interactions',
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      if (!request.requirePermission(ResourceType.observability, Action.delete)) {
-        return reply
-      }
-      getMockProviderRegistry().clearInteractions()
-      return reply.code(204).send()
-    },
-  )
+  server.delete('/api/v1/mock-provider/interactions', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.requirePermission(ResourceType.observability, Action.delete)) {
+      return reply
+    }
+    getMockProviderRegistry().clearInteractions()
+    return reply.code(204).send()
+  })
 
   server.get('/api/v1/mock-provider/responses', async (request: FastifyRequest, reply: FastifyReply) => {
     const queue = getMockProviderRegistry().getResponseQueue()
@@ -73,9 +67,7 @@ export function registerMockProviderRoutes(server: FastifyInstance, _context: Ap
       const body = request.body ?? {}
       const responses = body.responses
       if (!Array.isArray(responses)) {
-        return reply
-          .code(400)
-          .send(envelopeError('BAD_REQUEST', 'responses must be an array', request.requestId))
+        return reply.code(400).send(envelopeError('BAD_REQUEST', 'responses must be an array', request.requestId))
       }
       getMockProviderRegistry().setResponseQueue(responses)
       return reply.code(200).send(success(getMockProviderRegistry().getResponseQueue(), request.requestId))
@@ -92,13 +84,7 @@ export function registerMockProviderRoutes(server: FastifyInstance, _context: Ap
       if (mode !== 'queue' && mode !== 'echo' && mode !== 'default') {
         return reply
           .code(400)
-          .send(
-            envelopeError(
-              'BAD_REQUEST',
-              'mode must be one of: queue, echo, default',
-              request.requestId,
-            ),
-          )
+          .send(envelopeError('BAD_REQUEST', 'mode must be one of: queue, echo, default', request.requestId))
       }
       getMockProviderRegistry().setResponseMode(mode)
       return reply.code(200).send(success({ mode: getMockProviderRegistry().getResponseMode() }, request.requestId))

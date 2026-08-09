@@ -46,17 +46,18 @@ describe('buildCompactPrompt', () => {
 
   it('wraps each source item content inside delimited markers with header', () => {
     // Given: two source items
-    const items = [
-      makeItem('item-1', 'User asked about auth'),
-      makeItem('item-2', 'Implemented JWT validation'),
-    ]
+    const items = [makeItem('item-1', 'User asked about auth'), makeItem('item-2', 'Implemented JWT validation')]
 
     // When: building the prompt
     const prompt = buildCompactPrompt(items)
 
     // Then: each item content appears between delimiters with header
-    expect(prompt).toContain(`${SOURCE_OPEN_DELIMITER}\n[item-1|summary]\nUser asked about auth\n${SOURCE_CLOSE_DELIMITER}`)
-    expect(prompt).toContain(`${SOURCE_OPEN_DELIMITER}\n[item-2|summary]\nImplemented JWT validation\n${SOURCE_CLOSE_DELIMITER}`)
+    expect(prompt).toContain(
+      `${SOURCE_OPEN_DELIMITER}\n[item-1|summary]\nUser asked about auth\n${SOURCE_CLOSE_DELIMITER}`,
+    )
+    expect(prompt).toContain(
+      `${SOURCE_OPEN_DELIMITER}\n[item-2|summary]\nImplemented JWT validation\n${SOURCE_CLOSE_DELIMITER}`,
+    )
   })
 
   it('includes item metadata (itemId, semanticType) in delimited blocks', () => {
@@ -384,12 +385,10 @@ describe('createCompactExecutor', () => {
 
   it('calls LLM with json_object response format and returns applied with compressionRatio', async () => {
     // Given: a valid LLM response and working summary manager
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
-    const llmComplete = vi.fn<(req: LLMRequest) => Promise<LLMResult>>().mockResolvedValue(
-      makeSuccessLLMResult(validCompactJSON),
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
+    const llmComplete = vi
+      .fn<(req: LLMRequest) => Promise<LLMResult>>()
+      .mockResolvedValue(makeSuccessLLMResult(validCompactJSON))
     const llmAdapter = { complete: llmComplete } as unknown as LLMAdapter
     const writeCompactSummary = vi.fn().mockResolvedValue({
       success: true,
@@ -433,9 +432,7 @@ describe('createCompactExecutor', () => {
 
   it('returns skipped when LLM returns success:false', async () => {
     // Given: LLM adapter that returns failure
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmAdapter = {
       complete: vi.fn().mockResolvedValue(makeFailedLLMResult()),
     } as unknown as LLMAdapter
@@ -467,9 +464,7 @@ describe('createCompactExecutor', () => {
 
   it('returns skipped when LLM returns invalid JSON', async () => {
     // Given: LLM returns non-JSON text
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmAdapter = {
       complete: vi.fn().mockResolvedValue(makeSuccessLLMResult('This is not JSON at all')),
     } as unknown as LLMAdapter
@@ -501,13 +496,11 @@ describe('createCompactExecutor', () => {
 
   it('returns skipped when LLM returns schema-invalid JSON (missing summary)', async () => {
     // Given: LLM returns JSON without required fields
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmAdapter = {
-      complete: vi.fn().mockResolvedValue(
-        makeSuccessLLMResult(JSON.stringify({ keyFacts: [], decisions: [], openQuestions: [] })),
-      ),
+      complete: vi
+        .fn()
+        .mockResolvedValue(makeSuccessLLMResult(JSON.stringify({ keyFacts: [], decisions: [], openQuestions: [] }))),
     } as unknown as LLMAdapter
     const summaryManager = { writeCompactSummary: vi.fn() } as unknown as SummaryManager
     const items: ContextItem[] = [
@@ -537,9 +530,7 @@ describe('createCompactExecutor', () => {
 
   it('returns skipped when summary write fails', async () => {
     // Given: summary manager writeCompactSummary returns failure
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmAdapter = {
       complete: vi.fn().mockResolvedValue(makeSuccessLLMResult(validCompactJSON)),
     } as unknown as LLMAdapter
@@ -576,14 +567,18 @@ describe('createCompactExecutor', () => {
 
   it('returns skipped when all candidate items are protected (isCompressible=false or isPinned)', async () => {
     // Given: all candidate items are pinned
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmAdapter = { complete: vi.fn() } as unknown as LLMAdapter
     const summaryManager = { writeCompactSummary: vi.fn() } as unknown as SummaryManager
     const items: ContextItem[] = [
       { itemId: 'p1', sourceType: 'session_history', semanticType: 'summary', content: 'pinned', isPinned: true },
-      { itemId: 'p2', sourceType: 'session_history', semanticType: 'summary', content: 'incompressible', isCompressible: false },
+      {
+        itemId: 'p2',
+        sourceType: 'session_history',
+        semanticType: 'summary',
+        content: 'incompressible',
+        isCompressible: false,
+      },
     ]
     const contextManager = fakeContextManager(items)
 
@@ -610,9 +605,7 @@ describe('createCompactExecutor', () => {
 
   it('returns skipped when candidate set is empty', async () => {
     // Given: empty candidate item IDs
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmAdapter = { complete: vi.fn() } as unknown as LLMAdapter
     const summaryManager = { writeCompactSummary: vi.fn() } as unknown as SummaryManager
     const contextManager = fakeContextManager([])
@@ -637,9 +630,7 @@ describe('createCompactExecutor', () => {
 
   it('uses active model from executor input', async () => {
     // Given: model specified in createCompactExecutor input
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmComplete = vi.fn().mockResolvedValue(makeSuccessLLMResult(validCompactJSON))
     const llmAdapter = { complete: llmComplete } as unknown as LLMAdapter
     const writeCompactSummary = vi.fn().mockResolvedValue({
@@ -673,9 +664,7 @@ describe('createCompactExecutor', () => {
 
   it('passes bounded maxTokens to LLM request', async () => {
     // Given: executor configured
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmComplete = vi.fn().mockResolvedValue(makeSuccessLLMResult(validCompactJSON))
     const llmAdapter = { complete: llmComplete } as unknown as LLMAdapter
     const writeCompactSummary = vi.fn().mockResolvedValue({
@@ -711,9 +700,7 @@ describe('createCompactExecutor', () => {
 
   it('uses input.contextItems instead of contextManager.getItems() for candidate selection', async () => {
     // Given: contextManager.getItems() returns empty, but input.contextItems has candidates
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmComplete = vi.fn().mockResolvedValue(makeSuccessLLMResult(validCompactJSON))
     const llmAdapter = { complete: llmComplete } as unknown as LLMAdapter
     const writeCompactSummary = vi.fn().mockResolvedValue({
@@ -758,9 +745,7 @@ describe('createCompactExecutor', () => {
 
   it('filters mustKeepItemIds from candidates before sending to LLM', async () => {
     // Given: candidates include must-keep items
-    const { createCompactExecutor } = await import(
-      '../../../src/kernel/compaction/compact-executor.js'
-    )
+    const { createCompactExecutor } = await import('../../../src/kernel/compaction/compact-executor.js')
     const llmComplete = vi.fn().mockResolvedValue(makeSuccessLLMResult(validCompactJSON))
     const llmAdapter = { complete: llmComplete } as unknown as LLMAdapter
     const writeCompactSummary = vi.fn().mockResolvedValue({
@@ -771,7 +756,13 @@ describe('createCompactExecutor', () => {
     const summaryManager = { writeCompactSummary } as unknown as SummaryManager
     const items: ContextItem[] = [
       { itemId: 'c1', sourceType: 'session_history', semanticType: 'summary', content: 'item 1', estimatedTokens: 100 },
-      { itemId: 'keep1', sourceType: 'session_history', semanticType: 'summary', content: 'keep me', estimatedTokens: 50 },
+      {
+        itemId: 'keep1',
+        sourceType: 'session_history',
+        semanticType: 'summary',
+        content: 'keep me',
+        estimatedTokens: 50,
+      },
     ]
     const contextManager = fakeContextManager(items)
 
@@ -786,7 +777,11 @@ describe('createCompactExecutor', () => {
     })
 
     // When: executing with mustKeepItemIds
-    const result = await executor({ candidateItemIds: ['c1', 'keep1'], mustKeepItemIds: ['keep1'], contextItems: items })
+    const result = await executor({
+      candidateItemIds: ['c1', 'keep1'],
+      mustKeepItemIds: ['keep1'],
+      contextItems: items,
+    })
 
     // Then: only non-must-keep items sent to LLM; applied with c1 only
     expect(result.status).toBe('applied')

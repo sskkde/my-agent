@@ -147,9 +147,7 @@ describe('MockProviderRegistry response queue', () => {
   })
 
   it('falls back to default response after the queue is exhausted', async () => {
-    getMockProviderRegistry().setResponseQueue([
-      { content: 'queued', finishReason: 'stop' },
-    ])
+    getMockProviderRegistry().setResponseQueue([{ content: 'queued', finishReason: 'stop' }])
 
     const provider = new MockProvider(buildProviderConfig('mock-exhaust'))
 
@@ -281,9 +279,7 @@ describe('MockProviderRegistry clear/reset', () => {
   })
 
   it('reset clears interactions, response queue, and restores default mode', async () => {
-    getMockProviderRegistry().setResponseQueue([
-      { content: 'queued', finishReason: 'stop' },
-    ])
+    getMockProviderRegistry().setResponseQueue([{ content: 'queued', finishReason: 'stop' }])
     getMockProviderRegistry().setResponseMode('echo')
 
     expect(getMockProviderRegistry().getStats().queueLength).toBe(1)

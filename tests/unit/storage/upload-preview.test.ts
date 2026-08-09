@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 
-import {
-  createUploadPreviewExtractor,
-  type UploadPreviewExtractor,
-} from '../../../src/storage/upload-preview.js'
+import { createUploadPreviewExtractor, type UploadPreviewExtractor } from '../../../src/storage/upload-preview.js'
 import { resetUploadConfigCache } from '../../../src/config/upload-config.js'
 
 describe('UploadPreviewExtractor', () => {

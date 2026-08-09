@@ -36,10 +36,7 @@ export function resolveUserId(request: FastifyRequest): string {
  * Build a `BrowserStatusResponse` from the manager's current state. When no
  * browser session exists, returns an idle status with null url/viewport.
  */
-export function buildStatusResponse(
-  sessionId: string,
-  manager: BrowserSessionManager,
-): BrowserStatusResponse {
+export function buildStatusResponse(sessionId: string, manager: BrowserSessionManager): BrowserStatusResponse {
   const meta = manager.getSession(toBrowserSessionId(sessionId))
   if (!meta) {
     return {

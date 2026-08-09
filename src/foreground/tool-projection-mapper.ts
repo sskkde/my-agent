@@ -237,9 +237,7 @@ export function applyEnvelopeToProjection(
     }
   }
 
-  const filteredDefinitions = projectionResult.toolDefinitions.filter((def) =>
-    filteredIds.includes(def.function.name),
-  )
+  const filteredDefinitions = projectionResult.toolDefinitions.filter((def) => filteredIds.includes(def.function.name))
 
   return {
     allowedToolIds: filteredIds,

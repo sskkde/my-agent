@@ -67,12 +67,7 @@ function inferToolSource(tool: ToolDefinition): ToolSource {
     return 'foreground'
   }
 
-  const mockConnectorToolNames = new Set([
-    'calendar_list',
-    'calendar_create_event',
-    'contacts_search',
-    'docs_read',
-  ])
+  const mockConnectorToolNames = new Set(['calendar_list', 'calendar_create_event', 'contacts_search', 'docs_read'])
 
   if (mockConnectorToolNames.has(tool.name)) {
     return 'mock'

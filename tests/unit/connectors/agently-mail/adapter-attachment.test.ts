@@ -57,18 +57,22 @@ describe('AgentlyMailAdapter attachment download', () => {
     })
     const adapter = new AgentlyMailAdapter(runner)
 
-    const response = await adapter.execute(
+    const response = (await adapter.execute(
       FAKE_INSTANCE,
       makeRequest({ msg: 'msg_123', att: 'att_456', output: 'downloads' }),
-    ) as ConnectorResponse
+    )) as ConnectorResponse
 
     expect(calls).toHaveLength(1)
     expect(calls[0]?.operation).toBe('download_attachment')
     expect(calls[0]?.argv).toEqual([
-      'attachment', '+download',
-      '--msg', 'msg_123',
-      '--att', 'att_456',
-      '--output', 'downloads',
+      'attachment',
+      '+download',
+      '--msg',
+      'msg_123',
+      '--att',
+      'att_456',
+      '--output',
+      'downloads',
     ])
     expect(response.status).toBe('success')
   })
@@ -77,10 +81,10 @@ describe('AgentlyMailAdapter attachment download', () => {
     const { runner, calls } = createRunner({ stdout: '{}', stderr: '', exitCode: 0, envelope: null })
     const adapter = new AgentlyMailAdapter(runner)
 
-    const response = await adapter.execute(
+    const response = (await adapter.execute(
       FAKE_INSTANCE,
       makeRequest({ msg: 'msg_123', att: 'att_456', output: '/tmp/downloads' }),
-    ) as ConnectorResponse
+    )) as ConnectorResponse
 
     expect(calls).toHaveLength(0)
     expect(response.status).toBe('failed')

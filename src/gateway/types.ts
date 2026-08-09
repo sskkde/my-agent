@@ -101,12 +101,19 @@ export interface Stores {
     ) => Array<{ actionId: string; status: string; targetRef?: Record<string, unknown> }>
   }
   workdirService?: {
-    getActiveWorkdir: (sessionId: string, userId: string, tenantId: string) => {
+    getActiveWorkdir: (
+      sessionId: string,
+      userId: string,
+      tenantId: string,
+    ) => {
       id: string
       name: string
       path: string
     } | null
-    createDefaultWorkdir: (userId: string, tenantId: string) => {
+    createDefaultWorkdir: (
+      userId: string,
+      tenantId: string,
+    ) => {
       id: string
       name: string
       path: string

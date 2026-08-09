@@ -129,7 +129,7 @@ describe('File Upload RBAC Security Tests', () => {
       expect(checkPermission('user', ResourceType.files, Action.read, context)).toBe(true)
     })
 
-    it('should deny user from reading another user\'s files', () => {
+    it("should deny user from reading another user's files", () => {
       const context: OwnershipContext = {
         userId: 'user-1',
         resourceOwnerId: 'user-2',
@@ -145,7 +145,7 @@ describe('File Upload RBAC Security Tests', () => {
       expect(checkPermission('user', ResourceType.files, Action.create, context)).toBe(false)
     })
 
-    it('should deny user from deleting another user\'s files', () => {
+    it("should deny user from deleting another user's files", () => {
       const context: OwnershipContext = {
         userId: 'user-1',
         resourceOwnerId: 'user-2',

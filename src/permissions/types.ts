@@ -12,7 +12,13 @@ import type { PermissionGrant as StoragePermissionGrant } from '../storage/permi
  *   background_limited → background_limited (only read/query/internal_read)
  *   hard_deny       → hard_deny        (deny everything unconditionally)
  */
-export type PermissionMode = 'read_only' | 'ask_on_write' | 'write_allowed' | 'restricted' | 'background_limited' | 'hard_deny'
+export type PermissionMode =
+  | 'read_only'
+  | 'ask_on_write'
+  | 'write_allowed'
+  | 'restricted'
+  | 'background_limited'
+  | 'hard_deny'
 
 /** All valid PermissionMode values, useful for runtime validation. */
 export const ALL_PERMISSION_MODES: readonly PermissionMode[] = [

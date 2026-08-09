@@ -272,9 +272,7 @@ const DOMESTIC_PROVIDERS_MAP: ReadonlyMap<string, DomesticProviderDefinition> = 
  * @param providerType - The provider type to look up
  * @returns The provider definition, or undefined if not found
  */
-export function getDomesticProvider(
-  providerType: string,
-): DomesticProviderDefinition | undefined {
+export function getDomesticProvider(providerType: string): DomesticProviderDefinition | undefined {
   return DOMESTIC_PROVIDERS_MAP.get(providerType)
 }
 

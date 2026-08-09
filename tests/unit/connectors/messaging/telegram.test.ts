@@ -6,10 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import {
-  parseTelegram429,
-  createTelegramAdapter,
-} from '../../../../src/connectors/messaging/providers/telegram.js'
+import { parseTelegram429, createTelegramAdapter } from '../../../../src/connectors/messaging/providers/telegram.js'
 import { createMockTransport } from '../../../../src/connectors/messaging/mock-transport.js'
 import type {
   InboundRawEvent,
@@ -68,10 +65,7 @@ const EDITED_MESSAGE_UPDATE = {
   },
 }
 
-function makeRawEvent(
-  payload: unknown,
-  headers?: Record<string, string>,
-): InboundRawEvent {
+function makeRawEvent(payload: unknown, headers?: Record<string, string>): InboundRawEvent {
   return {
     provider: 'telegram',
     connectorInstanceId: 'inst-tg-1',
@@ -111,10 +105,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const result = await adapter.handleInbound(makeRawEvent(PRIVATE_CHAT_UPDATE))
 
@@ -136,10 +127,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const result = await adapter.handleInbound(makeRawEvent(GROUP_CHAT_UPDATE))
 
@@ -157,10 +145,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const result = await adapter.handleInbound(makeRawEvent(NO_TEXT_UPDATE))
       expect(result).toBeNull()
@@ -171,14 +156,9 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
-      const result = await adapter.handleInbound(
-        makeRawEvent(EDITED_MESSAGE_UPDATE),
-      )
+      const result = await adapter.handleInbound(makeRawEvent(EDITED_MESSAGE_UPDATE))
 
       expect(result).not.toBeNull()
       expect(result!.text).toBe('edited text')
@@ -190,10 +170,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       expect(await adapter.handleInbound(makeRawEvent(null))).toBeNull()
       expect(await adapter.handleInbound(makeRawEvent({}))).toBeNull()
@@ -205,14 +182,9 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
-      const result = await adapter.handleInbound(
-        makeRawEvent({ update_id: 999 }),
-      )
+      const result = await adapter.handleInbound(makeRawEvent({ update_id: 999 }))
       expect(result).toBeNull()
     })
   })
@@ -234,10 +206,7 @@ describe('TelegramAdapter', () => {
         },
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const target = makeTarget('12345')
       const message = makeOutbound('Hello!', '12345')
@@ -255,10 +224,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const target = makeTarget('99')
       const message = makeOutbound('Test', '99')
@@ -282,10 +248,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const body = adapter.buildSendBody(makeOutbound('Hi', '42'))
 
@@ -300,10 +263,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const evidence = adapter.buildSendEvidence(makeOutbound('Secret', '1'))
 
@@ -327,10 +287,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const headers = { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET }
       expect(await adapter.verifyInbound({}, headers)).toBe(true)
@@ -341,10 +298,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const headers = { 'X-Telegram-Bot-Api-Secret-Token': WEBHOOK_SECRET }
       expect(await adapter.verifyInbound({}, headers)).toBe(true)
@@ -355,10 +309,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const headers = { 'x-telegram-bot-api-secret-token': 'wrong-secret' }
       expect(await adapter.verifyInbound({}, headers)).toBe(false)
@@ -369,10 +320,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       expect(await adapter.verifyInbound({}, {})).toBe(false)
     })
@@ -388,10 +336,7 @@ describe('TelegramAdapter', () => {
         sendText: async () => ({ success: true }),
         verifyWebhook: async () => true,
       })
-      const adapter = createTelegramAdapter(
-        { botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET },
-        transport,
-      )
+      const adapter = createTelegramAdapter({ botToken: BOT_TOKEN, webhookSecret: WEBHOOK_SECRET }, transport)
 
       const caps: MessagingCapabilities = adapter.getCapabilities()
 

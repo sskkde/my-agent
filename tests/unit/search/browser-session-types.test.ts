@@ -58,25 +58,19 @@ function allInvalidTransitions(): [OwnershipState, OwnershipState][] {
 
 describe('validateBrowserSessionTransition', () => {
   describe('valid transitions', () => {
-    it.each(allValidTransitions())(
-      'should allow %s → %s',
-      (from: OwnershipState, to: OwnershipState) => {
-        const result = validateBrowserSessionTransition(from, to)
-        expect(result.valid).toBe(true)
-        expect(result.error).toBeNull()
-      },
-    )
+    it.each(allValidTransitions())('should allow %s → %s', (from: OwnershipState, to: OwnershipState) => {
+      const result = validateBrowserSessionTransition(from, to)
+      expect(result.valid).toBe(true)
+      expect(result.error).toBeNull()
+    })
   })
 
   describe('invalid transitions', () => {
-    it.each(allInvalidTransitions())(
-      'should reject %s → %s',
-      (from: OwnershipState, to: OwnershipState) => {
-        const result = validateBrowserSessionTransition(from, to)
-        expect(result.valid).toBe(false)
-        expect(result.error).not.toBeNull()
-      },
-    )
+    it.each(allInvalidTransitions())('should reject %s → %s', (from: OwnershipState, to: OwnershipState) => {
+      const result = validateBrowserSessionTransition(from, to)
+      expect(result.valid).toBe(false)
+      expect(result.error).not.toBeNull()
+    })
   })
 
   describe('critical rejection: human_controlled → agent_controlled (must go through resuming)', () => {
@@ -115,10 +109,7 @@ describe('validateBrowserSessionTransition', () => {
 
   describe('invalid source state', () => {
     it('should reject an unknown source state', () => {
-      const result = validateBrowserSessionTransition(
-        'nonexistent' as OwnershipState,
-        'agent_controlled',
-      )
+      const result = validateBrowserSessionTransition('nonexistent' as OwnershipState, 'agent_controlled')
       expect(result.valid).toBe(false)
       expect(result.error?.code).toBe('INVALID_SOURCE_STATE')
     })
@@ -126,10 +117,7 @@ describe('validateBrowserSessionTransition', () => {
 
   describe('invalid target state', () => {
     it('should reject an unknown target state', () => {
-      const result = validateBrowserSessionTransition(
-        'agent_controlled',
-        'nonexistent' as OwnershipState,
-      )
+      const result = validateBrowserSessionTransition('agent_controlled', 'nonexistent' as OwnershipState)
       expect(result.valid).toBe(false)
       expect(result.error?.code).toBe('INVALID_TARGET_STATE')
     })
@@ -419,20 +407,11 @@ describe('OWNERSHIP_TRANSITIONS', () => {
   })
 
   it('should have the correct transitions for agent_controlled', () => {
-    expect(OWNERSHIP_TRANSITIONS.agent_controlled).toEqual([
-      'handoff_requested',
-      'closed',
-      'error',
-    ])
+    expect(OWNERSHIP_TRANSITIONS.agent_controlled).toEqual(['handoff_requested', 'closed', 'error'])
   })
 
   it('should have the correct transitions for handoff_requested', () => {
-    expect(OWNERSHIP_TRANSITIONS.handoff_requested).toEqual([
-      'human_controlled',
-      'agent_controlled',
-      'closed',
-      'error',
-    ])
+    expect(OWNERSHIP_TRANSITIONS.handoff_requested).toEqual(['human_controlled', 'agent_controlled', 'closed', 'error'])
   })
 
   it('should have the correct transitions for human_controlled', () => {

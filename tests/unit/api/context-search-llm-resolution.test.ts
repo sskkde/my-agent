@@ -11,9 +11,7 @@ import type {
  * Fakes that match the real store interfaces (only the slices resolveSearchLlm reads).
  */
 
-function createProviderSanitized(
-  overrides: Partial<ProviderConfigSanitized>,
-): ProviderConfigSanitized {
+function createProviderSanitized(overrides: Partial<ProviderConfigSanitized>): ProviderConfigSanitized {
   return {
     providerId: 'provider-1',
     userId: 'default-user',
@@ -38,15 +36,12 @@ function createProviderConfigStore(
   providers: ProviderConfigSanitized[],
 ): Pick<ProviderConfigStore, 'getById' | 'listAll'> {
   return {
-    getById: (providerId: string) =>
-      providers.find((p) => p.providerId === providerId) ?? null,
+    getById: (providerId: string) => providers.find((p) => p.providerId === providerId) ?? null,
     listAll: () => providers,
   }
 }
 
-function createAgentConfigStore(
-  config: AgentConfig | null,
-): Pick<AgentConfigStore, 'getGlobalDefault'> {
+function createAgentConfigStore(config: AgentConfig | null): Pick<AgentConfigStore, 'getGlobalDefault'> {
   return {
     getGlobalDefault: () => config,
   }

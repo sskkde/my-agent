@@ -6,14 +6,9 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import {
-  FeishuAdapter,
-  createFeishuAdapter,
-} from '../../../../src/connectors/messaging/providers/feishu.js'
+import { FeishuAdapter, createFeishuAdapter } from '../../../../src/connectors/messaging/providers/feishu.js'
 import type { FeishuConfig } from '../../../../src/connectors/messaging/providers/feishu.js'
-import {
-  createMockTransport,
-} from '../../../../src/connectors/messaging/mock-transport.js'
+import { createMockTransport } from '../../../../src/connectors/messaging/mock-transport.js'
 import type {
   InboundRawEvent,
   DeliveryTarget,
@@ -81,10 +76,7 @@ function makeFeishuEventCallback(
   }
 }
 
-function makeRawEvent(
-  rawPayload: unknown,
-  overrides?: Partial<InboundRawEvent>,
-): InboundRawEvent {
+function makeRawEvent(rawPayload: unknown, overrides?: Partial<InboundRawEvent>): InboundRawEvent {
   return {
     provider: 'feishu',
     connectorInstanceId: 'inst-feishu-001',
@@ -587,9 +579,7 @@ describe('FeishuAdapter', () => {
 
   describe('redactSecrets integration', () => {
     it('should not leak secrets in error paths', async () => {
-      const { redactSecrets } = await import(
-        '../../../../src/connectors/messaging/secret-redaction.js'
-      )
+      const { redactSecrets } = await import('../../../../src/connectors/messaging/secret-redaction.js')
 
       const safeConfig = redactSecrets(feishuConfig)
       expect(safeConfig).toEqual({

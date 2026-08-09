@@ -41,9 +41,7 @@ const ALL_LAUNCH_SOURCES: readonly LaunchSource[] = [
 
 // ── Error codes ─────────────────────────────────────────────────────
 
-export type LaunchPolicyErrorCode =
-  | 'LAUNCH_SOURCE_NOT_ALLOWED'
-  | 'UNKNOWN_LAUNCH_SOURCE'
+export type LaunchPolicyErrorCode = 'LAUNCH_SOURCE_NOT_ALLOWED' | 'UNKNOWN_LAUNCH_SOURCE'
 
 export class LaunchPolicyError extends Error {
   readonly code: LaunchPolicyErrorCode

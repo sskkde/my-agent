@@ -3,8 +3,13 @@ import type { AgentType, ContextBundle } from '../context/types.js'
 import type { ToolDefinition } from '../llm/types.js'
 
 export type GoldenCaseCategory =
-  | 'direct_answer' | 'tool_selection' | 'permission_denial'
-  | 'schema_repair' | 'memory_retrieval' | 'search_evidence' | 'provider_fallback'
+  | 'direct_answer'
+  | 'tool_selection'
+  | 'permission_denial'
+  | 'schema_repair'
+  | 'memory_retrieval'
+  | 'search_evidence'
+  | 'provider_fallback'
 
 export interface GoldenCaseInput {
   mode: ModelInputMode

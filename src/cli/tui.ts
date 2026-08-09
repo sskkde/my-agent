@@ -418,11 +418,7 @@ async function executeStatus(state: CliState): Promise<string> {
 // Command: /login and /logout
 // =============================================================================
 
-async function executeLogin(
-  args: string[],
-  state: CliState,
-  runtime: CommandRuntime,
-): Promise<string> {
+async function executeLogin(args: string[], state: CliState, runtime: CommandRuntime): Promise<string> {
   let username: string
   let password: string
 
@@ -533,7 +529,7 @@ async function executeSessions(state: CliState): Promise<string> {
     for (const s of data.items) {
       const marker = s.sessionId === state.currentSessionId ? `${COLORS.green}*${COLORS.reset}` : ' '
       const title = s.title || 'Untitled'
-      const status = s.status === 'active' ? `${COLORS.green}active${COLORS.reset}` : s.status ?? 'unknown'
+      const status = s.status === 'active' ? `${COLORS.green}active${COLORS.reset}` : (s.status ?? 'unknown')
       out += `${marker} ${COLORS.cyan}${s.sessionId}${COLORS.reset}  ${title}  [${status}]  ${s.messageCount ?? 0} msgs\n`
     }
     out += `\n* = current session. Use /session switch <id> to change.`
@@ -632,8 +628,7 @@ async function executeProviders(state: CliState): Promise<string> {
     const list = Array.isArray(providers) ? providers : []
     if (list.length > 0) {
       for (const provider of list) {
-        const status =
-          provider.enabled !== false ? `${COLORS.green}●${COLORS.reset}` : `${COLORS.gray}○${COLORS.reset}`
+        const status = provider.enabled !== false ? `${COLORS.green}●${COLORS.reset}` : `${COLORS.gray}○${COLORS.reset}`
         out += `  ${status} ${provider.displayName || provider.name || provider.id}\n`
         if (provider.description) {
           out += `      ${COLORS.dim}${provider.description}${COLORS.reset}\n`
@@ -770,11 +765,7 @@ async function promptForSecret(promptText: string): Promise<string> {
   })
 }
 
-async function handleProviderConnect(
-  args: string[],
-  state: CliState,
-  runtime: CommandRuntime,
-): Promise<string> {
+async function handleProviderConnect(args: string[], state: CliState, runtime: CommandRuntime): Promise<string> {
   if (args.length < 1) {
     return `Usage: /provider connect <provider-type>\n\n` + `Valid provider types: ${VALID_PROVIDER_TYPES.join(', ')}`
   }
@@ -890,7 +881,9 @@ async function handleProviderEnable(args: string[], enableValue: boolean, state:
 
     const status = data.enabled ? `${COLORS.green}enabled${COLORS.reset}` : `${COLORS.gray}disabled${COLORS.reset}`
     return (
-      `${COLORS.green}✓${COLORS.reset} Provider ${action}d\n\n` + `Provider: ${data.displayName}\n` + `Status: ${status}`
+      `${COLORS.green}✓${COLORS.reset} Provider ${action}d\n\n` +
+      `Provider: ${data.displayName}\n` +
+      `Status: ${status}`
     )
   } catch (error) {
     return formatApiError(error)
@@ -924,11 +917,7 @@ async function handleProviderDelete(args: string[], state: CliState, runtime: Co
   }
 }
 
-async function handleProviderSubcommand(
-  args: string[],
-  state: CliState,
-  runtime: CommandRuntime,
-): Promise<string> {
+async function handleProviderSubcommand(args: string[], state: CliState, runtime: CommandRuntime): Promise<string> {
   if (args.length === 0) {
     return (
       `Usage: /provider <subcommand>\n\n` +
@@ -1022,11 +1011,7 @@ export async function handleChatInput(text: string, state: CliState): Promise<In
 // Command dispatch
 // =============================================================================
 
-async function executeCommand(
-  parsed: ParsedCommand,
-  state: CliState,
-  runtime: CommandRuntime,
-): Promise<string> {
+async function executeCommand(parsed: ParsedCommand, state: CliState, runtime: CommandRuntime): Promise<string> {
   const commandName = resolveAlias(parsed.command).toLowerCase()
 
   switch (commandName) {

@@ -62,15 +62,24 @@ describe('AgentlyMailAdapter write confirmation', () => {
     ])
     const adapter = new AgentlyMailAdapter(runner)
 
-    const response = await adapter.execute(
+    const response = (await adapter.execute(
       FAKE_INSTANCE,
       makeRequest({
         params: { to: ['alice@example.com'], subject: 'Hello', body: 'World' },
       }),
-    ) as ConnectorResponse
+    )) as ConnectorResponse
 
     expect(calls).toHaveLength(1)
-    expect(calls[0]?.argv).toEqual(['message', '+send', '--to', 'alice@example.com', '--subject', 'Hello', '--body', 'World'])
+    expect(calls[0]?.argv).toEqual([
+      'message',
+      '+send',
+      '--to',
+      'alice@example.com',
+      '--subject',
+      'Hello',
+      '--body',
+      'World',
+    ])
     expect(response.status).toBe('failed')
     expect(response.error?.code).toBe('REQUIRES_CONFIRMATION')
     expect(response.error?.recoverable).toBe(true)
@@ -86,18 +95,23 @@ describe('AgentlyMailAdapter write confirmation', () => {
     const adapter = new AgentlyMailAdapter(runner)
 
     await adapter.execute(FAKE_INSTANCE, makeRequest({ params }))
-    const response = await adapter.execute(
+    const response = (await adapter.execute(
       FAKE_INSTANCE,
       makeRequest({ params: { ...params, confirmationToken: 'ctk_send_456' } }),
-    ) as ConnectorResponse
+    )) as ConnectorResponse
 
     expect(calls).toHaveLength(2)
     expect(calls[1]?.argv).toEqual([
-      'message', '+send',
-      '--to', 'alice@example.com',
-      '--subject', 'Hello',
-      '--body', 'World',
-      '--confirmation-token', 'ctk_send_456',
+      'message',
+      '+send',
+      '--to',
+      'alice@example.com',
+      '--subject',
+      'Hello',
+      '--body',
+      'World',
+      '--confirmation-token',
+      'ctk_send_456',
     ])
     expect(response.status).toBe('success')
     expect(response.data).toEqual({ id: 'msg_sent_1' })

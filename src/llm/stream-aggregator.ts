@@ -55,9 +55,7 @@ export class StreamResponseAggregator {
     }
   }
 
-  private applyToolCallDelta(
-    chunk: Extract<LLMStreamChunk, { kind: 'tool_call_delta' }>,
-  ): void {
+  private applyToolCallDelta(chunk: Extract<LLMStreamChunk, { kind: 'tool_call_delta' }>): void {
     const existing = this.toolCallsByIndex.get(chunk.index) ?? { arguments: '' }
     if (chunk.id !== undefined && chunk.id.length > 0) {
       existing.id = chunk.id

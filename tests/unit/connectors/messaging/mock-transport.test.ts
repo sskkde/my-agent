@@ -4,14 +4,8 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import {
-  MockMessagingTransport,
-  createMockTransport,
-} from '../../../../src/connectors/messaging/mock-transport.js'
-import type {
-  DeliveryTarget,
-  OutboundTextMessage,
-} from '../../../../src/connectors/messaging/types.js'
+import { MockMessagingTransport, createMockTransport } from '../../../../src/connectors/messaging/mock-transport.js'
+import type { DeliveryTarget, OutboundTextMessage } from '../../../../src/connectors/messaging/types.js'
 
 const sampleTarget: DeliveryTarget = {
   provider: 'telegram',
@@ -37,9 +31,9 @@ describe('MockMessagingTransport', () => {
 
     it('should throw on verifyWebhook without override', async () => {
       const transport = new MockMessagingTransport()
-      await expect(
-        transport.verifyWebhook({ challenge: 'abc' }, {}, {}),
-      ).rejects.toThrow('MockMessagingTransport: real network blocked')
+      await expect(transport.verifyWebhook({ challenge: 'abc' }, {}, {})).rejects.toThrow(
+        'MockMessagingTransport: real network blocked',
+      )
     })
   })
 
@@ -70,10 +64,7 @@ describe('MockMessagingTransport', () => {
       })
 
       await transport.sendText(sampleTarget, sampleMessage)
-      await transport.sendText(
-        { ...sampleTarget, conversationId: 'conv-2' },
-        { ...sampleMessage, text: 'Second' },
-      )
+      await transport.sendText({ ...sampleTarget, conversationId: 'conv-2' }, { ...sampleMessage, text: 'Second' })
 
       const calls = transport.getRecordedCalls()
       expect(calls).toHaveLength(2)

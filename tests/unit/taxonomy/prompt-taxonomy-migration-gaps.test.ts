@@ -20,26 +20,20 @@ import {
   registerSystemProfiles,
   type AgentProfileRegistry,
 } from '../../../src/taxonomy/agent-profile-registry.js'
-import {
-  PROMPT_TEMPLATE_REGISTRY,
-  PromptTemplateRegistry,
-} from '../../../src/prompt/prompt-template-registry.js'
+import { PROMPT_TEMPLATE_REGISTRY, PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js'
 import type { AgentType } from '../../../src/context/types.js'
 import type { PromptProviderFamily } from '../../../src/llm/types.js'
 import { assertSearchScope } from '../../../src/search/search-subagent-types.js'
 import { createSkillRegistry, type SkillRegistry } from '../../../src/skills/skill-registry.js'
 import { registerBuiltinSkills } from '../../../src/skills/builtin/manifest.js'
-import { createAgentTypeSkillEnvelopeRegistry, type AgentTypeSkillEnvelopeRegistry } from '../../../src/permissions/agent-type-skill-envelope.js'
+import {
+  createAgentTypeSkillEnvelopeRegistry,
+  type AgentTypeSkillEnvelopeRegistry,
+} from '../../../src/permissions/agent-type-skill-envelope.js'
 
 // ── Canonical variant sets ────────────────────────────────────────────────────
 
-const ALL_AGENT_TYPES: readonly AgentType[] = [
-  'main',
-  'subagent',
-  'background',
-  'workflow_step',
-  'remote',
-]
+const ALL_AGENT_TYPES: readonly AgentType[] = ['main', 'subagent', 'background', 'workflow_step', 'remote']
 
 const ALL_PROMPT_PROVIDER_FAMILIES: readonly PromptProviderFamily[] = [
   'openai',
@@ -129,10 +123,7 @@ describe('Prompt Taxonomy Migration Gaps', () => {
 
         // When this test FAILS, the profile needs a PromptTemplateRecord
         // with id `agentProfile:<profileId>` added to PROMPT_TEMPLATE_REGISTRY.
-        expect(
-          exists,
-          `Missing template "${expectedId}" for system profile "${profile.id}"`,
-        ).toBe(true)
+        expect(exists, `Missing template "${expectedId}" for system profile "${profile.id}"`).toBe(true)
       })
     }
   })
@@ -151,7 +142,9 @@ describe('Prompt Taxonomy Migration Gaps', () => {
         // with taxonomyLayer: 'agentType' and agentType field set.
         expect(
           exists,
-          `Missing agentType template "${templateId}" — registry only has: ${Array.from(PROMPT_TEMPLATE_REGISTRY.keys()).filter((k) => k.startsWith('agentType:')).join(', ')}`,
+          `Missing agentType template "${templateId}" — registry only has: ${Array.from(PROMPT_TEMPLATE_REGISTRY.keys())
+            .filter((k) => k.startsWith('agentType:'))
+            .join(', ')}`,
         ).toBe(true)
       })
     }
@@ -171,7 +164,9 @@ describe('Prompt Taxonomy Migration Gaps', () => {
         // with taxonomyLayer: 'provider' and providerFamily field set.
         expect(
           exists,
-          `Missing provider template "${templateId}" — registry only has: ${Array.from(PROMPT_TEMPLATE_REGISTRY.keys()).filter((k) => k.startsWith('provider:')).join(', ')}`,
+          `Missing provider template "${templateId}" — registry only has: ${Array.from(PROMPT_TEMPLATE_REGISTRY.keys())
+            .filter((k) => k.startsWith('provider:'))
+            .join(', ')}`,
         ).toBe(true)
       })
     }
@@ -199,9 +194,7 @@ describe('Prompt Taxonomy Migration Gaps', () => {
       const toolsInScope = ['web_search', 'docs_search']
       const profileTools = searchProfile?.defaultToolIds ?? []
 
-      const mismatchedTools = profileTools.filter(
-        (tool) => !toolsInScope.includes(tool),
-      )
+      const mismatchedTools = profileTools.filter((tool) => !toolsInScope.includes(tool))
 
       expect(
         mismatchedTools,
@@ -225,10 +218,9 @@ describe('Prompt Taxonomy Migration Gaps', () => {
         const skillIds = profile.defaultSkillIds ?? []
         const unresolved = skillIds.filter((id) => !skillRegistry.has(id))
 
-        expect(
-          unresolved,
-          `Profile "${profile.id}" has unresolved defaultSkillIds: ${unresolved.join(', ')}`,
-        ).toEqual([])
+        expect(unresolved, `Profile "${profile.id}" has unresolved defaultSkillIds: ${unresolved.join(', ')}`).toEqual(
+          [],
+        )
       })
 
       for (const agentType of profile.allowedAgentTypes) {

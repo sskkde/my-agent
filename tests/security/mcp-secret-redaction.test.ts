@@ -6,11 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import {
-  redactMcpUrl,
-  redactMcpConfig,
-  redactMcpErrorMessage,
-} from '../../src/connectors/mcp/mcp-secret-redaction.js'
+import { redactMcpUrl, redactMcpConfig, redactMcpErrorMessage } from '../../src/connectors/mcp/mcp-secret-redaction.js'
 
 const SENTINEL_SECRET = 'AMAP_SECRET_SHOULD_NOT_APPEAR'
 

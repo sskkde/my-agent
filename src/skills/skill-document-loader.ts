@@ -105,9 +105,7 @@ export class SkillDocumentLoader {
    * @param skillIds - Array of skill IDs to load.
    * @returns Map of skillId to document content.
    */
-  async loadSkillDocuments(
-    skillIds: readonly string[],
-  ): Promise<Map<string, string>> {
+  async loadSkillDocuments(skillIds: readonly string[]): Promise<Map<string, string>> {
     const results = new Map<string, string>()
     for (const skillId of skillIds) {
       try {

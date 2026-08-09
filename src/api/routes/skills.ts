@@ -38,9 +38,7 @@ export function registerSkillRoutes(server: FastifyInstance, context: ApiContext
       const definition = skillRegistry.get(skillId)
 
       if (!definition) {
-        return reply
-          .code(404)
-          .send(envelopeError('SKILL_NOT_FOUND', `Skill "${skillId}" not found`, request.requestId))
+        return reply.code(404).send(envelopeError('SKILL_NOT_FOUND', `Skill "${skillId}" not found`, request.requestId))
       }
 
       const response: SkillDetailResponse = {

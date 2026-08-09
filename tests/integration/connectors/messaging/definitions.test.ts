@@ -84,13 +84,7 @@ function containsSecretValue(text: string): boolean {
 // Tests
 // ---------------------------------------------------------------------------
 
-const PROVIDER_IDS = [
-  'feishu',
-  'telegram',
-  'dingtalk',
-  'qq',
-  'wechat',
-] as const
+const PROVIDER_IDS = ['feishu', 'telegram', 'dingtalk', 'qq', 'wechat'] as const
 
 describe('Messaging Connector Definitions', () => {
   let connection: ConnectionManager

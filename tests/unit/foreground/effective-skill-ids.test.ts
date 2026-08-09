@@ -216,12 +216,7 @@ describe('computeEffectiveSkillIdsWithEnvelope', () => {
   describe('envelope + profile intersection', () => {
     it('intersects envelope with profile skills', () => {
       const profileSkills = ['memory_research', 'documentation_search', 'artifact_workflow']
-      const result = computeEffectiveSkillIdsWithEnvelope(
-        'main',
-        skillCatalog,
-        envelopeRegistry,
-        profileSkills,
-      )
+      const result = computeEffectiveSkillIdsWithEnvelope('main', skillCatalog, envelopeRegistry, profileSkills)
       // main envelope allows read/search/internal, so artifact_workflow (write) is filtered out
       expect(result).toContain('memory_research')
       expect(result).toContain('documentation_search')
@@ -231,23 +226,13 @@ describe('computeEffectiveSkillIdsWithEnvelope', () => {
     it('profile cannot expand beyond envelope', () => {
       // Profile includes admin_config, but envelope denies it
       const profileSkills = ['memory_research', 'admin_config']
-      const result = computeEffectiveSkillIdsWithEnvelope(
-        'main',
-        skillCatalog,
-        envelopeRegistry,
-        profileSkills,
-      )
+      const result = computeEffectiveSkillIdsWithEnvelope('main', skillCatalog, envelopeRegistry, profileSkills)
       expect(result).toContain('memory_research')
       expect(result).not.toContain('admin_config')
     })
 
     it('empty profile skills returns envelope-only result', () => {
-      const result = computeEffectiveSkillIdsWithEnvelope(
-        'main',
-        skillCatalog,
-        envelopeRegistry,
-        [],
-      )
+      const result = computeEffectiveSkillIdsWithEnvelope('main', skillCatalog, envelopeRegistry, [])
       // Empty array means no restriction from profile — envelope governs
       expect(result).toContain('memory_research')
       expect(result).toContain('documentation_search')
@@ -314,9 +299,7 @@ describe('computeEffectiveSkillIdsWithEnvelope', () => {
   describe('deprecated alias handling', () => {
     it('deprecated alias IDs not in catalog are filtered out', () => {
       // If the catalog doesn't include deprecated aliases, they won't appear
-      const catalogWithoutAliases = [
-        { id: 'memory_research', category: 'read' as SkillCategory },
-      ]
+      const catalogWithoutAliases = [{ id: 'memory_research', category: 'read' as SkillCategory }]
       const configSkills = ['artifact_create', 'memory_research']
       const result = computeEffectiveSkillIdsWithEnvelope(
         'main',

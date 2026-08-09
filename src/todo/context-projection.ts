@@ -123,9 +123,7 @@ function sortByPriorityAndPosition(todos: TodoItem[]): TodoItem[] {
 export function projectActiveTodosToContext(input: TodoProjectionInput): TodoProjectionResult {
   const { todos, maxItems, maxTokens, ownerAgentId } = input
 
-  const scopedTodos = ownerAgentId
-    ? todos.filter((t) => t.ownerAgentId === ownerAgentId)
-    : todos
+  const scopedTodos = ownerAgentId ? todos.filter((t) => t.ownerAgentId === ownerAgentId) : todos
 
   const totalTodosCount = scopedTodos.length
   const activeTodos = scopedTodos.filter((t) => isActive(t.status))
@@ -214,9 +212,7 @@ export function buildTodoContextDelta(input: {
 }): RuntimeContextDelta {
   const { runId, todos, iteration, previousStatuses, ownerAgentId } = input
 
-  const scopedTodos = ownerAgentId
-    ? todos.filter((t) => t.ownerAgentId === ownerAgentId)
-    : todos
+  const scopedTodos = ownerAgentId ? todos.filter((t) => t.ownerAgentId === ownerAgentId) : todos
 
   const activeTodos = scopedTodos.filter((t) => isActive(t.status))
   const items = activeTodos.map(todoToContextItem)
@@ -250,10 +246,7 @@ export function buildTodoContextDelta(input: {
  * @param input - Input with session ID and todos
  * @returns Array of todo summary entries for PlanContextView
  */
-export function getTodoSummaryForPlanContextView(input: {
-  sessionId: string
-  todos: TodoItem[]
-}): TodoSummaryEntry[] {
+export function getTodoSummaryForPlanContextView(input: { sessionId: string; todos: TodoItem[] }): TodoSummaryEntry[] {
   const { todos } = input
 
   const activeTodos = todos.filter((t) => isActive(t.status))

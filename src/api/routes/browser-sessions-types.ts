@@ -27,11 +27,7 @@
  *   - `human_controlled`             → `user_controlled`
  *   - `closed`, `error`              → `idle`
  */
-export type BrowserSessionState =
-  | 'idle'
-  | 'agent_controlled'
-  | 'user_controlled'
-  | 'handoff_requested'
+export type BrowserSessionState = 'idle' | 'agent_controlled' | 'user_controlled' | 'handoff_requested'
 
 // ─── SSE stream events ───────────────────────────────────────────────────────
 
@@ -67,10 +63,7 @@ export interface BrowserHeartbeatEvent {
 /**
  * Union of all events that may appear on the `/frames` SSE stream.
  */
-export type BrowserStreamEvent =
-  | BrowserSnapshotEvent
-  | BrowserFrameEvent
-  | BrowserHeartbeatEvent
+export type BrowserStreamEvent = BrowserSnapshotEvent | BrowserFrameEvent | BrowserHeartbeatEvent
 
 // ─── Response bodies ─────────────────────────────────────────────────────────
 

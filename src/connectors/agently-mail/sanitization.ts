@@ -14,11 +14,7 @@
  * @module connectors/agently-mail/sanitization
  */
 
-import type {
-  AgentlyMailMessage,
-  AgentlyMailContact,
-  AgentlyMailAttachment,
-} from './types.js'
+import type { AgentlyMailMessage, AgentlyMailContact, AgentlyMailAttachment } from './types.js'
 
 // ─── HTML entity escaping ──────────────────────────────────────────────────────
 
@@ -52,10 +48,7 @@ const DEFAULT_MAX_LENGTH = 200
  * 2. Collapses internal whitespace runs to single spaces.
  * 3. Truncates to `maxLength` (default 200) with `…` suffix.
  */
-export function sanitizeEmailPreview(
-  text: string,
-  maxLength: number = DEFAULT_MAX_LENGTH,
-): string {
+export function sanitizeEmailPreview(text: string, maxLength: number = DEFAULT_MAX_LENGTH): string {
   const escaped = escapeHtml(text)
   const collapsed = collapsedWhitespace(escaped)
   if (collapsed.length <= maxLength) {

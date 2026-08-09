@@ -10,7 +10,10 @@ function extractSearchFacts(toolName: string, toolCallId: string, result: ToolUs
   if (!facts || facts.length === 0) {
     return { toolName, toolCallId, summaryType: 'search_facts', summary: 'No facts extracted', evidenceCount: 0 }
   }
-  const topFacts = facts.slice(0, 3).map((f) => f.fact).join('; ')
+  const topFacts = facts
+    .slice(0, 3)
+    .map((f) => f.fact)
+    .join('; ')
   return { toolName, toolCallId, summaryType: 'search_facts', summary: topFacts, evidenceCount: facts.length }
 }
 
@@ -26,20 +29,37 @@ function extractFilePreview(toolName: string, toolCallId: string, result: ToolUs
       return { toolName, toolCallId, summaryType: 'file_preview', summary: 'No files matched', evidenceCount: 0 }
     }
     const preview = files.length <= 3 ? files.join(', ') : `${files.slice(0, 3).join(', ')}, ...`
-    return { toolName, toolCallId, summaryType: 'file_preview', summary: `${files.length} files: ${preview}`, evidenceCount: files.length }
+    return {
+      toolName,
+      toolCallId,
+      summaryType: 'file_preview',
+      summary: `${files.length} files: ${preview}`,
+      evidenceCount: files.length,
+    }
   }
 
   const content = data?.content as string | undefined
   if (content !== undefined) {
     const preview = content.length > 200 ? content.slice(0, 200) : content
-    return { toolName, toolCallId, summaryType: 'file_preview', summary: `${preview} (${content.length} chars)`, evidenceCount: 1 }
+    return {
+      toolName,
+      toolCallId,
+      summaryType: 'file_preview',
+      summary: `${preview} (${content.length} chars)`,
+      evidenceCount: 1,
+    }
   }
   return { toolName, toolCallId, summaryType: 'file_preview', summary: 'No content available', evidenceCount: 0 }
 }
 
 function extractMemoryKeywords(toolName: string, toolCallId: string, result: ToolUseResult): ObservationSummary {
   if (result.error) {
-    return { toolName, toolCallId, summaryType: 'memory_keywords', summary: `Memory retrieval failed: ${result.error.message}` }
+    return {
+      toolName,
+      toolCallId,
+      summaryType: 'memory_keywords',
+      summary: `Memory retrieval failed: ${result.error.message}`,
+    }
   }
   const data = result.result as Record<string, unknown> | null | undefined
   const entries = data?.entries as Array<{ keyword: string }> | undefined
@@ -47,8 +67,11 @@ function extractMemoryKeywords(toolName: string, toolCallId: string, result: Too
   const count = entries?.length ?? 0
   const topKeywords = (keywords ?? entries?.map((e) => e.keyword) ?? []).slice(0, 3)
   return {
-    toolName, toolCallId, summaryType: 'memory_keywords',
-    summary: `${count} memories; keywords: ${topKeywords.join(', ')}`, evidenceCount: count,
+    toolName,
+    toolCallId,
+    summaryType: 'memory_keywords',
+    summary: `${count} memories; keywords: ${topKeywords.join(', ')}`,
+    evidenceCount: count,
   }
 }
 
@@ -58,7 +81,8 @@ function extractGeneric(toolName: string, toolCallId: string, result: ToolUseRes
   }
   const serialized = JSON.stringify(result.result)
   const TRUNCATED_SUFFIX = '...[truncated]'
-  const summary = serialized.length > 500 ? serialized.slice(0, 500 - TRUNCATED_SUFFIX.length) + TRUNCATED_SUFFIX : serialized
+  const summary =
+    serialized.length > 500 ? serialized.slice(0, 500 - TRUNCATED_SUFFIX.length) + TRUNCATED_SUFFIX : serialized
   return { toolName, toolCallId, summaryType: 'generic', summary }
 }
 

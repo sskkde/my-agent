@@ -41,7 +41,9 @@ function createSchema(connection: ConnectionManager): void {
       FOREIGN KEY (active_work_dir_id) REFERENCES work_directories(id)
     )
   `)
-  connection.exec(`CREATE INDEX idx_session_workdir_state_session ON session_workdir_state(tenant_id, user_id, session_id)`)
+  connection.exec(
+    `CREATE INDEX idx_session_workdir_state_session ON session_workdir_state(tenant_id, user_id, session_id)`,
+  )
 }
 
 afterEach(() => {

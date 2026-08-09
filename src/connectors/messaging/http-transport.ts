@@ -3,17 +3,15 @@
  * Uses fetch to send messages to provider APIs.
  */
 
-import type {
-  MessagingTransport,
-  MessagingTransportResult,
-  DeliveryTarget,
-  OutboundTextMessage,
-} from './types.js'
+import type { MessagingTransport, MessagingTransportResult, DeliveryTarget, OutboundTextMessage } from './types.js'
 
 export interface HttpMessagingTransportConfig {
   baseUrl: string
   getAuthHeaders: () => Promise<Record<string, string>>
-  buildRequest: (target: DeliveryTarget, message: OutboundTextMessage) => Promise<{
+  buildRequest: (
+    target: DeliveryTarget,
+    message: OutboundTextMessage,
+  ) => Promise<{
     path: string
     method: string
     body: unknown
@@ -29,10 +27,7 @@ export class HttpMessagingTransport implements MessagingTransport {
     this.config = config
   }
 
-  async sendText(
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ): Promise<MessagingTransportResult> {
+  async sendText(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> {
     try {
       const request = await this.config.buildRequest(target, message)
       const authHeaders = await this.config.getAuthHeaders()
@@ -106,8 +101,6 @@ function parseRetryAfter(value: string | null): number | undefined {
   return seconds * 1000
 }
 
-export function createHttpMessagingTransport(
-  config: HttpMessagingTransportConfig,
-): HttpMessagingTransport {
+export function createHttpMessagingTransport(config: HttpMessagingTransportConfig): HttpMessagingTransport {
   return new HttpMessagingTransport(config)
 }

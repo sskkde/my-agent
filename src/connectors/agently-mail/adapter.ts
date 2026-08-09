@@ -9,12 +9,7 @@
 import type { ConnectorAdapter, ConnectorCapability, ConnectorCallRequest, ConnectorResponse } from '../types.js'
 import type { ConnectorInstance } from '../types.js'
 import type { AgentlyCliRunner } from './cli-runner.js'
-import type {
-  AgentlyMailOperation,
-  ListMessagesInput,
-  ReadMessageInput,
-  SearchMessagesInput,
-} from './types.js'
+import type { AgentlyMailOperation, ListMessagesInput, ReadMessageInput, SearchMessagesInput } from './types.js'
 import { normalizeAgentlyMailResponse } from './response-normalizer.js'
 import { AGENTLY_MAIL_CAPABILITIES } from './capability-definitions.js'
 import { AgentlyMailConfirmationManager } from './confirmation.js'
@@ -122,10 +117,7 @@ interface ArgvResult {
   readonly validationError?: ValidationError
 }
 
-function buildArgvForOperation(
-  operation: string,
-  params: Record<string, unknown>,
-): ArgvResult {
+function buildArgvForOperation(operation: string, params: Record<string, unknown>): ArgvResult {
   switch (operation) {
     case 'me':
       return { operation: 'me', argv: ['+me'] }
@@ -196,10 +188,7 @@ export class AgentlyMailAdapter implements ConnectorAdapter {
     this.confirmationManager = confirmationManager
   }
 
-  async execute(
-    _instance: ConnectorInstance,
-    request: ConnectorCallRequest,
-  ): Promise<unknown> {
+  async execute(_instance: ConnectorInstance, request: ConnectorCallRequest): Promise<unknown> {
     const { operation, params, requestId, connectorInstanceId } = request
 
     // 1. Build argv (includes validation)
@@ -259,22 +248,14 @@ export class AgentlyMailAdapter implements ConnectorAdapter {
     const result = await this.runner.run(argvResult.operation, argvResult.argv)
 
     // 4. Normalise response
-    return normalizeAgentlyMailResponse(
-      result.stdout,
-      result.stderr,
-      result.exitCode,
-      requestId,
-      connectorInstanceId,
-    )
+    return normalizeAgentlyMailResponse(result.stdout, result.stderr, result.exitCode, requestId, connectorInstanceId)
   }
 
   discoverCapabilities(_instance: ConnectorInstance): ConnectorCapability[] {
     return [...AGENTLY_MAIL_CAPABILITIES]
   }
 
-  checkHealth(
-    _instance: ConnectorInstance,
-  ): { healthy: boolean; message?: string } {
+  checkHealth(_instance: ConnectorInstance): { healthy: boolean; message?: string } {
     // Synchronous stub — real health check happens via execute('me')
     return { healthy: true, message: 'AgentlyMail adapter ready' }
   }

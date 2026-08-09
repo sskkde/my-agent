@@ -30,19 +30,12 @@ const DEFAULT_SECRET_FIELD_NAMES: readonly string[] = [
  * @returns A deep copy with secret values replaced by `[REDACTED]`.
  *   Circular references are replaced by `"[Circular]"`.
  */
-export function redactSecrets(
-  obj: unknown,
-  secretFieldNames: readonly string[] = DEFAULT_SECRET_FIELD_NAMES,
-): unknown {
+export function redactSecrets(obj: unknown, secretFieldNames: readonly string[] = DEFAULT_SECRET_FIELD_NAMES): unknown {
   const secretSet = new Set(secretFieldNames)
   return redactWalk(obj, secretSet, new WeakSet())
 }
 
-function redactWalk(
-  value: unknown,
-  secretSet: Set<string>,
-  seen: WeakSet<object>,
-): unknown {
+function redactWalk(value: unknown, secretSet: Set<string>, seen: WeakSet<object>): unknown {
   if (value === null || value === undefined) {
     return value
   }

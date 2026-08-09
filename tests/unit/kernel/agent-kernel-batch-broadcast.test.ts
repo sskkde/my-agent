@@ -48,9 +48,7 @@ class FakeLLMAdapter implements LLMAdapter {
     return { success: true, response, providerId: 'fake-provider' }
   }
 
-  async *stream(
-    request: LLMRequest,
-  ): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(request: LLMRequest): AsyncGenerator<import('../../../src/llm/types.js').LLMStreamChunk> {
     const result = await this.complete(request)
     if (!result.success) return
     const response = result.response
@@ -80,10 +78,18 @@ class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  addProvider(provider: LLMProvider): void { this.providers.push(provider) }
-  removeProvider(providerId: string): void { this.providers = this.providers.filter(p => p.id !== providerId) }
-  getProvider(providerId: string): LLMProvider | undefined { return this.providers.find(p => p.id === providerId) }
-  getHealthyProviders(): LLMProvider[] { return this.providers }
+  addProvider(provider: LLMProvider): void {
+    this.providers.push(provider)
+  }
+  removeProvider(providerId: string): void {
+    this.providers = this.providers.filter((p) => p.id !== providerId)
+  }
+  getProvider(providerId: string): LLMProvider | undefined {
+    return this.providers.find((p) => p.id === providerId)
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return this.providers
+  }
   updateProviderPriority(providerId: string, priority: number): void {
     const p = this.getProvider(providerId)
     if (p) p.updateConfig({ ...p.config, priority })
@@ -109,8 +115,12 @@ class FakeToolExecutor implements ToolExecutor {
 class FakeContextManager {
   private contextItems: ContextItem[] = []
 
-  addItem(item: ContextItem): void { this.contextItems.push(item) }
-  getItems(): ContextItem[] { return this.contextItems }
+  addItem(item: ContextItem): void {
+    this.contextItems.push(item)
+  }
+  getItems(): ContextItem[] {
+    return this.contextItems
+  }
 
   assembleBundle(): ContextBundle {
     return {
@@ -138,7 +148,10 @@ class FakeContextManager {
  */
 class FakeBatchDispatcher {
   dispatchCalls: DispatchRequest[] = []
-  toolResults: Map<string, { success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean } }> = new Map()
+  toolResults: Map<
+    string,
+    { success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean } }
+  > = new Map()
 
   async dispatch(request: DispatchRequest): Promise<{
     requestId: string
@@ -168,7 +181,11 @@ class FakeBatchDispatcher {
       }
     }
 
-    const results: Array<{ success: boolean; data?: unknown; error?: { code: string; message: string; recoverable: boolean } }> = []
+    const results: Array<{
+      success: boolean
+      data?: unknown
+      error?: { code: string; message: string; recoverable: boolean }
+    }> = []
     for (const tu of toolUses) {
       const existing = this.toolResults.get(tu.toolCallId)
       if (existing) {
@@ -330,15 +347,10 @@ describe('Batch dispatch — timeline broadcast and pairing', () => {
     fakeDispatcher.toolResults.set('call-b', { success: true, data: { result: 'b' } })
     fakeDispatcher.toolResults.set('call-c', { success: true, data: { result: 'c' } })
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Batch done.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Batch done.')])
 
     const kernel = new AgentKernel(createConfig(adapter, fakeDispatcher, broadcaster))
-    const result = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('tool-a', 'tool-b', 'tool-c') }),
-    )
+    const result = await kernel.run(createInput({ toolProjection: toolProjectionFor('tool-a', 'tool-b', 'tool-c') }))
 
     expect(result.finalStatus).toBe('completed')
 
@@ -386,15 +398,10 @@ describe('Batch dispatch — timeline broadcast and pairing', () => {
       { id: 'call-p3', type: 'function', function: { name: 'tool-pair', arguments: '{}' } },
     ]
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Pair OK.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Pair OK.')])
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('tool-pair') }),
-    )
+    const result = await kernel.run(createInput({ toolProjection: toolProjectionFor('tool-pair') }))
 
     expect(result.finalStatus).toBe('completed')
 
@@ -416,9 +423,18 @@ describe('Batch dispatch — timeline broadcast and pairing', () => {
 
     // Include toolCallId in data so dispatchExternalBatch can map results
     // by toolCallId rather than falling back to positional (since we reverse).
-    fakeDispatcher.toolResults.set('call-first', { success: true, data: { toolCallId: 'call-first', result: 'first-output' } })
-    fakeDispatcher.toolResults.set('call-second', { success: true, data: { toolCallId: 'call-second', result: 'second-output' } })
-    fakeDispatcher.toolResults.set('call-third', { success: true, data: { toolCallId: 'call-third', result: 'third-output' } })
+    fakeDispatcher.toolResults.set('call-first', {
+      success: true,
+      data: { toolCallId: 'call-first', result: 'first-output' },
+    })
+    fakeDispatcher.toolResults.set('call-second', {
+      success: true,
+      data: { toolCallId: 'call-second', result: 'second-output' },
+    })
+    fakeDispatcher.toolResults.set('call-third', {
+      success: true,
+      data: { toolCallId: 'call-third', result: 'third-output' },
+    })
 
     // Swap results array to simulate out-of-order dispatch return
     const origDispatch = fakeDispatcher.dispatch.bind(fakeDispatcher)
@@ -435,10 +451,7 @@ describe('Batch dispatch — timeline broadcast and pairing', () => {
       return result
     }
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Order preserved.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Order preserved.')])
 
     const kernel = new AgentKernel(createConfig(adapter, fakeDispatcher))
     const result = await kernel.run(
@@ -481,15 +494,10 @@ describe('Batch dispatch — timeline broadcast and pairing', () => {
       { id: 'call-g3', type: 'function', function: { name: 'tool-g', arguments: '{}' } },
     ]
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Flushed.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Flushed.')])
 
     const kernel = new AgentKernel(createConfig(adapter))
-    const result = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('tool-g') }),
-    )
+    const result = await kernel.run(createInput({ toolProjection: toolProjectionFor('tool-g') }))
 
     expect(result.finalStatus).toBe('completed')
 
@@ -514,15 +522,10 @@ describe('Batch dispatch — timeline broadcast and pairing', () => {
     ]
 
     const broadcaster = new FakeTimelineBroadcaster()
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Early done.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Early done.')])
 
     const kernel = new AgentKernel(createConfig(adapter, fakeDispatcher, broadcaster))
-    const result = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('tool-early') }),
-    )
+    const result = await kernel.run(createInput({ toolProjection: toolProjectionFor('tool-early') }))
 
     expect(result.finalStatus).toBe('completed')
 
@@ -567,15 +570,10 @@ describe('Batch dispatch — timeline broadcast and pairing', () => {
       throw new Error('Network failure')
     }
 
-    const adapter = new FakeLLMAdapter([
-      createToolUseResponse(toolCalls),
-      createTextResponse('Error handled.'),
-    ])
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Error handled.')])
 
     const kernel = new AgentKernel(createConfig(adapter, fakeDispatcher, broadcaster))
-    const result = await kernel.run(
-      createInput({ toolProjection: toolProjectionFor('tool-x', 'tool-y') }),
-    )
+    const result = await kernel.run(createInput({ toolProjection: toolProjectionFor('tool-x', 'tool-y') }))
 
     expect(result.finalStatus).toBe('completed')
 

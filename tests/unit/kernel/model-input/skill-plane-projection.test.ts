@@ -10,7 +10,8 @@ import type { SkillPlaneProjection } from '../../../../src/kernel/model-input/mo
 function makeSummaryProjection(overrides: Partial<SkillPlaneProjection> = {}): SkillPlaneProjection {
   return {
     skillIds: ['artifact_workflow', 'memory_research'],
-    skillSummaries: 'Available Skills:\n- artifact_workflow (guidance): Artifact workflow\n- memory_research (guidance): Memory research',
+    skillSummaries:
+      'Available Skills:\n- artifact_workflow (guidance): Artifact workflow\n- memory_research (guidance): Memory research',
     renderMode: 'summary',
     ...overrides,
   }
@@ -19,7 +20,8 @@ function makeSummaryProjection(overrides: Partial<SkillPlaneProjection> = {}): S
 function makeDocumentsProjection(overrides: Partial<SkillPlaneProjection> = {}): SkillPlaneProjection {
   return {
     skillIds: ['artifact_workflow', 'memory_research'],
-    skillSummaries: 'Available Skills:\n- artifact_workflow (guidance): Artifact workflow\n- memory_research (guidance): Memory research',
+    skillSummaries:
+      'Available Skills:\n- artifact_workflow (guidance): Artifact workflow\n- memory_research (guidance): Memory research',
     skillDocuments: [
       {
         skillId: 'artifact_workflow',

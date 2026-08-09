@@ -6,7 +6,14 @@
 import type { LLMAdapter, LLMAdapterConfig } from './adapter.js'
 import type { LLMProvider, ProviderHealthStatus, ProviderStats } from './provider.js'
 import type { CircuitBreaker, CircuitBreakerState, CircuitBreakerStats } from './circuit-breaker.js'
-import type { LLMRequest, LLMResult, LLMResponse, ProviderConfig, ProviderCapabilities, LLMStreamChunk } from './types.js'
+import type {
+  LLMRequest,
+  LLMResult,
+  LLMResponse,
+  ProviderConfig,
+  ProviderCapabilities,
+  LLMStreamChunk,
+} from './types.js'
 
 /**
  * Mock circuit breaker - always closed, all methods no-ops
@@ -61,14 +68,20 @@ function extractUserTextFromSegmentD(content: string): string {
   const marker = '[sourceType: conversation_state]'
   const idx = content.indexOf(marker)
   if (idx !== -1) {
-    return content.slice(idx + marker.length).trimStart().split('\n')[0]
+    return content
+      .slice(idx + marker.length)
+      .trimStart()
+      .split('\n')[0]
   }
 
   // Fallback for history/session-history wrappers that replay the conversation.
   const userMarker = 'User:'
   const userIdx = content.indexOf(userMarker)
   if (userIdx !== -1) {
-    return content.slice(userIdx + userMarker.length).trimStart().split('\n')[0]
+    return content
+      .slice(userIdx + userMarker.length)
+      .trimStart()
+      .split('\n')[0]
   }
 
   return content

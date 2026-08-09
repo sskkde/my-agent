@@ -22,7 +22,10 @@ describe('Golden Regression Tests', () => {
 
       if (!result.passed) {
         const diffMessages = result.diffs
-          .map((d) => `  - ${d.path}: ${d.message} (expected: ${JSON.stringify(d.expected)}, actual: ${JSON.stringify(d.actual)})`)
+          .map(
+            (d) =>
+              `  - ${d.path}: ${d.message} (expected: ${JSON.stringify(d.expected)}, actual: ${JSON.stringify(d.actual)})`,
+          )
           .join('\n')
         console.error(`Golden case "${goldenCase.id}" failed:\n${diffMessages}`)
       }

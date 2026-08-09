@@ -52,21 +52,25 @@ export class FakeLLMAdapter implements LLMAdapter {
     }
   }
 
-  async *stream(
-    _request: LLMRequest,
-  ): AsyncGenerator<import('../../src/llm/types.js').LLMStreamChunk> {
+  async *stream(_request: LLMRequest): AsyncGenerator<import('../../src/llm/types.js').LLMStreamChunk> {
     // no-op structured stream
   }
 
   addProvider(): void {}
   removeProvider(): void {}
-  getProvider(): LLMProvider | undefined { return undefined }
-  getHealthyProviders(): LLMProvider[] { return [] }
+  getProvider(): LLMProvider | undefined {
+    return undefined
+  }
+  getHealthyProviders(): LLMProvider[] {
+    return []
+  }
   updateProviderPriority(): void {}
 }
 
 export class FakeToolExecutor implements ToolExecutor {
-  async execute() { return { success: true, data: { result: 'ok' } } }
+  async execute() {
+    return { success: true, data: { result: 'ok' } }
+  }
 }
 
 export class FakeContextManager implements ContextManager {
@@ -83,7 +87,9 @@ export class FakeContextManager implements ContextManager {
       tokenEstimate: 100,
     }
   }
-  getItems() { return [] }
+  getItems() {
+    return []
+  }
   addItem() {}
   applyDelta() {}
 }

@@ -7,11 +7,7 @@ import type {
   KernelTranscriptEntry,
 } from '../../../src/kernel/types.js'
 import { AgentKernel } from '../../../src/kernel/agent-kernel.js'
-import {
-  makeHighUtilizationBundle,
-  makeRunInput,
-  makeBaseConfig,
-} from '../../helpers/kernel-compact.js'
+import { makeHighUtilizationBundle, makeRunInput, makeBaseConfig } from '../../helpers/kernel-compact.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -128,9 +124,7 @@ describe('compact flow integration', () => {
 
     // Then: finalStatus is NOT failed, applyDelta NOT called for compaction
     expect(result.finalStatus).not.toBe('failed')
-    expect(applyDeltaSpy).not.toHaveBeenCalledWith(
-      expect.objectContaining({ source: 'runtime_note' }),
-    )
+    expect(applyDeltaSpy).not.toHaveBeenCalledWith(expect.objectContaining({ source: 'runtime_note' }))
     // Then: transcript still has compact entry with skipped status
     const compactEntries = getCompactEntries(result.transcript)
     expect(compactEntries.length).toBeGreaterThanOrEqual(1)

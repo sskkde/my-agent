@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createSkillRegistry } from '../../../src/skills/skill-registry.js'
 import { isValidSkillId, sanitizeSkillId } from '../../../src/skills/skill-name.js'
-import type {
-  SkillDefinition,
-  SkillCategory,
-  SkillSensitivity,
-  SkillSource,
-} from '../../../src/skills/types.js'
+import type { SkillDefinition, SkillCategory, SkillSensitivity, SkillSource } from '../../../src/skills/types.js'
 
 // ---------------------------------------------------------------------------
 // Type-level tests: SkillDefinition must NOT expose executable fields.
@@ -187,23 +182,18 @@ describe('SkillRegistry', () => {
 
     it('should allow overwriting when overwriteExisting is true', () => {
       registry.register(makeValidSkill({ skillId: 'test-skill', description: 'First version' }))
-      registry.register(
-        makeValidSkill({ skillId: 'test-skill', description: 'Second version' }),
-        { overwriteExisting: true },
-      )
+      registry.register(makeValidSkill({ skillId: 'test-skill', description: 'Second version' }), {
+        overwriteExisting: true,
+      })
 
       const retrieved = registry.get('test-skill')
       expect(retrieved?.description).toBe('Second version')
     })
 
     it('should reject invalid skill IDs', () => {
-      expect(() => registry.register(makeValidSkill({ skillId: 'my.skill' }))).toThrow(
-        /Invalid skill ID/,
-      )
+      expect(() => registry.register(makeValidSkill({ skillId: 'my.skill' }))).toThrow(/Invalid skill ID/)
       expect(() => registry.register(makeValidSkill({ skillId: '' }))).toThrow(/Invalid skill ID/)
-      expect(() => registry.register(makeValidSkill({ skillId: 'a'.repeat(65) }))).toThrow(
-        /Invalid skill ID/,
-      )
+      expect(() => registry.register(makeValidSkill({ skillId: 'a'.repeat(65) }))).toThrow(/Invalid skill ID/)
     })
 
     it('should accept legal IDs with hyphens and underscores', () => {

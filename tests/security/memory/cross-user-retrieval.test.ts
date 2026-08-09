@@ -216,16 +216,18 @@ describe('Cross-User Retrieval Security Tests', () => {
       const service: LongTermMemoryRecallService = {
         recall: vi.fn().mockImplementation((_query: RecallQuery): Promise<RecallResult> => {
           return Promise.resolve({
-            memories: [{
-            ...memTenantA,
-            source: 'long_term' as const,
-            provenance: {
-              sourceType: 'long_term_memory' as const,
-              sourceRef: memTenantA.memoryId,
-              freshnessTs: memTenantA.lifecycle.updatedAt,
-              relevanceReason: 'high confidence',
-            },
-          }],
+            memories: [
+              {
+                ...memTenantA,
+                source: 'long_term' as const,
+                provenance: {
+                  sourceType: 'long_term_memory' as const,
+                  sourceRef: memTenantA.memoryId,
+                  freshnessTs: memTenantA.lifecycle.updatedAt,
+                  relevanceReason: 'high confidence',
+                },
+              },
+            ],
             total: 1,
           })
         }),

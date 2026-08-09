@@ -86,9 +86,7 @@ export interface AgentlyMailConnectorAdapterOptions {
  * and triggers no OAuth flows. Side effects happen only when `adapter.execute()`
  * is called with a real request.
  */
-export function createAgentlyMailConnectorAdapter(
-  options?: AgentlyMailConnectorAdapterOptions,
-): ConnectorAdapter {
+export function createAgentlyMailConnectorAdapter(options?: AgentlyMailConnectorAdapterOptions): ConnectorAdapter {
   const runnerDefaults = {
     ...(options?.cliPath !== undefined ? { cliPath: options.cliPath } : {}),
     ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),

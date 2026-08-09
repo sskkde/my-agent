@@ -90,9 +90,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 0 (success)', () => {
     it('should return status=success with data from envelope', () => {
-      const result = normalizeAgentlyMailResponse(
-        successEnvelope, '', 0, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(successEnvelope, '', 0, requestId, connectorInstanceId)
 
       expect(result.status).toBe('success')
       expect(result.requestId).toBe(requestId)
@@ -121,9 +119,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 1 (server error)', () => {
     it('should return status=failed with recoverable=true and retry metadata', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 1, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 1, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.code).toBe('SOME_ERROR')
@@ -154,9 +150,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 2 (invalid parameters)', () => {
     it('should return status=failed with recoverable=false and no retry metadata', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 2, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 2, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.code).toBe('SOME_ERROR')
@@ -169,9 +163,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 3 (auth expired)', () => {
     it('should return status=auth_required (NOT success)', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 3, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 3, requestId, connectorInstanceId)
 
       expect(result.status).toBe('auth_required')
       expect(result.error?.code).toBe('SOME_ERROR')
@@ -180,18 +172,14 @@ describe('agently-mail/response-normalizer', () => {
     })
 
     it('should NOT return success for exit 3 even with valid JSON stdout', () => {
-      const result = normalizeAgentlyMailResponse(
-        successEnvelope, '', 3, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(successEnvelope, '', 3, requestId, connectorInstanceId)
 
       expect(result.status).toBe('auth_required')
       expect(result.status).not.toBe('success')
     })
 
     it('should fall back to stderr when no envelope', () => {
-      const result = normalizeAgentlyMailResponse(
-        '', 'Authentication expired', 3, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse('', 'Authentication expired', 3, requestId, connectorInstanceId)
 
       expect(result.status).toBe('auth_required')
       expect(result.error?.message).toBe('Authentication expired')
@@ -202,9 +190,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 4 (local network error)', () => {
     it('should return status=failed with recoverable=true and retry metadata', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 4, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 4, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.code).toBe('SOME_ERROR')
@@ -217,9 +203,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 6 (permanent rejection)', () => {
     it('should return status=failed with recoverable=false and no retry metadata', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 6, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 6, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.code).toBe('SOME_ERROR')
@@ -232,9 +216,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 7 (rate limited)', () => {
     it('should return status=rate_limited with retry metadata', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 7, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 7, requestId, connectorInstanceId)
 
       expect(result.status).toBe('rate_limited')
       expect(result.error?.code).toBe('SOME_ERROR')
@@ -243,9 +225,7 @@ describe('agently-mail/response-normalizer', () => {
     })
 
     it('should use default retry delay when no Retry-After in envelope', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 7, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 7, requestId, connectorInstanceId)
 
       expect(result.metadata?.retryAfterMs).toBe(30_000)
     })
@@ -256,18 +236,14 @@ describe('agently-mail/response-normalizer', () => {
         metadata: { retry_after: 120 },
       })
 
-      const result = normalizeAgentlyMailResponse(
-        envelopeWithRetry, '', 7, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(envelopeWithRetry, '', 7, requestId, connectorInstanceId)
 
       expect(result.status).toBe('rate_limited')
       expect(result.metadata?.retryAfterMs).toBe(120_000)
     })
 
     it('should fall back to stderr when no envelope', () => {
-      const result = normalizeAgentlyMailResponse(
-        '', 'Rate limit exceeded', 7, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse('', 'Rate limit exceeded', 7, requestId, connectorInstanceId)
 
       expect(result.status).toBe('rate_limited')
       expect(result.error?.message).toBe('Rate limit exceeded')
@@ -279,9 +255,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('exit code 8 (missing confirmation token)', () => {
     it('should return status=failed with special MISSING_CONFIRMATION_TOKEN code', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 8, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 8, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.code).toBe('MISSING_CONFIRMATION_TOKEN')
@@ -289,9 +263,7 @@ describe('agently-mail/response-normalizer', () => {
     })
 
     it('should NOT return success for exit 8', () => {
-      const result = normalizeAgentlyMailResponse(
-        successEnvelope, '', 8, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(successEnvelope, '', 8, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.code).toBe('MISSING_CONFIRMATION_TOKEN')
@@ -302,9 +274,7 @@ describe('agently-mail/response-normalizer', () => {
 
   describe('unknown exit codes', () => {
     it('should return status=failed with recoverable=false for exit 99', () => {
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, '', 99, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, '', 99, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.recoverable).toBe(false)
@@ -322,18 +292,14 @@ describe('agently-mail/response-normalizer', () => {
     })
 
     it('should handle malformed JSON stdout', () => {
-      const result = normalizeAgentlyMailResponse(
-        '{broken json', 'stderr output', 1, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse('{broken json', 'stderr output', 1, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.message).toBe('stderr output')
     })
 
     it('should handle JSON array instead of object', () => {
-      const result = normalizeAgentlyMailResponse(
-        '[1, 2, 3]', '', 1, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse('[1, 2, 3]', '', 1, requestId, connectorInstanceId)
 
       expect(result.status).toBe('failed')
       expect(result.error?.message).toBe('CLI exited with code 1')
@@ -360,9 +326,7 @@ describe('agently-mail/response-normalizer', () => {
 
     it('should prefer envelope message over stderr when both present', () => {
       const stderr = 'secret_token abcdefghijklmnopqrstuvwxyz012345 leaked'
-      const result = normalizeAgentlyMailResponse(
-        errorEnvelope, stderr, 1, requestId, connectorInstanceId,
-      )
+      const result = normalizeAgentlyMailResponse(errorEnvelope, stderr, 1, requestId, connectorInstanceId)
 
       expect(result.error?.message).toBe('Something went wrong')
     })
@@ -381,9 +345,7 @@ describe('agently-mail/response-normalizer', () => {
     it('should never return success for any non-zero exit code', () => {
       const nonZeroCodes = [1, 2, 3, 4, 6, 7, 8, 99, -1, 255]
       for (const code of nonZeroCodes) {
-        const result = normalizeAgentlyMailResponse(
-          successEnvelope, '', code, requestId, connectorInstanceId,
-        )
+        const result = normalizeAgentlyMailResponse(successEnvelope, '', code, requestId, connectorInstanceId)
         expect(result.status).not.toBe('success')
       }
     })

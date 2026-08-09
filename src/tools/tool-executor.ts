@@ -320,9 +320,7 @@ class ToolExecutorImpl implements ToolExecutor {
         launchSource,
         outputContract,
         permissionPolicyRef,
-        ...(permissionDecision.metadata?.workdirAutoAllow
-          ? { workdirAutoAllow: true, workDirRoot, workDirId }
-          : {}),
+        ...(permissionDecision.metadata?.workdirAutoAllow ? { workdirAutoAllow: true, workDirRoot, workDirId } : {}),
       })
       const spanError = finalResult.success
         ? undefined
@@ -494,9 +492,10 @@ function derivePermissionResource(toolName: string, params: unknown, workDirRoot
     return toolName
   }
 
-  const paramsRecord = typeof params === 'object' && params !== null && !Array.isArray(params)
-    ? (params as Record<string, unknown>)
-    : undefined
+  const paramsRecord =
+    typeof params === 'object' && params !== null && !Array.isArray(params)
+      ? (params as Record<string, unknown>)
+      : undefined
 
   if (toolName === 'file_apply_patch') {
     return derivePatchPermissionResource(paramsRecord, workDirRoot)
@@ -526,7 +525,7 @@ function derivePatchPermissionResource(paramsRecord: Record<string, unknown> | u
     return 'file_apply_patch'
   }
 
-  const resolvedPaths = rawPaths.map((rawPath) => isAbsolute(rawPath) ? rawPath : resolve(workDirRoot, rawPath))
+  const resolvedPaths = rawPaths.map((rawPath) => (isAbsolute(rawPath) ? rawPath : resolve(workDirRoot, rawPath)))
   const outsidePath = resolvedPaths.find((resolvedPath) => !isWithinWorkdir(resolvedPath, workDirRoot))
   if (outsidePath) {
     return outsidePath

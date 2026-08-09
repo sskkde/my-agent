@@ -6,7 +6,10 @@ import { TemplateLoader } from '../../../../src/prompt/template-loader.js'
 import { ModelInputBuilder, extractToolsForRequest } from '../../../../src/kernel/model-input/model-input-builder.js'
 import { computeCacheKey } from '../../../../src/kernel/model-input/model-input-cache-key.js'
 import { StaticPrefixBuilder } from '../../../../src/kernel/model-input/static-prefix-builder.js'
-import type { ModelInputBuildInput, SkillPlaneProjection } from '../../../../src/kernel/model-input/model-input-types.js'
+import type {
+  ModelInputBuildInput,
+  SkillPlaneProjection,
+} from '../../../../src/kernel/model-input/model-input-types.js'
 
 function makeTestTemplates(): Map<string, PromptTemplateRecord> {
   return new Map([
@@ -1042,9 +1045,7 @@ describe('Skill Plane Projection', () => {
         makeMinimalInput({
           skillProjection: makeSkillProjection({
             skillSummaries: 'Secret skill data.',
-            skillDocuments: [
-              { skillId: 's1', name: 'Skill One', document: 'Doc content here.' },
-            ],
+            skillDocuments: [{ skillId: 's1', name: 'Skill One', document: 'Doc content here.' }],
           }),
         }),
       )

@@ -377,10 +377,7 @@ async function fetchWithPlaywright(
 }
 
 export function createWebSearchTool(config: WebSearchToolConfig = {}): ToolDefinition {
-  const handler: ToolHandler = async (
-    params: unknown,
-    context: ToolExecutionContext,
-  ): Promise<ToolExecutionResult> => {
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
     const typedParams = params as WebSearchParams
     const query = typeof typedParams.query === 'string' ? typedParams.query.trim() : ''
 

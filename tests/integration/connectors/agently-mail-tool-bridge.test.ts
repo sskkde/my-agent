@@ -11,10 +11,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createConnectorRuntime } from '../../../src/connectors/connector-runtime.js'
-import {
-  createConnectorToolBridge,
-  registerConnectorTools,
-} from '../../../src/connectors/connector-tool-bridge.js'
+import { createConnectorToolBridge, registerConnectorTools } from '../../../src/connectors/connector-tool-bridge.js'
 import { createAgentlyMailCapabilities } from '../../../src/connectors/agently-mail/capabilities.js'
 import { createPermissionEngine } from '../../../src/permissions/permission-engine.js'
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
@@ -233,7 +230,9 @@ describe('AgentlyMail connector capabilities projected to Tool Plane', () => {
   let agentlyMailTools: Map<string, ToolDefinition>
 
   function createAgentlyMailInstance(status: 'active' | 'inactive' = 'active') {
-    const definition = (runtime as unknown as { registerDefinition: (def: unknown) => { id: string } }).registerDefinition({
+    const definition = (
+      runtime as unknown as { registerDefinition: (def: unknown) => { id: string } }
+    ).registerDefinition({
       connectorId: 'agently_mail',
       name: 'AgentlyMail Connector',
       connectorType: 'messaging',
@@ -468,7 +467,17 @@ describe('AgentlyMail connector capabilities projected to Tool Plane', () => {
     })
 
     it('low/medium risk tools have schemaExposureMode=full', () => {
-      const lowMediumOps = ['me', 'auth_status', 'list_messages', 'read_message', 'search_messages', 'send_message', 'reply_message', 'forward_message', 'download_attachment']
+      const lowMediumOps = [
+        'me',
+        'auth_status',
+        'list_messages',
+        'read_message',
+        'search_messages',
+        'send_message',
+        'reply_message',
+        'forward_message',
+        'download_attachment',
+      ]
       for (const op of lowMediumOps) {
         const tool = getTool(op)
         expect(tool.metadata?.schemaExposureMode, `${op} should have full exposure`).toBe('full')

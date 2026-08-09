@@ -20,7 +20,6 @@ import type {
   MessagingProviderId,
 } from '../types.js'
 
-
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -98,9 +97,7 @@ export class FeishuAdapter implements MessagingAdapter {
   // Inbound
   // -------------------------------------------------------------------------
 
-  async handleInbound(
-    event: InboundRawEvent,
-  ): Promise<NormalizedInboundMessage | null> {
+  async handleInbound(event: InboundRawEvent): Promise<NormalizedInboundMessage | null> {
     const callback = this.parseCallback(event.rawPayload)
     if (!callback) {
       return null
@@ -129,9 +126,7 @@ export class FeishuAdapter implements MessagingAdapter {
       return null
     }
 
-    const timestamp = msg.create_time
-      ? new Date(Number(msg.create_time)).toISOString()
-      : event.receivedAt
+    const timestamp = msg.create_time ? new Date(Number(msg.create_time)).toISOString() : event.receivedAt
 
     return {
       provider: PROVIDER_ID,
@@ -155,10 +150,7 @@ export class FeishuAdapter implements MessagingAdapter {
   // Outbound
   // -------------------------------------------------------------------------
 
-  async sendOutbound(
-    target: DeliveryTarget,
-    message: OutboundTextMessage,
-  ): Promise<MessagingTransportResult> {
+  async sendOutbound(target: DeliveryTarget, message: OutboundTextMessage): Promise<MessagingTransportResult> {
     return this.transport.sendText(target, message)
   }
 
@@ -166,10 +158,7 @@ export class FeishuAdapter implements MessagingAdapter {
   // Verification
   // -------------------------------------------------------------------------
 
-  async verifyInbound(
-    payload: unknown,
-    _headers: Record<string, string>,
-  ): Promise<boolean> {
+  async verifyInbound(payload: unknown, _headers: Record<string, string>): Promise<boolean> {
     const callback = this.parseCallback(payload)
     if (!callback) {
       return false
@@ -260,9 +249,6 @@ export class FeishuAdapter implements MessagingAdapter {
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createFeishuAdapter(
-  config: FeishuConfig,
-  transport: MessagingTransport,
-): FeishuAdapter {
+export function createFeishuAdapter(config: FeishuConfig, transport: MessagingTransport): FeishuAdapter {
   return new FeishuAdapter(config, transport)
 }

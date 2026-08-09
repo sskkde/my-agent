@@ -93,7 +93,13 @@ const planner: AgentProfile = {
   allowedAgentTypes: ['subagent', 'workflow_step'],
   promptTemplateIds: ['agentProfile:planner', 'outputContract:planner.schema'],
   defaultToolIds: ['ask_user', 'plan_patch'],
-  defaultSkillIds: ['artifact_workflow', 'memory_research', 'session_status', 'documentation_search', 'web_research_guidance'],
+  defaultSkillIds: [
+    'artifact_workflow',
+    'memory_research',
+    'session_status',
+    'documentation_search',
+    'web_research_guidance',
+  ],
   riskLevel: 'medium',
   ownerScope: 'system',
 }

@@ -6,10 +6,7 @@ import type { MemoryExtractionRunStore, ResultCounts } from '../storage/memory-e
 import type { LLMAdapter } from '../llm/adapter.js'
 import type { LLMRequest } from '../llm/types.js'
 import type { ModelInputBuilder } from '../kernel/model-input/model-input-builder.js'
-import {
-  StructuredOutputContractError,
-  validateOutputContractContent,
-} from '../contracts/output-contract-validator.js'
+import { StructuredOutputContractError, validateOutputContractContent } from '../contracts/output-contract-validator.js'
 import {
   stableJsonHash,
   fingerprintMemoryCandidate,

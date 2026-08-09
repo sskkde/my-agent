@@ -16,7 +16,13 @@ import type { EventRecord, SourceModule } from '../storage/event-store.js'
 import { DEFAULT_TENANT_ID } from '../tenancy/tenant-context.js'
 
 export interface Gateway {
-  receiveUserMessage(userId: string, sessionId: string, text: string, channel?: string, attachmentIds?: string[]): InboundEnvelope
+  receiveUserMessage(
+    userId: string,
+    sessionId: string,
+    text: string,
+    channel?: string,
+    attachmentIds?: string[],
+  ): InboundEnvelope
   normalizeInbound(rawPayload: {
     eventType: EventType
     sourceChannel: string
@@ -30,12 +36,7 @@ export interface Gateway {
     sessionId: string
     metadata?: Record<string, unknown>
   }): InboundEnvelope
-  assembleHydratedState(
-    userId: string,
-    sessionId: string,
-    stores: Stores,
-    tenantId?: string,
-  ): HydratedSessionState
+  assembleHydratedState(userId: string, sessionId: string, stores: Stores, tenantId?: string): HydratedSessionState
   formatOutbound(
     responseType: MessageType,
     content: {
@@ -99,7 +100,13 @@ export function createGateway(options: GatewayOptions): Gateway {
   }
 
   return {
-    receiveUserMessage(userId: string, sessionId: string, text: string, channel = 'default', attachmentIds?: string[]): InboundEnvelope {
+    receiveUserMessage(
+      userId: string,
+      sessionId: string,
+      text: string,
+      channel = 'default',
+      attachmentIds?: string[],
+    ): InboundEnvelope {
       const envelope: InboundEnvelope = {
         envelopeId: generateId(),
         eventType: 'human_message',
@@ -140,12 +147,7 @@ export function createGateway(options: GatewayOptions): Gateway {
       return envelope
     },
 
-    assembleHydratedState(
-      userId: string,
-      sessionId: string,
-      stores: Stores,
-      tenantId?: string,
-    ): HydratedSessionState {
+    assembleHydratedState(userId: string, sessionId: string, stores: Stores, tenantId?: string): HydratedSessionState {
       const sessionMemory = stores.summaryStore.getSessionMemory(sessionId)
       const preferences = sessionMemory?.structuredState?.preferences as Record<string, unknown> | undefined
 

@@ -9,21 +9,19 @@ describe('generateDiffReport', () => {
     diffs: [],
   })
 
-  const makeCurrentResult = (caseId: string, passed: boolean, diffs?: Array<{ path: string; expected: unknown; actual: unknown; message: string }>): GoldenCaseResult => ({
+  const makeCurrentResult = (
+    caseId: string,
+    passed: boolean,
+    diffs?: Array<{ path: string; expected: unknown; actual: unknown; message: string }>,
+  ): GoldenCaseResult => ({
     caseId,
     passed,
     diffs: diffs ?? [],
   })
 
   it('returns empty changes when baseline and current are identical', () => {
-    const baseline: GoldenCaseResult[] = [
-      makeBaselineResult('case-1', true),
-      makeBaselineResult('case-2', true),
-    ]
-    const current: GoldenCaseResult[] = [
-      makeCurrentResult('case-1', true),
-      makeCurrentResult('case-2', true),
-    ]
+    const baseline: GoldenCaseResult[] = [makeBaselineResult('case-1', true), makeBaselineResult('case-2', true)]
+    const current: GoldenCaseResult[] = [makeCurrentResult('case-1', true), makeCurrentResult('case-2', true)]
 
     const report = generateDiffReport(baseline, current)
 
@@ -41,9 +39,7 @@ describe('generateDiffReport', () => {
   })
 
   it('detects a regression when a case goes from passed to failed', () => {
-    const baseline: GoldenCaseResult[] = [
-      makeBaselineResult('case-1', true),
-    ]
+    const baseline: GoldenCaseResult[] = [makeBaselineResult('case-1', true)]
     const current: GoldenCaseResult[] = [
       makeCurrentResult('case-1', false, [
         { path: 'expectedTools', expected: ['web.search'], actual: ['file.read'], message: 'Tool mismatch' },
@@ -58,12 +54,8 @@ describe('generateDiffReport', () => {
   })
 
   it('detects an improvement when a case goes from failed to passed', () => {
-    const baseline: GoldenCaseResult[] = [
-      makeBaselineResult('case-1', false),
-    ]
-    const current: GoldenCaseResult[] = [
-      makeCurrentResult('case-1', true),
-    ]
+    const baseline: GoldenCaseResult[] = [makeBaselineResult('case-1', false)]
+    const current: GoldenCaseResult[] = [makeCurrentResult('case-1', true)]
 
     const report = generateDiffReport(baseline, current)
 
@@ -72,9 +64,7 @@ describe('generateDiffReport', () => {
   })
 
   it('detects token changes when maxTokenEstimate differs', () => {
-    const baseline: GoldenCaseResult[] = [
-      makeBaselineResult('case-1', true),
-    ]
+    const baseline: GoldenCaseResult[] = [makeBaselineResult('case-1', true)]
     const current: GoldenCaseResult[] = [
       makeCurrentResult('case-1', true, [
         { path: 'maxTokenEstimate', expected: 100, actual: 150, message: 'Token estimate changed' },
@@ -92,9 +82,7 @@ describe('generateDiffReport', () => {
   })
 
   it('detects schema failure rate changes when outputContract diff appears', () => {
-    const baseline: GoldenCaseResult[] = [
-      makeBaselineResult('case-1', true),
-    ]
+    const baseline: GoldenCaseResult[] = [makeBaselineResult('case-1', true)]
     const current: GoldenCaseResult[] = [
       makeCurrentResult('case-1', true, [
         { path: 'outputContract', expected: 'valid', actual: 'invalid', message: 'Contract violation' },
@@ -111,9 +99,7 @@ describe('generateDiffReport', () => {
   })
 
   it('reports segment hash changes', () => {
-    const baseline: GoldenCaseResult[] = [
-      makeBaselineResult('case-1', true),
-    ]
+    const baseline: GoldenCaseResult[] = [makeBaselineResult('case-1', true)]
     const current: GoldenCaseResult[] = [
       makeCurrentResult('case-1', false, [
         { path: 'segmentHash.segmentA', expected: 'abcdef', actual: '123456', message: 'Hash mismatch' },

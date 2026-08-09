@@ -53,9 +53,7 @@ describe('FileUploadStore', () => {
       const record = store.create(input)
 
       expect(record.fileId).toBeDefined()
-      expect(record.fileId).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-      )
+      expect(record.fileId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
       expect(record.userId).toBe('user-1')
       expect(record.sessionId).toBe('session-1')
       expect(record.tenantId).toBe('org_default')

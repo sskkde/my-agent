@@ -6,14 +6,26 @@ describe('ContextMetricsStore', () => {
   const connection = createConnectionManager(':memory:')
   const store = createContextMetricsStore(connection)
 
-  beforeAll(() => { connection.open() })
+  beforeAll(() => {
+    connection.open()
+  })
 
   beforeEach(() => {
     connection.exec('DROP TABLE IF EXISTS context_metrics')
-    store.applyMigrations({ init: () => {}, getCurrentVersion: () => 0, apply: (migrations) => { for (const m of migrations) { for (const stmt of m.up.split(';').filter(s => s.trim())) connection.exec(stmt) } } })
+    store.applyMigrations({
+      init: () => {},
+      getCurrentVersion: () => 0,
+      apply: (migrations) => {
+        for (const m of migrations) {
+          for (const stmt of m.up.split(';').filter((s) => s.trim())) connection.exec(stmt)
+        }
+      },
+    })
   })
 
-  afterAll(() => { connection.close() })
+  afterAll(() => {
+    connection.close()
+  })
 
   it('records a context metric entry', () => {
     const metric: Omit<ContextMetrics, 'id'> = {
@@ -119,9 +131,7 @@ describe('ContextMetricsStore', () => {
   })
 
   it('stores droppedContextReasons as JSON string and reads it back', () => {
-    const reasons = JSON.stringify([
-      { section: 'transcript', reason: 'exceeded budget', itemCount: 3 },
-    ])
+    const reasons = JSON.stringify([{ section: 'transcript', reason: 'exceeded budget', itemCount: 3 }])
     store.record({
       runId: 'run-5',
       agentId: 'agent-1',

@@ -495,10 +495,24 @@ export interface AuthSuccessResponse {
 // =============================================================================
 
 export type ProviderType =
-  | 'openai' | 'openrouter' | 'ollama' | 'deepseek' | 'custom' | 'mock'
-  | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot'
-  | 'minimax' | 'jdcloud-yanxi' | 'mimo' | 'iflytek-spark'
-  | 'stepfun' | 'hunyuan' | 'siliconflow'
+  | 'openai'
+  | 'openrouter'
+  | 'ollama'
+  | 'deepseek'
+  | 'custom'
+  | 'mock'
+  | 'dashscope'
+  | 'volcengine'
+  | 'qianfan'
+  | 'zhipu'
+  | 'moonshot'
+  | 'minimax'
+  | 'jdcloud-yanxi'
+  | 'mimo'
+  | 'iflytek-spark'
+  | 'stepfun'
+  | 'hunyuan'
+  | 'siliconflow'
 
 /**
  * Provider summary for API responses

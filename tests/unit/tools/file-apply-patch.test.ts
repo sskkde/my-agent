@@ -203,9 +203,7 @@ describe('file_apply_patch tool', () => {
     })
 
     it('should reject operations that escape workDirRoot', async () => {
-      const operations: FilePatchOperation[] = [
-        { type: 'add', filePath: '../escape.txt', content: 'escape' },
-      ]
+      const operations: FilePatchOperation[] = [{ type: 'add', filePath: '../escape.txt', content: 'escape' }]
 
       const params: FileApplyPatchParams = { operations }
       const result = await tool.handler(params, createToolContext({ workDirRoot: workDir }))
@@ -216,9 +214,7 @@ describe('file_apply_patch tool', () => {
     })
 
     it('should use getWorkspaceRoot() fallback when workDirRoot is not set', async () => {
-      const operations: FilePatchOperation[] = [
-        { type: 'add', filePath: 'fallback.txt', content: 'in default' },
-      ]
+      const operations: FilePatchOperation[] = [{ type: 'add', filePath: 'fallback.txt', content: 'in default' }]
 
       const params: FileApplyPatchParams = { operations }
       const result = await tool.handler(params, createToolContext())

@@ -20,7 +20,6 @@ import type { FastifyInstance } from 'fastify'
 import { generateSessionToken, hashToken, hashPassword } from '../../src/storage/auth-crypto.js'
 import { randomUUID } from 'crypto'
 
-
 const TEST_ENCRYPTION_KEY = 'test-encryption-key-for-todo-rbac-testing-only'
 
 /**

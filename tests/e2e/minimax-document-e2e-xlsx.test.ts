@@ -56,8 +56,7 @@ describe('MiniMax Document MCP - xlsx.read Verification', () => {
 
     bridge = new McpToolBridge({
       sessionManager,
-      getTransport: (_sessionId, serverId) =>
-        serverId === 'minimax-document-mcp' ? transport : undefined,
+      getTransport: (_sessionId, serverId) => (serverId === 'minimax-document-mcp' ? transport : undefined),
     })
   })
 
@@ -66,11 +65,10 @@ describe('MiniMax Document MCP - xlsx.read Verification', () => {
     const session = sessionManager.openSession('minimax-document-mcp')
     await bridge.registerTools(toolRegistry, session.sessionId)
 
-    const result = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_xlsx_read',
-      { inputPath: '/test-data/employees.xlsx', sheetName: 'Sheet1' },
-    )
+    const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
+      inputPath: '/test-data/employees.xlsx',
+      sheetName: 'Sheet1',
+    })
 
     expect(result.status).toBe('completed')
     expect(result.data).toBeDefined()
@@ -90,11 +88,9 @@ describe('MiniMax Document MCP - xlsx.read Verification', () => {
     const session = sessionManager.openSession('minimax-document-mcp')
     await bridge.registerTools(toolRegistry, session.sessionId)
 
-    const result = await bridge.callTool(
-      session.sessionId,
-      'mcp_minimax-document-mcp_xlsx_read',
-      { inputPath: '/test-data/employees.xlsx' },
-    )
+    const result = await bridge.callTool(session.sessionId, 'mcp_minimax-document-mcp_xlsx_read', {
+      inputPath: '/test-data/employees.xlsx',
+    })
 
     expect(result.status).toBe('completed')
 

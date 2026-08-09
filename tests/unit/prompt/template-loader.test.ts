@@ -132,7 +132,6 @@ describe('template-loader', () => {
       expect(path).toContain('agentProfile')
       expect(path).toContain('foreground.md')
     })
-
   })
 
   describe('createTemplateLoader', () => {

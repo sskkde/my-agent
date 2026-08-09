@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import {
-  createSubagentRegistry,
-  type SubagentRegistry,
-} from '../../../src/subagents/registry.js'
+import { createSubagentRegistry, type SubagentRegistry } from '../../../src/subagents/registry.js'
 import { registerBuiltInSubagents } from '../../../src/subagents/builtin-definitions.js'
 import { createSkillRegistry, type SkillRegistry } from '../../../src/skills/skill-registry.js'
 import { registerBuiltinSkills } from '../../../src/skills/builtin/manifest.js'
-import { createAgentTypeSkillEnvelopeRegistry, type AgentTypeSkillEnvelopeRegistry } from '../../../src/permissions/agent-type-skill-envelope.js'
+import {
+  createAgentTypeSkillEnvelopeRegistry,
+  type AgentTypeSkillEnvelopeRegistry,
+} from '../../../src/permissions/agent-type-skill-envelope.js'
 
 function createPopulatedSubagentRegistry(): SubagentRegistry {
   const registry = createSubagentRegistry()
@@ -23,26 +23,15 @@ describe('SubagentDefinition allowedSkillIds validation', () => {
 
   it('all built-in subagents should have allowedSkillIds defined', () => {
     for (const def of definitions) {
-      expect(
-        def.allowedSkillIds,
-        `Subagent "${def.agentType}" missing allowedSkillIds`,
-      ).toBeDefined()
-      expect(
-        def.allowedSkillIds!.length,
-        `Subagent "${def.agentType}" has empty allowedSkillIds`,
-      ).toBeGreaterThan(0)
+      expect(def.allowedSkillIds, `Subagent "${def.agentType}" missing allowedSkillIds`).toBeDefined()
+      expect(def.allowedSkillIds!.length, `Subagent "${def.agentType}" has empty allowedSkillIds`).toBeGreaterThan(0)
     }
   })
 
   it('every declared skill ID should resolve in the skill registry', () => {
     for (const def of definitions) {
-      const unresolved = (def.allowedSkillIds ?? []).filter(
-        (id) => !skillRegistry.has(id),
-      )
-      expect(
-        unresolved,
-        `Subagent "${def.agentType}" has unresolved skill IDs: ${unresolved.join(', ')}`,
-      ).toEqual([])
+      const unresolved = (def.allowedSkillIds ?? []).filter((id) => !skillRegistry.has(id))
+      expect(unresolved, `Subagent "${def.agentType}" has unresolved skill IDs: ${unresolved.join(', ')}`).toEqual([])
     }
   })
 
