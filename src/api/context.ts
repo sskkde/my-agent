@@ -83,7 +83,7 @@ import type { ToolRegistry, ToolExecutor } from '../tools/types.js'
 import { registerBuiltInTools } from '../tools/builtins/index.js'
 import { registerAMapMcpTools } from '../connectors/mcp/register-amap-mcp-tools.js'
 import { registerDefaultRuntimeAdapters } from '../dispatcher/runtime-adapters.js'
-import { createBackgroundRuntime } from '../subagents/background-runtime.js'
+import { createBackgroundRuntime, type BackgroundRuntime } from '../subagents/background-runtime.js'
 import {
   createBackgroundSubagentWorker,
   type BackgroundSubagentWorkerInstance,
@@ -161,6 +161,8 @@ export interface ApiContext {
   messageProcessor: MessageProcessor
   /** Per-session concurrency guard: user turns and notification turns are mutually exclusive. */
   sessionBusyTracker: SessionBusyTracker
+  /** Background runtime wired with the `parentTurnTrigger` closure (drives terminal-state auto-continue). */
+  backgroundRuntime: BackgroundRuntime
   foregroundAgent: ForegroundAgent
   runtimeDispatcher: RuntimeDispatcher
   plannerRuntime: PlannerRuntime
@@ -1191,6 +1193,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     channelRegistry,
     messageProcessor,
     sessionBusyTracker,
+    backgroundRuntime,
     foregroundAgent,
     runtimeDispatcher,
     plannerRuntime,
