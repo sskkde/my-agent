@@ -1,0 +1,40 @@
+#!/usr/bin/env sh
+#
+# Pre-commit hook: auto-format staged TypeScript files under src/ and tests/
+# with Prettier (per .prettierrc), then re-stage the formatted files.
+#
+# Activation (set automatically by `npm install` via package.json "prepare"):
+#   git config core.hooksPath scripts/git-hooks
+#
+# Matches the scope of `npm run format` / `npm run format:check` exactly:
+#   prettier --write "src/**/*.ts" "tests/**/*.ts"
+#
+# Skips silently when nothing staged matches, or when prettier is unavailable.
+
+set -e
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root" || exit 1
+
+# Only files that are staged (added/copied/modified), under src/ or tests/, .ts only.
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(src|tests)/[^ ]+\.ts$' || true)
+
+if [ -z "$staged_files" ]; then
+  exit 0
+fi
+
+prettier_bin="$repo_root/node_modules/.bin/prettier"
+if [ ! -x "$prettier_bin" ]; then
+  echo "pre-commit: prettier not found at node_modules/.bin/prettier — skipping format (run npm install)" >&2
+  exit 0
+fi
+
+echo "pre-commit: formatting staged src/tests .ts files with prettier..."
+# shellcheck disable=SC2086
+"$prettier_bin" --write $staged_files
+
+# Re-stage the formatted files so the committed content is formatted.
+# shellcheck disable=SC2086
+git add $staged_files
+
+exit 0
