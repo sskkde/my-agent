@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Background Task Auto-Continue**: when a background (child) task reaches a terminal state (`completed` / `failed` / `cancelled`), the platform automatically triggers one reply turn in the parent session without requiring a new user message.
+  - Default-on; toggle via `AUTO_CONTINUE_ON_BACKGROUND_COMPLETE` env var (set `false` to disable, in which case results are only perceived on the next user message).
+  - Auto-replies are delivered to the Web UI only and are NOT pushed to external messaging channels (Feishu, Telegram, DingTalk, QQ, WeChat).
+  - Subagent launches (foreground and background) are blocked inside auto-continued turns to prevent recursion.
+  - Concurrency is guarded by a per-session busy tracker: user turns take priority; when busy, the auto-trigger is deferred to a single onIdle drain retry, then falls back to the next user message.
+  - Exactly-once delivery is preserved via atomic claim/unclaim on `notification_delivered_at`; if an auto-reply fails, the claim rolls back and the notification stays pending for a later retry.
+  - Synthetic turns write no user message text, so session history, timeline, transcript search, memory extraction, and usage stats stay clean.
+  - Cost note: each background-task completion consumes one LLM turn when enabled.
+
+---
+
 ## [v0.4.0-phase4] - 2026-05-12
 
 ### Added

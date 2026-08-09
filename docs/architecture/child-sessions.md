@@ -50,7 +50,20 @@
 
 - `background=true` 启动立即返回（`status: 'queued'` + `backgroundRunId`）；
 - `backgroundRuntime` 持久化完整任务规格；后台 worker 恢复后从持久化规格重建
-  （`launchTask → linkChildTask → executeRun`），终态通知恰好一次（store 层通知类型守卫）。
+  （`launchTask -> linkChildTask -> executeRun`），终态通知恰好一次（store 层通知类型守卫）。
+
+#### 2.3.1 实时感知（auto-continue）
+
+后台任务进入终态（`completed` / `failed` / `cancelled`）时，平台默认会**自动在父会话触发一轮回复**，无需用户发送新消息即可感知结果。该行为由环境变量 `AUTO_CONTINUE_ON_BACKGROUND_COMPLETE` 控制，默认开启；设为 `false` 后回退到原有行为（结果仅在下次用户消息时通过通知注入机制感知）。
+
+限制与边界：
+
+- 自动回复**仅发送到 Web UI 通道**，不会推送到飞书、Telegram、钉钉、QQ、企业微信等外部消息通道。
+- 自动轮次中**禁止启动新的子任务**（前台与后台均拒绝，返回 `SUBAGENT_LAUNCH_FROM_NOTIFICATION_TURN`），防止递归。
+- 用户消息正在处理时跳过自动触发；当前轮结束后通过 onIdle 单次重试，仍忙碌则通知保持 pending 由下次用户消息兜底。
+- 自动回复失败时通知不丢失：原子 claim 回滚，通知保持 pending，在后续轮次重试。
+- 合成轮次不写入用户消息文本，不污染会话历史、时间线、记忆提取与用量统计。
+- 每个后台任务完成会消耗一次 LLM turn（成本可控，可通过环境变量关闭）。
 
 ## 3. 兼容性保证（additive only）
 
