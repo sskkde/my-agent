@@ -566,10 +566,14 @@ export async function registerSessionsRoutes(server: FastifyInstance, context: A
 
       sessionStore?.updateActivity(sessionId, new Date().toISOString(), tenantId)
 
-      // Process message asynchronously and route outbound via Gateway
+      // Process message asynchronously and route outbound via Gateway.
+      // The per-session busy tracker serializes user turns against
+      // background-notification turns: they are mutually exclusive.
       void (async () => {
         try {
-          const output = await context.messageProcessor.process(processorInput)
+          const output = await context.sessionBusyTracker.withBusy(sessionId, () =>
+            context.messageProcessor.process(processorInput),
+          )
 
           const messageType = output.success ? 'text' : 'error'
           const outboundEnvelope = context.gateway.formatOutbound(

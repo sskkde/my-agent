@@ -36,6 +36,7 @@ import {
 import { createTimelineBroadcaster, type TimelineBroadcaster } from './timeline-broadcaster.js'
 import type { MessageProcessor } from '../processing/types.js'
 import { createMessageProcessor as createMessageProcessorImpl } from '../processing/message-processor.js'
+import { SessionBusyTracker } from '../processing/session-busy-tracker.js'
 import { createOrchestrationProcessor, type ProcessorOrchestrationDeps } from '../processing/processor-orchestration.js'
 import { createForegroundAgent, type ForegroundAgent } from '../foreground/foreground-agent.js'
 import { createRuntimeDispatcher } from '../dispatcher/runtime-dispatcher.js'
@@ -156,6 +157,8 @@ export interface ApiContext {
   resolveTenantId: () => string
   channelRegistry: ChannelRegistry
   messageProcessor: MessageProcessor
+  /** Per-session concurrency guard: user turns and notification turns are mutually exclusive. */
+  sessionBusyTracker: SessionBusyTracker
   foregroundAgent: ForegroundAgent
   runtimeDispatcher: RuntimeDispatcher
   plannerRuntime: PlannerRuntime
@@ -1129,6 +1132,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const uploadFileService = createUploadFileService()
   const uploadPreviewExtractor = createUploadPreviewExtractor()
 
+  const sessionBusyTracker = new SessionBusyTracker()
+
   return {
     gateway,
     resolveTenantId: () => {
@@ -1137,6 +1142,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     },
     channelRegistry,
     messageProcessor,
+    sessionBusyTracker,
     foregroundAgent,
     runtimeDispatcher,
     plannerRuntime,
