@@ -70,6 +70,13 @@ export interface LaunchSubagentDeps {
   subagentRunStore?: SubagentRunStore
   /** Store used to resolve the parent session depth (child depth = parent + 1). */
   sessionStore?: SessionStore
+  /**
+   * Turn source marker threaded from the tool execution context. When
+   * 'background_notification' (an auto-continued turn triggered by a background
+   * task reaching a terminal state), ALL subagent launches — foreground and
+   * background — are rejected to prevent recursion.
+   */
+  turnSource?: string
 }
 
 export interface LaunchSubagentInput {
@@ -132,6 +139,16 @@ export async function handleLaunchSubagent(
   deps: LaunchSubagentDeps,
   input: LaunchSubagentInput,
 ): Promise<ForegroundToolResult<LaunchSubagentData>> {
+  if (deps.turnSource === 'background_notification') {
+    return createErrorResult(
+      'SUBAGENT_LAUNCH_FROM_NOTIFICATION_TURN',
+      'Subagent launches are not allowed in auto-continued turns; please send a user message to start a task.',
+      false,
+      'Task cannot be launched from this turn.',
+      { runtimeActionIds: [] },
+    )
+  }
+
   try {
     const rawLabel = input.agentProfile ?? input.agentType
 

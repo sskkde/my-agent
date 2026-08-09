@@ -566,6 +566,7 @@ export function createForegroundLaunchSubagentToolDefinition(runtimeDeps?: Foreg
               turnId: identity.turnId,
               profileRegistry: runtimeDeps.profileRegistry,
               signal: context.signal,
+              turnSource: context.turnSource,
               ...(runtimeDeps.childSessionTaskRuntime
                 ? { childSessionTaskRuntime: runtimeDeps.childSessionTaskRuntime }
                 : {}),

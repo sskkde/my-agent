@@ -110,6 +110,12 @@ export interface KernelRunInput {
   /** Per-run reasoning depth (thinking effort). */
   reasoningDepth?: import('../llm/reasoning-depth.js').ReasoningDepth
   /**
+   * Turn source marker threaded from the message pipeline into tool execution
+   * context. 'background_notification' identifies a synthetic auto-continued
+   * turn; absent = 'user' semantics.
+   */
+  turnSource?: string
+  /**
    * AbortSignal for cancelling this kernel run externally.
    * Checked at iteration start, before LLM call, after LLM response,
    * and after internal tool handlers.

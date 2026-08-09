@@ -276,6 +276,8 @@ export function createOrchestrationProcessor(
             workDirRoot: hydratedSession.activeWorkdir?.workDirRoot,
             workDirId: hydratedSession.activeWorkdir?.workDirId,
             workDirName: hydratedSession.activeWorkdir?.workDirName,
+            source:
+              input.metadata?.envelopeEventType === 'background_notification' ? 'background_notification' : 'user',
             signal: abortController.signal,
           }
 

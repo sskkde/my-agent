@@ -67,6 +67,7 @@ export interface ToolExecutionContext {
   agentId?: string
   agentProfile?: string
   launchSource?: string
+  turnSource?: string
   // Managed workdir context — optional, threaded from request/session state
   workDirRoot?: string
   workDirId?: string
@@ -145,6 +146,7 @@ export interface ToolExecutionRequest {
   agentId?: string
   agentProfile?: string
   launchSource?: string
+  turnSource?: string
   outputContract?: string
   permissionPolicyRef?: string
   workDirRoot?: string

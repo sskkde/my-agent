@@ -36,6 +36,7 @@ class ToolExecutorImpl implements ToolExecutor {
       agentId,
       agentProfile,
       launchSource,
+      turnSource,
       outputContract,
       permissionPolicyRef,
       workDirRoot,
@@ -239,6 +240,7 @@ class ToolExecutorImpl implements ToolExecutor {
         agentId,
         agentProfile,
         launchSource,
+        turnSource,
         workDirRoot,
         workDirId,
         stores: {

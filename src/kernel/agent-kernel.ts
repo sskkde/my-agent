@@ -1104,6 +1104,7 @@ export class AgentKernel {
       ...(toolTimeoutMs ? { executionPolicy: { timeoutMs: toolTimeoutMs } } : {}),
       ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
       ...(input.workDirId ? { workDirId: input.workDirId } : {}),
+      ...(input.turnSource ? { turnSource: input.turnSource } : {}),
     })
     const dispatchResult = await this.config.dispatcher.dispatch({
       requestId: `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -1218,6 +1219,7 @@ export class AgentKernel {
       },
       ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
       ...(input.workDirId ? { workDirId: input.workDirId } : {}),
+      ...(input.turnSource ? { turnSource: input.turnSource } : {}),
     })
 
     let dispatchResult: Awaited<ReturnType<KernelConfig['dispatcher']['dispatch']>>

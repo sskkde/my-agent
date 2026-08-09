@@ -95,6 +95,12 @@ export interface ForegroundTurnInput {
   /** Managed workdir display name — threaded from session state */
   workDirName?: string
   /**
+   * Turn source marker. 'background_notification' identifies a synthetic
+   * auto-continued turn triggered by a background task reaching a terminal
+   * state; such turns must never launch subagents. Absent = 'user' semantics.
+   */
+  source?: 'user' | 'background_notification'
+  /**
    * AbortSignal for cancelling the kernel run from external callers.
    * When aborted, the kernel checks at iteration boundaries, before LLM calls,
    * after LLM responses, and after internal tool handlers.

@@ -31,6 +31,7 @@ export interface ToolDispatchRequest {
   workingContextRef?: string
   workDirRoot?: string
   workDirId?: string
+  turnSource?: string
 }
 
 export interface ToolExecutionPolicy {

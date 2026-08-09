@@ -144,6 +144,7 @@ class ForegroundAgentImpl implements ForegroundAgent {
       timeoutMs: input.timeoutMs ?? this.timeoutMs,
       ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
       ...(input.workDirId ? { workDirId: input.workDirId } : {}),
+      ...(input.source ? { turnSource: input.source } : {}),
       ...(input.signal ? { signal: input.signal } : {}),
     }
 

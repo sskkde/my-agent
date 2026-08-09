@@ -84,6 +84,7 @@ export function registerDefaultRuntimeAdapters(deps: {
         toolDispatchRequest?: {
           workDirRoot?: string
           workDirId?: string
+          turnSource?: string
         }
       }
 
@@ -116,6 +117,7 @@ export function registerDefaultRuntimeAdapters(deps: {
             agentId: toolUse.agentId ?? payload.agentId,
             agentProfile: toolUse.agentProfile ?? payload.agentProfile,
             launchSource: toolUse.launchSource ?? payload.launchSource,
+            turnSource: payload.toolDispatchRequest?.turnSource,
             workDirRoot: payload.toolDispatchRequest?.workDirRoot,
             workDirId: payload.toolDispatchRequest?.workDirId,
           }
@@ -149,6 +151,7 @@ export function registerDefaultRuntimeAdapters(deps: {
         agentId: payload.agentId,
         agentProfile: payload.agentProfile,
         launchSource: payload.launchSource,
+        turnSource: payload.toolDispatchRequest?.turnSource,
         workDirRoot: payload.toolDispatchRequest?.workDirRoot,
         workDirId: payload.toolDispatchRequest?.workDirId,
       })
