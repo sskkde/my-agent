@@ -5,6 +5,7 @@
 
 import type { PlannerRuntime } from '../../planner/planner-runtime.js'
 import type { PlannerRunResult } from '../../planner/types.js'
+import type { PlanStep } from '../../storage/plan-store.js'
 import { createSuccessResult, createErrorResult, type ForegroundToolResult } from './foreground-tool-result.js'
 
 export const SPAWN_PLANNER_TOOL_ID = 'foreground_spawn_planner'
@@ -26,6 +27,7 @@ export interface SpawnPlannerData {
   plannerRunId: string
   planId: string
   estimatedSteps?: number
+  steps: PlanStep[]
 }
 
 /**
@@ -47,13 +49,16 @@ export async function handleSpawnPlanner(
       },
     })
 
+    const objective = input.objective.toLowerCase().replace(/^i've created a plan to /i, '')
+
     return createSuccessResult<SpawnPlannerData>(
       {
         plannerRunId: result.plannerRunId,
         planId: result.planId,
         estimatedSteps: input.estimatedSteps,
+        steps: result.steps,
       },
-      `I've created a plan to ${input.objective.toLowerCase().replace(/^i've created a plan to /i, '')}. You can check back for updates. (Plan ID: ${result.planId})`,
+      `I've created a ${result.steps.length}-step plan to ${objective}. Continue executing the steps in this conversation: call foreground_mark_planner_step after each step, then call foreground_complete_planner once all ${result.steps.length} steps are done. (Plan ID: ${result.planId}, Planner Run ID: ${result.plannerRunId})`,
       {
         plannerRunIds: [result.plannerRunId],
       },

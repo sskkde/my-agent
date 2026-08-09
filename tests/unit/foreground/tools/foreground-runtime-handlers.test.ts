@@ -81,6 +81,7 @@ function buildRuntimeDeps(overrides?: Partial<ForegroundToolRuntimeDeps>): Foreg
     planId: 'plan_1',
     status: 'planning',
     actions: [],
+    steps: [],
   }
 
   const mockPlannerRuntime: PlannerRuntime = {
@@ -267,10 +268,7 @@ describe('Foreground Runtime Handlers - wired via registerAllForegroundTools', (
     expect(tool).not.toBeNull()
 
     const context = buildContext({ toolName: APPROVAL_REQUEST_TOOL_ID })
-    const result: ToolExecutionResult = await tool!.handler(
-      { approvalId: 'appr-1', decision: 'approved' },
-      context,
-    )
+    const result: ToolExecutionResult = await tool!.handler({ approvalId: 'appr-1', decision: 'approved' }, context)
 
     // The response branch was taken: getById was called to fetch the approval.
     expect(mockApprovalStore.getById).toHaveBeenCalledWith('appr-1')
@@ -299,6 +297,7 @@ describe('Foreground Runtime Handlers - wired via registerAllForegroundTools', (
       planId: 'plan_42',
       status: 'planning',
       actions: [],
+      steps: [],
     }
 
     const mockPlannerRuntime: PlannerRuntime = {

@@ -1,4 +1,7 @@
-import type { ToolDefinition, ToolHandler, ToolExecutionResult } from '../types.js'
+import type { ToolDefinition, ToolHandler, ToolExecutionResult, ToolExecutionContext } from '../types.js'
+import type { PlannerRunStore } from '../../storage/planner-run-store.js'
+import type { PlanStore } from '../../storage/plan-store.js'
+import { PLANNER_STATES } from '../../shared/states.js'
 
 export interface StatusQueryParams {
   targetId?: string
@@ -28,24 +31,28 @@ export interface StatusQueryResult {
   [key: string]: unknown
 }
 
-export function createStatusQueryTool(): ToolDefinition {
-  const handler: ToolHandler = async (params: unknown): Promise<ToolExecutionResult> => {
-    const typedParams = params as StatusQueryParams
+/**
+ * Optional stores injected by the composition root (see T5 in
+ * `src/api/context.ts`). When absent, the tool keeps its legacy placeholder
+ * behavior so existing registrations and tests keep working.
+ */
+export interface StatusQueryToolDeps {
+  plannerRunStore?: PlannerRunStore
+  planStore?: PlanStore
+}
 
-    // Stub implementation - in real implementation, this would query ActiveWorkProjection
-    // Task 27 implements the actual ActiveWorkProjection
+const TERMINAL_PLANNER_STATES: ReadonlySet<string> = new Set([
+  PLANNER_STATES.COMPLETED,
+  PLANNER_STATES.FAILED,
+  PLANNER_STATES.CANCELLED,
+])
+
+export function createStatusQueryTool(deps: StatusQueryToolDeps = {}): ToolDefinition {
+  const handler: ToolHandler = async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+    const typedParams = params as StatusQueryParams
     const result: StatusQueryResult = {
       activeWork: {
-        plannerRuns: typedParams.targetId
-          ? [
-              {
-                plannerRunId: typedParams.targetId,
-                status: 'active',
-                objective: 'Task in progress',
-                progress: '50%',
-              },
-            ]
-          : [],
+        plannerRuns: resolvePlannerRuns(deps, typedParams, context?.userId),
         backgroundRuns: [],
         pendingApprovals: [],
       },
@@ -74,4 +81,59 @@ export function createStatusQueryTool(): ToolDefinition {
     },
     handler,
   }
+}
+
+function resolvePlannerRuns(
+  deps: StatusQueryToolDeps,
+  params: StatusQueryParams,
+  userId: string | undefined,
+): StatusQueryResult['activeWork']['plannerRuns'] {
+  if (!deps.plannerRunStore) {
+    return params.targetId
+      ? [
+          {
+            plannerRunId: params.targetId,
+            status: 'active',
+            objective: 'Task in progress',
+            progress: '50%',
+          },
+        ]
+      : []
+  }
+
+  if (params.targetId) {
+    const run = deps.plannerRunStore.getById(params.targetId)
+    if (!run) {
+      return []
+    }
+
+    const plan = deps.planStore?.getPlan(run.planId)
+    const completedSteps = plan?.steps.filter((step) => step.status === 'completed').length ?? 0
+    const totalSteps = plan?.steps.length ?? 0
+
+    return [
+      {
+        plannerRunId: run.plannerRunId,
+        status: run.status,
+        ...(plan?.objective ? { objective: plan.objective } : {}),
+        progress: formatProgress(completedSteps, totalSteps),
+      },
+    ]
+  }
+
+  if (!userId) {
+    return []
+  }
+
+  return deps.plannerRunStore
+    .findActive(userId)
+    .filter((run) => !TERMINAL_PLANNER_STATES.has(run.status))
+    .map((run) => ({ plannerRunId: run.plannerRunId, status: run.status }))
+}
+
+function formatProgress(completedSteps: number, totalSteps: number): string {
+  if (totalSteps === 0) {
+    return '0%'
+  }
+  return `${Math.round((completedSteps / totalSteps) * 100)}%`
 }

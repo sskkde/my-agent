@@ -233,7 +233,7 @@ describe('Planner: Tool Failure Replan', () => {
       sessionId: 'sess_replan_001',
     }
     const result = plannerRuntime.createPlannerRun(input)
-    plannerRuntime.transitionState(result.plannerRunId, PLANNER_STATES.PLANNING)
+    expect(result.status).toBe(PLANNER_STATES.PLANNING)
     return result
   }
 

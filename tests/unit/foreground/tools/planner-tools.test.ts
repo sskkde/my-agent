@@ -22,13 +22,35 @@ describe('Planner Tools', () => {
   })
 
   describe('handleSpawnPlanner', () => {
-    it('Planner spawn succeeds — returns plannerRunId', async () => {
+    it('Planner spawn succeeds — returns plannerRunId with plan steps and execution instructions', async () => {
+      const templateSteps = [
+        {
+          stepId: 'step_001',
+          description: 'Analyze objective: Create a backup plan',
+          status: 'pending',
+          dependencies: [],
+        },
+        {
+          stepId: 'step_002',
+          description: 'Execute required tool or agent action',
+          status: 'pending',
+          dependencies: ['step_001'],
+        },
+        {
+          stepId: 'step_003',
+          description: 'Summarize result and update session',
+          status: 'pending',
+          dependencies: ['step_002'],
+        },
+      ]
+
       const mockPlannerRuntime = {
         createPlannerRun: vi.fn().mockReturnValue({
           plannerRunId: 'pl_run_123',
           planId: 'plan_456',
           status: 'planning',
           actions: [],
+          steps: templateSteps,
         }),
       } as unknown as PlannerRuntime
 
@@ -52,8 +74,18 @@ describe('Planner Tools', () => {
         plannerRunId: 'pl_run_123',
         planId: 'plan_456',
         estimatedSteps: 5,
+        steps: templateSteps,
       })
+      expect(result.data?.steps).toHaveLength(3)
+      expect(
+        result.data?.steps?.every(
+          (step) =>
+            typeof step.stepId === 'string' && typeof step.description === 'string' && typeof step.status === 'string',
+        ),
+      ).toBe(true)
       expect(result.userVisibleSummary).toContain('plan_456')
+      expect(result.userVisibleSummary).toContain('foreground_complete_planner')
+      expect(result.userVisibleSummary).toContain('foreground_mark_planner_step')
       expect(result.runtimeSummary?.plannerRunIds).toEqual(['pl_run_123'])
       expect(mockPlannerRuntime.createPlannerRun).toHaveBeenCalledWith({
         objective: 'Create a backup plan',

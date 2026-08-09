@@ -19,6 +19,8 @@ import type {
 export interface PlannerRuntime {
   createPlannerRun(input: PlannerRunInput): PlannerRunResult
   resumePlannerRun(plannerRunId: string, event: PlannerResumeEvent): PlannerRunResult
+  completePlannerRun(plannerRunId: string, summary?: string): PlannerRunResult
+  markStep(plannerRunId: string, stepId: string, status: 'completed' | 'failed' | 'in_progress', result?: string): void
   cancelPlannerRun(plannerRunId: string): void
   replan(plannerRunId: string, reason: string): void
   archivePlannerRun(plannerRunId: string): void
@@ -97,21 +99,29 @@ class PlannerRuntimeImpl implements PlannerRuntime {
     const planId = generateId('plan_')
     const now = new Date().toISOString()
 
-    const steps: PlanStep[] = [
-      { stepId: 'step_001', description: 'Analyze objective: ' + input.objective, status: 'pending', dependencies: [] },
-      {
-        stepId: 'step_002',
-        description: 'Execute required tool or agent action',
-        status: 'pending',
-        dependencies: ['step_001'],
-      },
-      {
-        stepId: 'step_003',
-        description: 'Summarize result and update session',
-        status: 'pending',
-        dependencies: ['step_002'],
-      },
-    ]
+    const steps: PlanStep[] =
+      input.steps && input.steps.length > 0
+        ? input.steps
+        : [
+            {
+              stepId: 'step_001',
+              description: 'Analyze objective: ' + input.objective,
+              status: 'pending',
+              dependencies: [],
+            },
+            {
+              stepId: 'step_002',
+              description: 'Execute required tool or agent action',
+              status: 'pending',
+              dependencies: ['step_001'],
+            },
+            {
+              stepId: 'step_003',
+              description: 'Summarize result and update session',
+              status: 'pending',
+              dependencies: ['step_002'],
+            },
+          ]
 
     const plan: ExecutionPlanRecord = {
       planId,
@@ -197,6 +207,7 @@ class PlannerRuntimeImpl implements PlannerRuntime {
           status: RUNTIME_ACTION_STATES.COMPLETED,
         },
       ],
+      steps: plan.steps,
     }
   }
 
@@ -205,6 +216,11 @@ class PlannerRuntimeImpl implements PlannerRuntime {
 
     if (TERMINAL_STATES.includes(run.status) || run.status === PLANNER_STATES.INITIALIZING) {
       throw new Error(`Cannot resume from state: ${run.status}`)
+    }
+
+    const plan = this.planStore.getPlan(run.planId)
+    if (!plan) {
+      throw new Error(`Plan not found: ${run.planId}`)
     }
 
     if (run.status === PLANNER_STATES.PLANNING) {
@@ -221,6 +237,7 @@ class PlannerRuntimeImpl implements PlannerRuntime {
           eventType: event.eventType,
           eventPayload: event.payload,
           resumedFromPlanning: true,
+          returnedContext: true,
         },
       })
 
@@ -229,6 +246,12 @@ class PlannerRuntimeImpl implements PlannerRuntime {
         planId: run.planId,
         status: PLANNER_STATES.PLANNING,
         actions: [],
+        steps: plan.steps,
+        context: {
+          objective: plan.objective,
+          steps: plan.steps,
+          checkpoint: (run.checkpoint as Checkpoint) ?? undefined,
+        },
       }
     }
 
@@ -261,7 +284,82 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       planId: run.planId,
       status: PLANNER_STATES.PLANNING,
       actions: [],
+      steps: plan.steps,
     }
+  }
+
+  completePlannerRun(plannerRunId: string, summary?: string): PlannerRunResult {
+    const run = this.getPlannerRun(plannerRunId)
+
+    if (TERMINAL_STATES.includes(run.status)) {
+      const terminalPlan = this.planStore.getPlan(run.planId)
+      return {
+        plannerRunId,
+        planId: run.planId,
+        status: run.status,
+        actions: [],
+        steps: terminalPlan?.steps ?? [],
+      }
+    }
+
+    if (run.status !== PLANNER_STATES.PLANNING && !WAITING_STATES.includes(run.status)) {
+      throw new Error(`Cannot complete run in state: ${run.status}`)
+    }
+
+    // WAITING_* states have no direct edge to COMPLETED; return to PLANNING
+    // first using the existing WAITING_* -> PLANNING edges.
+    if (WAITING_STATES.includes(run.status)) {
+      this.transitionState(plannerRunId, PLANNER_STATES.PLANNING, {
+        resumedForCompletion: true,
+      })
+    }
+
+    const plan = this.planStore.getPlan(run.planId)
+    if (!plan) {
+      throw new Error(`Plan not found: ${run.planId}`)
+    }
+
+    for (const step of plan.steps) {
+      this.planStore.updateStepStatus(run.planId, step.stepId, 'completed')
+    }
+
+    this.transitionState(plannerRunId, PLANNER_STATES.COMPLETED, {
+      summary,
+      completedAt: new Date().toISOString(),
+    })
+
+    const updatedPlan = this.planStore.getPlan(run.planId)
+    return {
+      plannerRunId,
+      planId: run.planId,
+      status: PLANNER_STATES.COMPLETED,
+      actions: [],
+      steps: updatedPlan?.steps ?? plan.steps,
+    }
+  }
+
+  markStep(
+    plannerRunId: string,
+    stepId: string,
+    status: 'completed' | 'failed' | 'in_progress',
+    result?: string,
+  ): void {
+    const run = this.getPlannerRun(plannerRunId)
+
+    if (TERMINAL_STATES.includes(run.status)) {
+      throw new Error(`Cannot mark step on run in terminal state: ${run.status}`)
+    }
+
+    this.planStore.updateStepStatus(run.planId, stepId, status)
+
+    const currentCheckpoint = (run.checkpoint as Checkpoint) || {}
+    this.saveCheckpoint(plannerRunId, {
+      ...currentCheckpoint,
+      stepId,
+      stepStatus: status,
+      stepResult: result,
+      markedAt: new Date().toISOString(),
+    })
   }
 
   cancelPlannerRun(plannerRunId: string): void {

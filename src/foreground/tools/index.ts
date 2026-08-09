@@ -30,6 +30,20 @@ import {
   type ResumePlannerData,
 } from './planner-resume-tool.js'
 import {
+  COMPLETE_PLANNER_TOOL_ID,
+  handleCompletePlanner,
+  type CompletePlannerDeps,
+  type CompletePlannerInput,
+  type CompletePlannerData,
+} from './planner-complete-tool.js'
+import {
+  MARK_PLANNER_STEP_TOOL_ID,
+  handleMarkPlannerStep,
+  type MarkPlannerStepDeps,
+  type MarkPlannerStepInput,
+  type MarkPlannerStepData,
+} from './planner-mark-step-tool.js'
+import {
   LAUNCH_SUBAGENT_TOOL_ID,
   handleLaunchSubagent,
   type LaunchSubagentInput,
@@ -71,6 +85,8 @@ export {
   STATUS_QUERY_TOOL_ID,
   SPAWN_PLANNER_TOOL_ID,
   RESUME_PLANNER_TOOL_ID,
+  COMPLETE_PLANNER_TOOL_ID,
+  MARK_PLANNER_STEP_TOOL_ID,
   LAUNCH_SUBAGENT_TOOL_ID,
   CANCEL_MODIFY_TOOL_ID,
   CANCEL_PLANNER_TOOL_ID,
@@ -87,6 +103,12 @@ export type {
   SpawnPlannerData,
   ResumePlannerInput,
   ResumePlannerData,
+  CompletePlannerDeps,
+  CompletePlannerInput,
+  CompletePlannerData,
+  MarkPlannerStepDeps,
+  MarkPlannerStepInput,
+  MarkPlannerStepData,
   LaunchSubagentInput,
   LaunchSubagentData,
   ForegroundChildTaskData,
@@ -106,6 +128,8 @@ export type {
 export { handleStatusQuery } from './status-query-tool.js'
 export { handleSpawnPlanner } from './planner-spawn-tool.js'
 export { handleResumePlanner } from './planner-resume-tool.js'
+export { handleCompletePlanner } from './planner-complete-tool.js'
+export { handleMarkPlannerStep } from './planner-mark-step-tool.js'
 export { handleLaunchSubagent } from './subagent-launch-tool.js'
 export { handleCancelOrModifyTask } from './cancel-modify-task-tool.js'
 export { handleCancelPlanner } from './cancel-planner-tool.js'
@@ -370,6 +394,113 @@ export function createForegroundResumePlannerToolDefinition(runtimeDeps?: Foregr
               sessionId: identity.sessionId,
             },
             { ...input, timestamp: input.timestamp ?? new Date().toISOString() },
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
+    metadata: {
+      requiresApproval: true,
+    },
+  }
+}
+
+/**
+ * Create the foreground_complete_planner tool definition.
+ * - sensitivity: 'medium'
+ * - category: 'internal'
+ * - requiresApproval: true
+ */
+export function createForegroundCompletePlannerToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
+  return {
+    name: COMPLETE_PLANNER_TOOL_ID,
+    description:
+      'Mark a planner run as completed once all of its plan steps have been executed and the task is finished.',
+    category: 'internal',
+    sensitivity: 'medium',
+    requiresPermission: true,
+    schema: {
+      type: 'object',
+      properties: {
+        plannerRunId: {
+          type: 'string',
+          description: 'ID of the planner run to mark as completed',
+        },
+        summary: {
+          type: 'string',
+          description: 'Optional summary of what was accomplished',
+        },
+      },
+      required: ['plannerRunId'],
+    },
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const result = await handleCompletePlanner(
+            {
+              plannerRuntime: runtimeDeps.plannerRuntime,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+            },
+            params as CompletePlannerInput,
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
+    metadata: {
+      requiresApproval: true,
+    },
+  }
+}
+
+/**
+ * Create the foreground_mark_planner_step tool definition.
+ * - sensitivity: 'medium'
+ * - category: 'internal'
+ * - requiresApproval: true
+ */
+export function createForegroundMarkPlannerStepToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
+  return {
+    name: MARK_PLANNER_STEP_TOOL_ID,
+    description:
+      'Update the status of a single planner run step. Use this to record progress while executing a plan, then call foreground_complete_planner once all steps are done.',
+    category: 'internal',
+    sensitivity: 'medium',
+    requiresPermission: true,
+    schema: {
+      type: 'object',
+      properties: {
+        plannerRunId: {
+          type: 'string',
+          description: 'ID of the planner run containing the step',
+        },
+        stepId: {
+          type: 'string',
+          description: 'ID of the step to update',
+        },
+        status: {
+          type: 'string',
+          enum: ['completed', 'failed', 'in_progress'],
+          description: 'New status for the step',
+        },
+        result: {
+          type: 'string',
+          description: 'Optional result or note for the step update',
+        },
+      },
+      required: ['plannerRunId', 'stepId', 'status'],
+    },
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const result = await handleMarkPlannerStep(
+            {
+              plannerRuntime: runtimeDeps.plannerRuntime,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+            },
+            params as MarkPlannerStepInput,
           )
           return mapForegroundToolResult(result)
         }
@@ -759,6 +890,8 @@ export function registerAllForegroundTools(
   registry.register(createForegroundStatusQueryToolDefinition(runtimeDeps))
   registry.register(createForegroundSpawnPlannerToolDefinition(runtimeDeps))
   registry.register(createForegroundResumePlannerToolDefinition(runtimeDeps))
+  registry.register(createForegroundCompletePlannerToolDefinition(runtimeDeps))
+  registry.register(createForegroundMarkPlannerStepToolDefinition(runtimeDeps))
   registry.register(createForegroundLaunchSubagentToolDefinition(runtimeDeps))
   registry.register(createForegroundCancelOrModifyTaskToolDefinition(runtimeDeps))
   registry.register(createForegroundCancelPlannerToolDefinition(runtimeDeps))
@@ -775,6 +908,8 @@ export function getForegroundToolIds(): string[] {
     STATUS_QUERY_TOOL_ID,
     SPAWN_PLANNER_TOOL_ID,
     RESUME_PLANNER_TOOL_ID,
+    COMPLETE_PLANNER_TOOL_ID,
+    MARK_PLANNER_STEP_TOOL_ID,
     LAUNCH_SUBAGENT_TOOL_ID,
     CANCEL_MODIFY_TOOL_ID,
     CANCEL_PLANNER_TOOL_ID,
@@ -795,6 +930,8 @@ export function getDefaultProjectionForegroundToolIds(): string[] {
     APPROVAL_REQUEST_TOOL_ID, // internal, low
     SPAWN_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
     RESUME_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
+    COMPLETE_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
+    MARK_PLANNER_STEP_TOOL_ID, // internal, medium — orchestration, safe for main
     LAUNCH_SUBAGENT_TOOL_ID, // internal, medium — orchestration, safe for main
     CANCEL_PLANNER_TOOL_ID, // internal, medium - orchestration, safe for main
     // CANCEL_MODIFY_TOOL_ID intentionally excluded — high sensitivity, risky
@@ -809,6 +946,8 @@ export function getRequiresApprovalForegroundToolIds(): string[] {
   return [
     SPAWN_PLANNER_TOOL_ID,
     RESUME_PLANNER_TOOL_ID,
+    COMPLETE_PLANNER_TOOL_ID,
+    MARK_PLANNER_STEP_TOOL_ID,
     LAUNCH_SUBAGENT_TOOL_ID,
     CANCEL_PLANNER_TOOL_ID,
     CANCEL_MODIFY_TOOL_ID,

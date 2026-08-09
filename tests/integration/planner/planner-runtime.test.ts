@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createConnectionManager, type ConnectionManager } from '../../../src/storage/connection.js'
 import { createMigrationRunner, type MigrationRunner, type Migration } from '../../../src/storage/migrations.js'
-import { createPlanStore, type PlanStore } from '../../../src/storage/plan-store.js'
+import { createPlanStore, type PlanStore, type PlanStep } from '../../../src/storage/plan-store.js'
 import { createPlannerRunStore, type PlannerRunStore } from '../../../src/storage/planner-run-store.js'
 import { createRuntimeActionStore, type RuntimeActionStore } from '../../../src/storage/runtime-action-store.js'
 import { createEventStore, type EventStore } from '../../../src/storage/event-store.js'
@@ -239,6 +239,7 @@ describe('Planner Runtime Integration', () => {
       expect(result.planId).toBeDefined()
       expect(result.status).toBe(PLANNER_STATES.PLANNING)
       expect(result.actions).toBeInstanceOf(Array)
+      expect(result.steps).toHaveLength(3)
       expect(result.error).toBeUndefined()
 
       // Verify PlannerRun was created in store (bootstrapped to PLANNING)
@@ -254,6 +255,26 @@ describe('Planner Runtime Integration', () => {
       expect(plan?.userId).toBe(input.userId)
       expect(plan?.status).toBe(EXECUTION_PLAN_STATES.DRAFT)
       expect(plan?.steps).toBeInstanceOf(Array)
+    })
+
+    it('should honor provided steps from input when supplied', () => {
+      const customSteps: PlanStep[] = [
+        { stepId: 'custom_001', description: 'Gather test fixtures', status: 'pending' },
+        { stepId: 'custom_002', description: 'Compile test report', status: 'pending', dependencies: ['custom_001'] },
+      ]
+
+      const input: PlannerRunInput = {
+        objective: 'Custom step plan',
+        userId: 'user_custom_steps',
+        steps: customSteps,
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+
+      expect(result.steps).toEqual(customSteps)
+
+      const plan = planStore.getPlan(result.planId)
+      expect(plan?.steps).toEqual(customSteps)
     })
 
     it('should generate RuntimeAction for plan execution', () => {
@@ -661,7 +682,7 @@ describe('Planner Runtime Integration', () => {
       expect(run?.status).toBe(PLANNER_STATES.PLANNING)
     })
 
-    it('should resume from planning state right after create', () => {
+    it('should resume from planning state with plan context for continuation', () => {
       const input: PlannerRunInput = {
         objective: 'Resume from planning test',
         userId: 'user_019b',
@@ -670,7 +691,7 @@ describe('Planner Runtime Integration', () => {
       const result = plannerRuntime.createPlannerRun(input)
       const plannerRunId = result.plannerRunId
 
-      // createPlannerRun bootstraps to PLANNING; resume must not throw
+      // Resume returns plan context (objective + steps + checkpoint) for LLM continuation
       const resumeEvent: PlannerResumeEvent = {
         eventType: 'user_response',
         payload: { response: 'Begin execution' },
@@ -679,9 +700,19 @@ describe('Planner Runtime Integration', () => {
       const resumeResult = plannerRuntime.resumePlannerRun(plannerRunId, resumeEvent)
 
       expect(resumeResult.status).toBe(PLANNER_STATES.PLANNING)
+      expect(resumeResult.steps).toHaveLength(3)
+      expect(resumeResult.context).toBeDefined()
+      expect(resumeResult.context?.objective).toBe(input.objective)
+      expect(resumeResult.context?.steps).toHaveLength(3)
+      expect(resumeResult.context?.checkpoint).toBeDefined()
 
       const run = plannerRunStore.findActive(input.userId).find((r) => r.plannerRunId === plannerRunId)
       expect(run?.status).toBe(PLANNER_STATES.PLANNING)
+
+      // The planner_resumed event now carries the returnedContext marker
+      const resumedEvents = eventStore.query({ eventType: 'planner_resumed', plannerRunId })
+      expect(resumedEvents.length).toBeGreaterThan(0)
+      expect(resumedEvents[0]?.payload.returnedContext).toBe(true)
     })
 
     it('should resume from waiting_for_execution_result with result', () => {
@@ -737,6 +768,134 @@ describe('Planner Runtime Integration', () => {
       expect(() => plannerRuntime.resumePlannerRun(plannerRunId2, resumeEvent)).toThrow(
         'Cannot resume from state: initializing',
       )
+    })
+  })
+
+  describe('completePlannerRun', () => {
+    it('should transition a planning run to completed and mark all steps completed', () => {
+      const input: PlannerRunInput = {
+        objective: 'Complete plan test',
+        userId: 'user_complete_001',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+      const planId = result.planId
+
+      const completeResult = plannerRuntime.completePlannerRun(plannerRunId, 'All steps executed successfully')
+
+      expect(completeResult.plannerRunId).toBe(plannerRunId)
+      expect(completeResult.planId).toBe(planId)
+      expect(completeResult.status).toBe(PLANNER_STATES.COMPLETED)
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.COMPLETED)
+      expect(run?.checkpoint).toMatchObject({
+        summary: 'All steps executed successfully',
+        completedAt: expect.any(String),
+      })
+
+      const plan = planStore.getPlan(planId)
+      expect(plan?.steps.every((s) => s.status === 'completed')).toBe(true)
+    })
+
+    it('should transition waiting_for_user -> planning -> completed via intermediate transition', () => {
+      const input: PlannerRunInput = {
+        objective: 'Wait then complete',
+        userId: 'user_complete_002',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_USER)
+
+      const completeResult = plannerRuntime.completePlannerRun(plannerRunId)
+      expect(completeResult.status).toBe(PLANNER_STATES.COMPLETED)
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.COMPLETED)
+    })
+
+    it('should be idempotent when the run is already in a terminal state', () => {
+      const input: PlannerRunInput = {
+        objective: 'Idempotent complete',
+        userId: 'user_complete_003',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.completePlannerRun(plannerRunId)
+      const secondResult = plannerRuntime.completePlannerRun(plannerRunId, 'second summary')
+
+      expect(secondResult.status).toBe(PLANNER_STATES.COMPLETED)
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.COMPLETED)
+    })
+
+    it('should throw when the run does not exist', () => {
+      expect(() => plannerRuntime.completePlannerRun('pl_run__does_not_exist')).toThrow('PlannerRun not found')
+    })
+  })
+
+  describe('markStep', () => {
+    it('should update step status and record progress in checkpoint', () => {
+      const input: PlannerRunInput = {
+        objective: 'Mark step test',
+        userId: 'user_mark_001',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+      const planId = result.planId
+
+      plannerRuntime.markStep(plannerRunId, 'step_001', 'completed', 'Analyzed objective')
+
+      const plan = planStore.getPlan(planId)
+      expect(plan?.steps[0]?.status).toBe('completed')
+      expect(plan?.steps[1]?.status).toBe('pending')
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.checkpoint).toMatchObject({
+        stepId: 'step_001',
+        stepStatus: 'completed',
+        stepResult: 'Analyzed objective',
+      })
+    })
+
+    it('should mark a step failed without failing the run', () => {
+      const input: PlannerRunInput = {
+        objective: 'Fail step test',
+        userId: 'user_mark_002',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+      const planId = result.planId
+
+      plannerRuntime.markStep(plannerRunId, 'step_002', 'failed', 'Tool unavailable')
+
+      const plan = planStore.getPlan(planId)
+      expect(plan?.steps[1]?.status).toBe('failed')
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.PLANNING)
+    })
+
+    it('should reject marking a step on a terminal run', () => {
+      const input: PlannerRunInput = {
+        objective: 'Terminal mark test',
+        userId: 'user_mark_003',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.COMPLETED)
+
+      expect(() => plannerRuntime.markStep(plannerRunId, 'step_001', 'completed')).toThrow('Cannot mark step')
     })
   })
 

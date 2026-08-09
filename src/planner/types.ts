@@ -1,4 +1,5 @@
 import type { ExecutionPlanState } from '../shared/states.js'
+import type { PlanStep } from '../storage/plan-store.js'
 
 export type PlannerRunState =
   | 'initializing'
@@ -53,6 +54,7 @@ export interface PlannerRunInput {
   userId: string
   sessionId?: string
   contextBundle?: Record<string, unknown>
+  steps?: PlanStep[]
 }
 
 export interface PlannerRunResult {
@@ -60,6 +62,8 @@ export interface PlannerRunResult {
   planId: string
   status: PlannerRunState
   actions: PlannerRuntimeAction[]
+  steps: PlanStep[]
+  context?: { objective: string; steps: PlanStep[]; checkpoint?: Checkpoint }
   error?: string
 }
 

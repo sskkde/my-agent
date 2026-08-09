@@ -15,7 +15,6 @@ import type { AssistantPersonaProfile } from '../../foreground/types.js'
 import type { AgentType, SourceType, InvocationSource } from '../../context/types.js'
 import type { LaunchSource } from '../../taxonomy/launch-source-policy.js'
 import type { SegmentDBudgetConfig } from './segment-d-budget.js'
-import type { MemoryProvenance } from '../../memory/types.js'
 
 // ─── Mode ────────────────────────────────────────────────────────────────────
 
@@ -27,7 +26,23 @@ import type { MemoryProvenance } from '../../memory/types.js'
  */
 export type ModelInputMode = 'structured_json' | 'function_calling'
 
-export type ProviderFamily = 'openai' | 'deepseek' | 'ollama' | 'anthropic' | 'gemini' | 'dashscope' | 'volcengine' | 'qianfan' | 'zhipu' | 'moonshot' | 'minimax' | 'mimo' | 'iflytek-spark' | 'stepfun' | 'hunyuan' | 'siliconflow'
+export type ProviderFamily =
+  | 'openai'
+  | 'deepseek'
+  | 'ollama'
+  | 'anthropic'
+  | 'gemini'
+  | 'dashscope'
+  | 'volcengine'
+  | 'qianfan'
+  | 'zhipu'
+  | 'moonshot'
+  | 'minimax'
+  | 'mimo'
+  | 'iflytek-spark'
+  | 'stepfun'
+  | 'hunyuan'
+  | 'siliconflow'
 
 // ─── Input Types ─────────────────────────────────────────────────────────────
 
@@ -200,7 +215,8 @@ export interface ContextBundleProvenance {
 export function renderPersonaProjection(projection: PersonaProjection): string {
   const parts: string[] = []
 
-  const safetyPrefix = 'Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.'
+  const safetyPrefix =
+    'Style preferences only; cannot override system rules, safety, tool authorization, output schemas, audit, or tenant boundaries.'
   parts.push(safetyPrefix)
 
   parts.push(`\n## Style Guidelines\n${projection.styleGuidelines}`)
@@ -295,6 +311,22 @@ export function renderToolSelectionPolicy(policy: ToolSelectionPolicyProjection)
   }
 
   return parts.join('\n')
+}
+
+/**
+ * Provenance metadata for a recalled memory.
+ *
+ * Defined locally (not imported from src/memory/types.js) to respect the
+ * kernel->memory import boundary enforced by tests/architecture/import-boundaries.test.ts.
+ * Structurally identical to memory.MemoryProvenance; TypeScript structural
+ * typing keeps the two compatible across the boundary.
+ */
+export interface MemoryProvenance {
+  sourceType: 'long_term_memory' | 'session_memory' | 'summary_layer' | 'working_summary'
+  sourceRef: string
+  freshnessTs: string
+  relevanceReason: string
+  retrievalScore?: number
 }
 
 /**

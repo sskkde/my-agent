@@ -93,10 +93,7 @@ import { createSubagentRuntime } from '../subagents/subagent-runtime.js'
 import type { SubagentRuntime } from '../subagents/types.js'
 import { createSubagentRunStore, type SubagentRunStore } from '../storage/subagent-run-store.js'
 import { createSubagentTranscriptStore, type SubagentTranscriptStore } from '../storage/subagent-transcript-store.js'
-import {
-  createChildSessionTaskRuntime,
-  type ChildSessionTaskRuntime,
-} from '../subagents/child-session-task-runtime.js'
+import { createChildSessionTaskRuntime, type ChildSessionTaskRuntime } from '../subagents/child-session-task-runtime.js'
 import { createSearchPhaseRecorder, createSearchChildSessionRunner } from '../search/search-child-runner.js'
 import {
   createSubagentProviderPreferenceStore,
@@ -120,7 +117,10 @@ import { createFileUploadStore, type FileUploadStore } from '../storage/file-upl
 import { createUploadFileService, type UploadFileService } from '../storage/upload-file-service.js'
 import { createUploadPreviewExtractor, type UploadPreviewExtractor } from '../storage/upload-preview.js'
 import { createWorkdirStore, type WorkdirStore } from '../storage/workdir-store.js'
-import { createSessionWorkdirStateStore, type SessionWorkdirStateStore } from '../storage/session-workdir-state-store.js'
+import {
+  createSessionWorkdirStateStore,
+  type SessionWorkdirStateStore,
+} from '../storage/session-workdir-state-store.js'
 import { createSystemSettingsStore, type SystemSettingsStore } from '../storage/system-settings-store.js'
 import { createUserSettingsStore, type UserSettingsStore } from '../storage/user-settings-store.js'
 import { createWorkdirService, type WorkdirService } from '../workdirs/workdir-service.js'
@@ -332,11 +332,7 @@ export interface ResolveSearchLlmDeps {
 export function isSearchLlmProviderEligible(
   provider: Pick<ProviderConfigSanitized, 'providerType' | 'enabled' | 'configured'>,
 ): boolean {
-  return (
-    provider.enabled === true &&
-    provider.configured === true &&
-    provider.providerType !== 'mock'
-  )
+  return provider.enabled === true && provider.configured === true && provider.providerType !== 'mock'
 }
 
 /**
@@ -372,11 +368,7 @@ export function resolveSearchLlm(deps: ResolveSearchLlmDeps): ResolvedSearchLlm 
   const fgModel = currentConfig?.model
   if (fgProviderId && fgModel) {
     const fgProvider = providerConfigStore.getById(fgProviderId)
-    if (
-      fgProvider &&
-      isSearchLlmProviderEligible(fgProvider) &&
-      fgProvider.providerType !== 'ollama'
-    ) {
+    if (fgProvider && isSearchLlmProviderEligible(fgProvider) && fgProvider.providerType !== 'ollama') {
       return { providerId: fgProviderId, model: fgModel, providerType: fgProvider.providerType }
     }
   }
@@ -384,8 +376,7 @@ export function resolveSearchLlm(deps: ResolveSearchLlmDeps): ResolvedSearchLlm 
   // 3. First enabled, configured, non-mock, non-ollama provider with selectedModel
   const allProviders = providerConfigStore.listAll()
   const usable = allProviders.find(
-    (p) =>
-      isSearchLlmProviderEligible(p) && p.providerType !== 'ollama' && p.selectedModel,
+    (p) => isSearchLlmProviderEligible(p) && p.providerType !== 'ollama' && p.selectedModel,
   )
   if (usable && usable.selectedModel) {
     return {
@@ -417,10 +408,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   } = options
 
   const webSearchBrowserProvider = injectedWebSearchBrowserProvider ?? createCloakBrowserProvider()
-  const browserSessionManager =
-    injectedBrowserSessionManager ?? new BrowserSessionManager(webSearchBrowserProvider)
-  const browserFrameStream =
-    injectedBrowserFrameStream ?? new BrowserFrameStream(browserSessionManager)
+  const browserSessionManager = injectedBrowserSessionManager ?? new BrowserSessionManager(webSearchBrowserProvider)
+  const browserFrameStream = injectedBrowserFrameStream ?? new BrowserFrameStream(browserSessionManager)
 
   const connection = existingConnection ?? createConnectionManager(dbPath)
 
@@ -563,39 +552,37 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     organizationStore =
       ((existingStores as Record<string, unknown>)?.organizationStore as OrganizationStore) ??
       createOrganizationStore(connection)
-    todoStore =
-      ((existingStores as Record<string, unknown>)?.todoStore as TodoStore) ??
-      createTodoStore(connection)
+    todoStore = ((existingStores as Record<string, unknown>)?.todoStore as TodoStore) ?? createTodoStore(connection)
     fileUploadStore = createFileUploadStore(connection)
-	    workdirStore = createWorkdirStore(connection)
-	    sessionWorkdirStateStore = createSessionWorkdirStateStore(connection)
-	    systemSettingsStore =
-	      ((existingStores as Record<string, unknown>)?.systemSettingsStore as SystemSettingsStore) ??
-	      createSystemSettingsStore(connection)
-	    userSettingsStore = createUserSettingsStore(connection)
-	    subagentRunStore = createSubagentRunStore(connection)
- 	    subagentTranscriptStore = createSubagentTranscriptStore(connection)
- 	    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
+    workdirStore = createWorkdirStore(connection)
+    sessionWorkdirStateStore = createSessionWorkdirStateStore(connection)
+    systemSettingsStore =
+      ((existingStores as Record<string, unknown>)?.systemSettingsStore as SystemSettingsStore) ??
+      createSystemSettingsStore(connection)
+    userSettingsStore = createUserSettingsStore(connection)
+    subagentRunStore = createSubagentRunStore(connection)
+    subagentTranscriptStore = createSubagentTranscriptStore(connection)
+    subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
       message: 'Failed to initialize stores',
       details: error instanceof Error ? error.message : String(error),
-	    }
-	  }
+    }
+  }
 
-	  const processSessionStore = new ProcessSessionStore()
-	  const workdirService = createWorkdirService({
-	    workdirStore,
-	    sessionStateStore: sessionWorkdirStateStore,
-	    onWorkdirDeleted: (workdirId) => {
-	      processSessionStore.killByWorkDirId(workdirId)
-	    },
-	  })
+  const processSessionStore = new ProcessSessionStore()
+  const workdirService = createWorkdirService({
+    workdirStore,
+    sessionStateStore: sessionWorkdirStateStore,
+    onWorkdirDeleted: (workdirId) => {
+      processSessionStore.killByWorkDirId(workdirId)
+    },
+  })
 
-	  registerMessagingDefinitions(connectorStore)
+  registerMessagingDefinitions(connectorStore)
 
-	  const stores: Stores = {
+  const stores: Stores = {
     eventStore: {
       append: (event: unknown) => eventStore.append(event as Parameters<typeof eventStore.append>[0]),
       query: (filters: { sessionId?: string; eventType?: string }) => eventStore.query(filters) as unknown[],
@@ -606,16 +593,16 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     transcriptStore: {
       findBySession: (sessionId: string) => transcriptStore.findBySession(sessionId),
     },
-	    runtimeActionStore: {
-	      findBySessionId: (sessionId: string) =>
-	        runtimeActionStore.query({ sessionId }) as unknown as Array<{
-	          actionId: string
-	          status: string
-	          targetRef?: Record<string, unknown>
-	        }>,
-	    },
-	    workdirService,
-	  }
+    runtimeActionStore: {
+      findBySessionId: (sessionId: string) =>
+        runtimeActionStore.query({ sessionId }) as unknown as Array<{
+          actionId: string
+          status: string
+          targetRef?: Record<string, unknown>
+        }>,
+    },
+    workdirService,
+  }
 
   const gateway = createGateway({ stores })
 
@@ -726,13 +713,14 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     eventStore,
   })
 
-	  // Create tool registry and register built-in tools
-	  const toolRegistry = createToolRegistry()
+  // Create tool registry and register built-in tools
+  const toolRegistry = createToolRegistry()
   registerBuiltInTools(toolRegistry, {
     artifactStore,
     summaryStore,
     transcriptStore,
     planStore,
+    plannerRunStore,
     longTermMemoryStore,
     toolResultStore,
     sessionStore,
@@ -740,8 +728,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     todoStore,
     webSearchBrowserProvider: webSearchBrowserProvider.getBrowser,
     browserSessionManager,
-    browserSessionIdResolver: (chatSessionId: string) =>
-      toBrowserSessionId(chatSessionId),
+    browserSessionIdResolver: (chatSessionId: string) => toBrowserSessionId(chatSessionId),
   })
 
   // Register AMap MCP tools (opt-in via AMAP_MCP_ENABLED + AMAP_MAPS_API_KEY)
@@ -774,13 +761,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       return r ? resolveProviderFamily(r.providerType, r.model) : fallbackFamily
     },
     searchLlmProviderId: () =>
-      resolveSearchLlm({ agentConfigStore, providerConfigStore })?.providerId ??
-      resolvedSearchLlm?.providerId ??
-      '',
+      resolveSearchLlm({ agentConfigStore, providerConfigStore })?.providerId ?? resolvedSearchLlm?.providerId ?? '',
     searchLlmModel: () =>
-      resolveSearchLlm({ agentConfigStore, providerConfigStore })?.model ??
-      resolvedSearchLlm?.model ??
-      '',
+      resolveSearchLlm({ agentConfigStore, providerConfigStore })?.model ?? resolvedSearchLlm?.model ?? '',
     phaseObserver: searchPhaseRecorder.observe,
     roundPolicy: MULTI_ROUND_SEARCH_POLICY,
   })
@@ -854,13 +837,13 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
         toolName: request.toolName,
         params: request.params,
         userId: request.userId,
-	        sessionId: request.sessionId,
-	        kernelRunId: request.kernelRunId,
-	        agentId: request.agentId,
-	        agentType: request.agentType,
-	        agentProfile: request.agentProfile,
-	        launchSource: request.launchSource,
-	        permissionContext: {
+        sessionId: request.sessionId,
+        kernelRunId: request.kernelRunId,
+        agentId: request.agentId,
+        agentType: request.agentType,
+        agentProfile: request.agentProfile,
+        launchSource: request.launchSource,
+        permissionContext: {
           userId: request.permissionContext.userId,
           sessionId: request.sessionId ?? '',
           mode: 'ask_on_write',
@@ -987,11 +970,11 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     providerConfigStore,
     agentConfigStore,
     sessionStore,
-	    toolRegistry,
-	    preferenceStore: subagentProviderPreferenceStore,
-	    runWithProvidersForUser,
-	    envelopeRegistry,
-	  })
+    toolRegistry,
+    preferenceStore: subagentProviderPreferenceStore,
+    runWithProvidersForUser,
+    envelopeRegistry,
+  })
 
   // Unified child-session task runtime (Todo 7/17): generic kernel adapter for
   // most profiles, specialized search runner for the search profile. Stores,
@@ -1146,7 +1129,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const uploadFileService = createUploadFileService()
   const uploadPreviewExtractor = createUploadPreviewExtractor()
 
-	  return {
+  return {
     gateway,
     resolveTenantId: () => {
       const tenantId = process.env.DEFAULT_TENANT_ID ?? 'org_default'
