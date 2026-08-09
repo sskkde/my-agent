@@ -37,6 +37,8 @@ import { createTimelineBroadcaster, type TimelineBroadcaster } from './timeline-
 import type { MessageProcessor } from '../processing/types.js'
 import { createMessageProcessor as createMessageProcessorImpl } from '../processing/message-processor.js'
 import { SessionBusyTracker } from '../processing/session-busy-tracker.js'
+import { scheduleBackgroundNotificationTurn } from '../processing/background-notification-turn.js'
+import { getBackgroundAutoContinueEnabled } from '../config/background-auto-continue.js'
 import { createOrchestrationProcessor, type ProcessorOrchestrationDeps } from '../processing/processor-orchestration.js'
 import { createForegroundAgent, type ForegroundAgent } from '../foreground/foreground-agent.js'
 import { createRuntimeDispatcher } from '../dispatcher/runtime-dispatcher.js'
@@ -785,6 +787,16 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const agentProfileRegistry = createAgentProfileRegistry()
   registerSystemProfiles(agentProfileRegistry)
 
+  // Created early so the parentTurnTrigger closure can capture it; same
+  // stateless instance is exported on ApiContext below.
+  const sessionBusyTracker = new SessionBusyTracker()
+
+  // Delayed-resolve: assigned after createOrchestrationMessageProcessor
+  // below. The trigger closure reads it at invocation time, so a terminal
+  // event arriving before assignment drops silently (collect-pending
+  // fallback still surfaces it on the next user turn).
+  let notificationTurnProcessor: MessageProcessor | undefined
+
   // Background runtime must exist before the foreground agent so completed
   // child-task notifications can be injected into the parent's next turn.
   const backgroundRuntime = createBackgroundRuntime({
@@ -792,6 +804,34 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     eventStore,
     maxConcurrentRuns: 10,
     watchdogTimeoutMs: 60000,
+    ...(getBackgroundAutoContinueEnabled()
+      ? {
+          parentTurnTrigger: (input: {
+            userId: string
+            sessionId: string
+            backgroundRunId: string
+            type: 'completed' | 'failed' | 'cancelled'
+            summary: string
+          }) => {
+            const processor = notificationTurnProcessor
+            if (!processor) {
+              return
+            }
+            void scheduleBackgroundNotificationTurn(
+              {
+                messageProcessor: processor,
+                gateway,
+                channelRegistry,
+                sessionBusyTracker,
+                backgroundRunStore,
+                sessionStore,
+                runWithProvidersForUser,
+              },
+              input,
+            )
+          },
+        }
+      : {}),
   })
 
   // Create foreground agent with tool registry for schema projection
@@ -1118,6 +1158,9 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       memoryExtractionScheduler,
     })
 
+  // Hand the processor to the parentTurnTrigger closure captured above.
+  notificationTurnProcessor = messageProcessor
+
   const auditStore = createAuditStore(connection)
   const auditRecorder = createAuditRecorder({ auditStore })
 
@@ -1131,8 +1174,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
 
   const uploadFileService = createUploadFileService()
   const uploadPreviewExtractor = createUploadPreviewExtractor()
-
-  const sessionBusyTracker = new SessionBusyTracker()
 
   return {
     gateway,
