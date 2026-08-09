@@ -63,12 +63,27 @@ export interface BackgroundNotificationPayload {
 
 export const BACKGROUND_NOTIFICATION_EVENT_TYPE = 'BackgroundTaskNotification'
 
+/**
+ * Pure event emission fired exactly once when a background run reaches a
+ * terminal state (completed / failed / cancelled). The callback must NOT mark
+ * anything delivered — claiming the notification belongs to the scheduling
+ * layer. Callback exceptions are logged and swallowed, never thrown.
+ */
+export type ParentTurnTrigger = (input: {
+  userId: string
+  sessionId: string
+  backgroundRunId: string
+  type: 'completed' | 'failed' | 'cancelled'
+  summary: string
+}) => void
+
 export interface BackgroundRuntimeConfig {
   backgroundRunStore: BackgroundRunStore
   eventStore: EventStore
   maxConcurrentRuns: number
   watchdogTimeoutMs: number
   maxRecoveryAttempts?: number
+  parentTurnTrigger?: ParentTurnTrigger
 }
 
 export interface BackgroundRuntime {
@@ -342,7 +357,7 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
     this.runningRuns.delete(bgRunId)
     this.checkpointTimestamps.delete(bgRunId)
 
-    this.persistTerminalNotification(bgRunId, run, 'completed', {
+    const payload: BackgroundNotificationPayload = {
       backgroundRunId: bgRunId,
       taskId: run.taskId,
       childSessionId: run.childSessionId,
@@ -350,7 +365,9 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       type: 'completed',
       summary: sanitizeChildTaskSummary(result.response ?? 'Task completed successfully'),
       createdAt: now,
-    })
+    }
+    this.persistTerminalNotification(bgRunId, run, 'completed', payload)
+    this.emitParentTurnTrigger(bgRunId, run, 'completed', payload)
 
     this.emitEvent({
       eventId: this.generateId('evt'),
@@ -391,7 +408,7 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
     this.checkpointTimestamps.delete(bgRunId)
 
     const terminal = toChildTaskTerminalError(error.message, { code: error.code, phase: 'run' })
-    this.persistTerminalNotification(bgRunId, run, 'failed', {
+    const payload: BackgroundNotificationPayload = {
       backgroundRunId: bgRunId,
       taskId: run.taskId,
       childSessionId: run.childSessionId,
@@ -400,7 +417,9 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       summary: terminal.message,
       error: terminal,
       createdAt: now,
-    })
+    }
+    this.persistTerminalNotification(bgRunId, run, 'failed', payload)
+    this.emitParentTurnTrigger(bgRunId, run, 'failed', payload)
 
     this.emitEvent({
       eventId: this.generateId('evt'),
@@ -449,7 +468,7 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       recoverable: false,
       phase: 'cancel',
     }
-    this.persistTerminalNotification(bgRunId, run, 'cancelled', {
+    const payload: BackgroundNotificationPayload = {
       backgroundRunId: bgRunId,
       taskId: run.taskId,
       childSessionId: run.childSessionId,
@@ -458,7 +477,9 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       summary: cancelledError.message,
       error: cancelledError,
       createdAt: now,
-    })
+    }
+    this.persistTerminalNotification(bgRunId, run, 'cancelled', payload)
+    this.emitParentTurnTrigger(bgRunId, run, 'cancelled', payload)
 
     this.emitEvent({
       eventId: this.generateId('evt'),
@@ -639,6 +660,36 @@ class BackgroundRuntimeImpl implements BackgroundRuntime {
       retentionClass: 'standard' as RetentionClass,
       createdAt: payload.createdAt,
     })
+  }
+
+  /**
+   * Pure event emission: notify the scheduling layer that a background run
+   * reached a terminal state, so the parent session can auto-continue. Fires
+   * only when a trigger is configured and the run belongs to a session; the
+   * callback is best-effort (exceptions are logged, never thrown) and must not
+   * mark anything delivered.
+   */
+  private emitParentTurnTrigger(
+    bgRunId: string,
+    run: BackgroundRun,
+    type: BackgroundNotificationType,
+    payload: BackgroundNotificationPayload,
+  ): void {
+    if (!this.config.parentTurnTrigger || !run.sessionId) {
+      return
+    }
+
+    try {
+      this.config.parentTurnTrigger({
+        userId: run.userId,
+        sessionId: run.sessionId,
+        backgroundRunId: bgRunId,
+        type,
+        summary: payload.summary,
+      })
+    } catch (error) {
+      console.warn(`[BackgroundRuntime] parentTurnTrigger failed for ${bgRunId}:`, error)
+    }
   }
 
   private toNotificationRequest(run: BackgroundRun): NotificationRequest {
