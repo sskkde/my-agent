@@ -760,6 +760,12 @@ function persistTurnTranscript(
 
   const inboundEventId = input.metadata?.inboundEventId as string | undefined
 
+  // T6: synthetic background_notification turns MUST NOT write a userMessageSummary.
+  // Marker is the sole trigger; downstream consumers all skip falsy summaries,
+  // so this single-point guard is sufficient (no per-consumer changes needed).
+  const isBackgroundNotificationTurn = input.metadata?.envelopeEventType === 'background_notification'
+  const userMessageSummary = isBackgroundNotificationTurn ? '' : input.text
+
   const runtimeSummary =
     output.success && output.result?.data?.runtimeSummary
       ? (output.result.data.runtimeSummary as TurnTranscript['runtimeSummary'])
@@ -773,7 +779,7 @@ function persistTurnTranscript(
     userId: input.userId,
     input: {
       inboundEventId,
-      userMessageSummary: input.text,
+      userMessageSummary,
       contentRefs,
       inboundTimestamp: input.timestamp,
     },
