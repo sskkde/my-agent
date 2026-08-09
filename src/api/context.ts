@@ -820,12 +820,19 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
             void scheduleBackgroundNotificationTurn(
               {
                 messageProcessor: processor,
-                gateway,
-                channelRegistry,
                 sessionBusyTracker,
                 backgroundRunStore,
                 sessionStore,
                 runWithProvidersForUser,
+                deliverNotification: async (kind, content, correlationId, userId, sessionId) => {
+                  const envelope = gateway.formatOutbound(
+                    kind,
+                    content,
+                    { userId, sessionId, channel: 'webui' },
+                    correlationId,
+                  )
+                  await channelRegistry.deliver('webui', envelope)
+                },
               },
               input,
             )

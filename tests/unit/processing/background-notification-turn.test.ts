@@ -3,9 +3,6 @@ import { SessionBusyTracker } from '../../../src/processing/session-busy-tracker
 import type { BackgroundNotificationTurnDeps } from '../../../src/processing/background-notification-turn.js'
 import { scheduleBackgroundNotificationTurn } from '../../../src/processing/background-notification-turn.js'
 import type { MessageProcessorInput, MessageProcessorOutput } from '../../../src/processing/types.js'
-import type { OutboundEnvelope, MessageType } from '../../../src/gateway/types.js'
-import type { Gateway } from '../../../src/gateway/gateway.js'
-import type { ChannelRegistry } from '../../../src/gateway/channel-registry.js'
 import type { BackgroundRunStore } from '../../../src/storage/background-run-store.js'
 import type { SessionStore } from '../../../src/storage/session-store.js'
 
@@ -39,27 +36,15 @@ function createDeps(overrides: { sessionBusyTracker?: SessionBusyTracker } = {})
   const messageProcessor = {
     process: vi.fn(async (_input: MessageProcessorInput): Promise<MessageProcessorOutput> => successOutput()),
   }
-  const gateway = {
-    formatOutbound: vi.fn(
-      (
-        messageType: MessageType,
-        content: { text?: string; error?: { code: string; message: string } },
-        recipient: { userId: string; sessionId: string; channel?: string },
-        correlationId: string,
-      ): OutboundEnvelope => ({
-        envelopeId: 'env-1',
-        messageType,
-        recipient,
-        content,
-        correlationId,
-        timestamp: new Date().toISOString(),
-        metadata: {},
-      }),
-    ),
-  }
-  const channelRegistry = {
-    deliver: vi.fn(async (_channelId: string, _envelope: OutboundEnvelope) => ({ success: true })),
-  }
+  const deliverNotification = vi.fn(
+    async (
+      _kind: 'text' | 'error',
+      _content: { text?: string; error?: { code: string; message: string } },
+      _correlationId: string,
+      _userId: string,
+      _sessionId: string,
+    ) => {},
+  )
   const backgroundRunStore = {
     claimNotification: vi.fn(() => true),
     unclaimNotification: vi.fn(),
@@ -71,19 +56,18 @@ function createDeps(overrides: { sessionBusyTracker?: SessionBusyTracker } = {})
 
   const deps: BackgroundNotificationTurnDeps = {
     messageProcessor,
-    gateway: gateway as unknown as Gateway,
-    channelRegistry: channelRegistry as unknown as ChannelRegistry,
     sessionBusyTracker,
     backgroundRunStore: backgroundRunStore as unknown as BackgroundRunStore,
     sessionStore: sessionStore as unknown as SessionStore,
+    deliverNotification,
   }
 
-  return { deps, messageProcessor, gateway, channelRegistry, backgroundRunStore, sessionStore }
+  return { deps, messageProcessor, deliverNotification, backgroundRunStore, sessionStore }
 }
 
 describe('scheduleBackgroundNotificationTurn', () => {
   it('claims and processes exactly once when the session is free', async () => {
-    const { deps, messageProcessor, backgroundRunStore, channelRegistry, sessionStore } = createDeps()
+    const { deps, messageProcessor, backgroundRunStore, deliverNotification, sessionStore } = createDeps()
 
     await scheduleBackgroundNotificationTurn(deps, input)
 
@@ -104,12 +88,19 @@ describe('scheduleBackgroundNotificationTurn', () => {
       notificationType: 'completed',
     })
 
-    expect(channelRegistry.deliver).toHaveBeenCalledTimes(1)
+    expect(deliverNotification).toHaveBeenCalledTimes(1)
+    expect(deliverNotification).toHaveBeenCalledWith(
+      'text',
+      { text: 'Task finished' },
+      expect.stringMatching(/^turn-bg-/),
+      'user-1',
+      'sess-1',
+    )
     expect(sessionStore.updateMetadata).toHaveBeenCalledWith('sess-1', { lastActivityAt: expect.any(String) })
   })
 
   it('does not process when the claim fails (already delivered or claimed)', async () => {
-    const { deps, messageProcessor, backgroundRunStore, channelRegistry, gateway } = createDeps()
+    const { deps, messageProcessor, backgroundRunStore, deliverNotification } = createDeps()
     backgroundRunStore.claimNotification.mockReturnValue(false)
 
     await scheduleBackgroundNotificationTurn(deps, input)
@@ -117,8 +108,7 @@ describe('scheduleBackgroundNotificationTurn', () => {
     expect(backgroundRunStore.claimNotification).toHaveBeenCalledTimes(1)
     expect(messageProcessor.process).not.toHaveBeenCalled()
     expect(backgroundRunStore.unclaimNotification).not.toHaveBeenCalled()
-    expect(gateway.formatOutbound).not.toHaveBeenCalled()
-    expect(channelRegistry.deliver).not.toHaveBeenCalled()
+    expect(deliverNotification).not.toHaveBeenCalled()
   })
 
   it('does not claim or process while busy and retries once via onIdle', async () => {
@@ -145,39 +135,54 @@ describe('scheduleBackgroundNotificationTurn', () => {
   })
 
   it('rolls back the claim and delivers an error envelope when process reports failure', async () => {
-    const { deps, messageProcessor, backgroundRunStore, channelRegistry } = createDeps()
+    const { deps, messageProcessor, backgroundRunStore, deliverNotification } = createDeps()
     messageProcessor.process.mockResolvedValue(errorOutput())
 
     await scheduleBackgroundNotificationTurn(deps, input)
 
     expect(backgroundRunStore.unclaimNotification).toHaveBeenCalledWith('bg-1')
-    expect(channelRegistry.deliver).toHaveBeenCalledTimes(1)
-    const [deliveredChannel, envelope] = channelRegistry.deliver.mock.calls[0] as [string, OutboundEnvelope]
-    expect(deliveredChannel).toBe('webui')
-    expect(envelope.messageType).toBe('error')
-    expect(envelope.content.error).toMatchObject({ code: 'LLM_FAILED', message: 'provider exploded' })
+    expect(deliverNotification).toHaveBeenCalledTimes(1)
+    expect(deliverNotification).toHaveBeenCalledWith(
+      'error',
+      { error: { code: 'LLM_FAILED', message: 'provider exploded' } },
+      expect.stringMatching(/^turn-bg-/),
+      'user-1',
+      'sess-1',
+    )
   })
 
   it('swallows a throwing process, rolls back the claim, and does not propagate', async () => {
-    const { deps, messageProcessor, backgroundRunStore } = createDeps()
+    const { deps, messageProcessor, backgroundRunStore, deliverNotification } = createDeps()
     messageProcessor.process.mockRejectedValue(new Error('kaboom'))
+
     await expect(scheduleBackgroundNotificationTurn(deps, input)).resolves.toBeUndefined()
 
     expect(backgroundRunStore.unclaimNotification).toHaveBeenCalledWith('bg-1')
     expect(messageProcessor.process).toHaveBeenCalledTimes(1)
+    expect(deliverNotification).toHaveBeenCalledWith(
+      'error',
+      { error: { code: 'PROCESSING_ERROR', message: 'kaboom' } },
+      expect.stringMatching(/^turn-bg-/),
+      'user-1',
+      'sess-1',
+    )
   })
 
-  it('delivers only to the webui channel', async () => {
-    const { deps, channelRegistry, gateway } = createDeps()
+  it('delivers via the injected deliverNotification callback only', async () => {
+    const { deps, deliverNotification } = createDeps()
 
     await scheduleBackgroundNotificationTurn(deps, input)
 
-    expect(channelRegistry.deliver).toHaveBeenCalledTimes(1)
-    for (const [deliveredChannel] of channelRegistry.deliver.mock.calls) {
-      expect(deliveredChannel).toBe('webui')
-    }
-    const recipient = gateway.formatOutbound.mock.calls[0][2] as { userId: string; sessionId: string; channel?: string }
-    expect(recipient).toMatchObject({ userId: 'user-1', sessionId: 'sess-1', channel: 'webui' })
+    // The callback is the sole delivery surface: no channel id, envelope
+    // construction, or registry lives in the processing module.
+    expect(deliverNotification).toHaveBeenCalledTimes(1)
+    expect(deliverNotification).toHaveBeenCalledWith(
+      'text',
+      { text: 'Task finished' },
+      expect.stringMatching(/^turn-bg-/),
+      'user-1',
+      'sess-1',
+    )
   })
 
   it('wraps the process call in runWithProvidersForUser when provided', async () => {

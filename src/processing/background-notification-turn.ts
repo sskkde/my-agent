@@ -1,18 +1,22 @@
 import type { MessageProcessor, MessageProcessorInput, MessageProcessorError, MessageProcessorOutput } from './types.js'
-import type { Gateway } from '../gateway/gateway.js'
-import type { ChannelRegistry } from '../gateway/channel-registry.js'
 import type { SessionBusyTracker } from './session-busy-tracker.js'
 import type { BackgroundRunStore } from '../storage/background-run-store.js'
 import type { SessionStore } from '../storage/session-store.js'
 
 export interface BackgroundNotificationTurnDeps {
   messageProcessor: MessageProcessor
-  gateway: Gateway
-  channelRegistry: ChannelRegistry
   sessionBusyTracker: SessionBusyTracker
   backgroundRunStore: BackgroundRunStore
   sessionStore?: SessionStore
   runWithProvidersForUser?: <T>(userId: string, fn: () => Promise<T>, preferredProviderId?: string) => Promise<T>
+  /** Delivery callback owned by the api layer, keeping processing channel-neutral. */
+  deliverNotification: (
+    kind: 'text' | 'error',
+    content: { text?: string; error?: { code: string; message: string } },
+    correlationId: string,
+    userId: string,
+    sessionId: string,
+  ) => Promise<void>
 }
 
 export interface BackgroundNotificationTurnInput {
@@ -23,14 +27,12 @@ export interface BackgroundNotificationTurnInput {
   summary: string
 }
 
-const WEBUI_CHANNEL = 'webui'
-
 /**
  * Runs one synthetic parent turn for a terminal background-run notification.
  * Exactly-once is guaranteed by an atomic store claim; the per-session busy
  * guard keeps it mutually exclusive with user turns; failures roll the claim
- * back so the notification stays pending; output only reaches the webui
- * channel. Never throws.
+ * back so the notification stays pending. Delivery is delegated to an
+ * injected callback so this module stays channel-neutral. Never throws.
  */
 export async function scheduleBackgroundNotificationTurn(
   deps: BackgroundNotificationTurnDeps,
@@ -74,17 +76,40 @@ async function scheduleBackgroundNotificationTurnInternal(
         // The process call exploded: roll the claim back so the notification
         // stays pending, then surface an error envelope best-effort.
         deps.backgroundRunStore.unclaimNotification(input.backgroundRunId)
-        await deliverErrorEnvelope(deps, input, processorInput.correlationId, toProcessorError(error))
+        await deps.deliverNotification(
+          'error',
+          { error: toProcessorError(error) },
+          processorInput.correlationId,
+          input.userId,
+          input.sessionId,
+        )
         return
       }
 
       if (output.success) {
-        await deliverTextEnvelope(deps, input, processorInput.correlationId, output.result?.text)
+        await deps.deliverNotification(
+          'text',
+          { text: output.result?.text },
+          processorInput.correlationId,
+          input.userId,
+          input.sessionId,
+        )
         deps.sessionStore?.updateMetadata(input.sessionId, { lastActivityAt: new Date().toISOString() })
       } else {
         // Processing reported failure: roll back and keep the notification pending.
         deps.backgroundRunStore.unclaimNotification(input.backgroundRunId)
-        await deliverErrorEnvelope(deps, input, processorInput.correlationId, output.error)
+        await deps.deliverNotification(
+          'error',
+          {
+            error: {
+              code: output.error?.code ?? 'PROCESSING_ERROR',
+              message: output.error?.message ?? 'Background notification processing failed',
+            },
+          },
+          processorInput.correlationId,
+          input.userId,
+          input.sessionId,
+        )
       }
     })
   } catch (error) {
@@ -118,41 +143,6 @@ async function runTurn(
 ): Promise<MessageProcessorOutput> {
   const process = () => deps.messageProcessor.process(processorInput)
   return deps.runWithProvidersForUser ? deps.runWithProvidersForUser(userId, process) : process()
-}
-
-async function deliverTextEnvelope(
-  deps: BackgroundNotificationTurnDeps,
-  input: BackgroundNotificationTurnInput,
-  correlationId: string,
-  text: string | undefined,
-): Promise<void> {
-  const envelope = deps.gateway.formatOutbound(
-    'text',
-    { text },
-    { userId: input.userId, sessionId: input.sessionId, channel: WEBUI_CHANNEL },
-    correlationId,
-  )
-  await deps.channelRegistry.deliver(WEBUI_CHANNEL, envelope)
-}
-
-async function deliverErrorEnvelope(
-  deps: BackgroundNotificationTurnDeps,
-  input: BackgroundNotificationTurnInput,
-  correlationId: string,
-  error: MessageProcessorError | undefined,
-): Promise<void> {
-  const envelope = deps.gateway.formatOutbound(
-    'error',
-    {
-      error: {
-        code: error?.code ?? 'PROCESSING_ERROR',
-        message: error?.message ?? 'Background notification processing failed',
-      },
-    },
-    { userId: input.userId, sessionId: input.sessionId, channel: WEBUI_CHANNEL },
-    correlationId,
-  )
-  await deps.channelRegistry.deliver(WEBUI_CHANNEL, envelope)
 }
 
 function toProcessorError(error: unknown): MessageProcessorError {
