@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import SessionsTab from './SessionsTab'
 import * as client from '../../api/client'
@@ -9,6 +10,14 @@ vi.mock('../../api/client', () => ({
   getSessions: vi.fn(),
   updateSession: vi.fn(),
 }))
+
+const renderSessionsTab = () => {
+  return render(
+    <MemoryRouter>
+      <SessionsTab />
+    </MemoryRouter>,
+  )
+}
 
 describe('SessionsTab', () => {
   const mockSessions: ConsoleSessionInfo[] = [
@@ -58,7 +67,7 @@ describe('SessionsTab', () => {
       total: 3,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-panel')).toBeInTheDocument()
@@ -71,7 +80,7 @@ describe('SessionsTab', () => {
       total: 3,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-filter-status')).toBeInTheDocument()
@@ -84,7 +93,7 @@ describe('SessionsTab', () => {
       total: 3,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-table')).toBeInTheDocument()
@@ -97,7 +106,7 @@ describe('SessionsTab', () => {
       total: 3,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -112,7 +121,7 @@ describe('SessionsTab', () => {
       total: 3,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       const activeRow = screen.getByTestId('session-row-session-1')
@@ -131,7 +140,7 @@ describe('SessionsTab', () => {
       total: 3,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -150,7 +159,7 @@ describe('SessionsTab', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -175,7 +184,7 @@ describe('SessionsTab', () => {
       session: { ...mockSessions[0], status: 'archived' },
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -200,7 +209,7 @@ describe('SessionsTab', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -225,7 +234,7 @@ describe('SessionsTab', () => {
       session: { ...mockSessions[0], status: 'closed' },
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -253,7 +262,7 @@ describe('SessionsTab', () => {
       session: { ...mockSessions[0], status: 'archived' },
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -281,7 +290,7 @@ describe('SessionsTab', () => {
       session: { ...mockSessions[0], title: 'Updated Title' },
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -308,7 +317,7 @@ describe('SessionsTab', () => {
       session: { ...mockSessions[0], title: 'Updated Title' },
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -335,7 +344,7 @@ describe('SessionsTab', () => {
       session: { ...mockSessions[0], title: 'Updated Title' },
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -360,7 +369,7 @@ describe('SessionsTab', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-1')).toBeInTheDocument()
@@ -394,7 +403,7 @@ describe('SessionsTab', () => {
       total: 0,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByText('暂无符合条件的会话')).toBeInTheDocument()
@@ -407,7 +416,7 @@ describe('SessionsTab', () => {
       total: 3,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-table')).toBeInTheDocument()
@@ -438,7 +447,7 @@ describe('SessionsTab', () => {
       total: 25,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       const pagination = document.querySelector('.sessions-pagination')
@@ -451,7 +460,7 @@ describe('SessionsTab', () => {
   it('displays loading state', async () => {
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise(() => {}))
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
   })
@@ -459,7 +468,7 @@ describe('SessionsTab', () => {
   it('displays error state on API failure', async () => {
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'))
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByText('Network error')).toBeInTheDocument()
@@ -472,7 +481,7 @@ describe('SessionsTab', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-table')).toBeInTheDocument()
@@ -491,7 +500,7 @@ describe('SessionsTab', () => {
       total: 1,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-2')).toBeInTheDocument()
@@ -506,7 +515,7 @@ describe('SessionsTab', () => {
       total: 1,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-row-session-3')).toBeInTheDocument()
@@ -556,7 +565,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 2,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-mobile-list')).toBeInTheDocument()
@@ -573,7 +582,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 2,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-mobile-list')).toBeInTheDocument()
@@ -587,7 +596,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 2,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-table')).toBeInTheDocument()
@@ -601,7 +610,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 2,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('sessions-table')).toBeInTheDocument()
@@ -615,7 +624,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument()
@@ -637,7 +646,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument()
@@ -656,7 +665,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument()
@@ -675,7 +684,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-card-session-2')).toBeInTheDocument()
@@ -693,7 +702,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 1,
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument()
@@ -721,7 +730,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       session: { ...mockSessions[0], status: 'archived' },
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument()
@@ -750,7 +759,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       session: { ...mockSessions[0], status: 'closed' },
     })
 
-    const { container } = render(<SessionsTab />)
+    const { container } = renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByTestId('session-card-session-1')).toBeInTheDocument()
@@ -772,7 +781,7 @@ describe('SessionsTab - Mobile Responsive', () => {
     mockViewport(390)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockImplementation(() => new Promise(() => {}))
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
   })
@@ -781,7 +790,7 @@ describe('SessionsTab - Mobile Responsive', () => {
     mockViewport(390)
     ;(client.getSessions as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'))
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByText('Network error')).toBeInTheDocument()
@@ -795,7 +804,7 @@ describe('SessionsTab - Mobile Responsive', () => {
       total: 0,
     })
 
-    render(<SessionsTab />)
+    renderSessionsTab()
 
     await waitFor(() => {
       expect(screen.getByText('暂无符合条件的会话')).toBeInTheDocument()

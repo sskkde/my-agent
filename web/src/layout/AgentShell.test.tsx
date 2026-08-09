@@ -37,7 +37,7 @@ vi.mock('../features/session/chat/ChatSessionList', () => ({
 
 vi.mock('../features/session/chat/ChatContextPanel', () => ({
   default: ({ sessionId }: { sessionId?: string }) => (
-    <div data-testid="chat-context-panel" data-session={sessionId} />,
+    <div data-testid="chat-context-panel" data-session={sessionId} />
   ),
 }))
 

@@ -14,12 +14,12 @@ import {
 
 describe('Command Catalog', () => {
   describe('COMMAND_CATALOG', () => {
-    it('should contain exactly 25 commands', () => {
+    it('should contain exactly 26 commands', () => {
       const count = getCommandCount()
-      expect(count).toBe(25)
+      expect(count).toBe(26)
 
       const allCommands = getAllCommands()
-      expect(allCommands).toHaveLength(25)
+      expect(allCommands).toHaveLength(26)
     })
 
     it('should contain all expected command names', () => {
@@ -46,6 +46,7 @@ describe('Command Catalog', () => {
         'providers',
         'provider',
         'workdir',
+        'login',
         'logout',
         'exit',
         'quit',

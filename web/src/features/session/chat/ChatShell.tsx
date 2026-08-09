@@ -20,6 +20,8 @@ const ChatShell: React.FC<ChatShellProps> = ({
   children,
   initialSidebarOpen = true,
   initialRightOpen = true,
+  user,
+  onLogout,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(initialSidebarOpen)
   const [isRightOpen, setIsRightOpen] = useState(initialRightOpen)
@@ -90,7 +92,22 @@ const ChatShell: React.FC<ChatShellProps> = ({
         </div>
         <div className="chat-titlebar__title">{title}</div>
         <div className="chat-titlebar__right">
+          {user && (
+            <div className="chat-titlebar__user" data-testid="chat-titlebar-user">
+              <span className="topbar__username">{user.username}</span>
+            </div>
+          )}
           <FloatingSettingsMenu />
+          {user && onLogout && (
+            <button
+              className="topbar__logout-button"
+              onClick={onLogout}
+              data-testid="chat-titlebar-logout"
+              title="退出登录"
+            >
+              退出
+            </button>
+          )}
           <button
             className="chat-titlebar__btn chat-titlebar__btn--split"
             aria-label="切换右侧栏"
@@ -116,7 +133,12 @@ const ChatShell: React.FC<ChatShellProps> = ({
             data-testid="chat-left-backdrop"
           />
         )}
-        <aside className={`chat-sidebar ${isSidebarOpen ? '' : 'collapsed'}`} role="dialog" aria-modal="true" data-testid="chat-sidebar">
+        <aside
+          className={`chat-sidebar ${isSidebarOpen ? '' : 'collapsed'}`}
+          role="dialog"
+          aria-modal="true"
+          data-testid="chat-sidebar"
+        >
           {sidebar}
         </aside>
 
@@ -132,7 +154,12 @@ const ChatShell: React.FC<ChatShellProps> = ({
             data-testid="chat-right-backdrop"
           />
         )}
-        <aside className={`chat-right-sidebar ${isRightOpen ? '' : 'collapsed'}`} role="dialog" aria-modal="true" data-testid="chat-right-sidebar">
+        <aside
+          className={`chat-right-sidebar ${isRightOpen ? '' : 'collapsed'}`}
+          role="dialog"
+          aria-modal="true"
+          data-testid="chat-right-sidebar"
+        >
           {rightPanel}
         </aside>
       </div>

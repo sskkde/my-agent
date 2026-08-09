@@ -17,6 +17,9 @@ const renderApp = (initialEntries: string[] = ['/']) => {
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(client.getAgentConfig).mockResolvedValue({
+      config: { effective: { model: null } },
+    })
   })
 
   it('renders loading state initially', () => {
@@ -61,6 +64,6 @@ describe('App', () => {
       expect(screen.getByTestId('app-shell')).toBeInTheDocument()
     })
 
-    expect(screen.getByTestId('username-display')).toHaveTextContent('testuser')
+    expect(screen.getByTestId('chat-titlebar-user')).toHaveTextContent('testuser')
   })
 })
