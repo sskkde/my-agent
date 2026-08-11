@@ -13,9 +13,11 @@ services:
     environment:
       - APP_SECRET_KEY_FILE=/run/secrets/app_secret_key
       - API_AUTH_TOKEN_FILE=/run/secrets/api_auth_token
+      - DEEPSEEK_API_KEY_FILE=/run/secrets/deepseek_api_key
     secrets:
       - app_secret_key
       - api_auth_token
+      - deepseek_api_key
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3003/api/v1/health"]
       interval: 10s
@@ -51,3 +53,5 @@ secrets:
     file: ./secrets/app_secret_key.txt
   api_auth_token:
     file: ./secrets/api_auth_token.txt
+  deepseek_api_key:
+    file: ./secrets/deepseek_api_key.txt

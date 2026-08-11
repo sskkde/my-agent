@@ -1,0 +1,9 @@
+# SOPS encryption rules — local single-host deployment with age.
+# Encrypted sources live as <file>.age; plaintext is only materialized by
+# scripts/decrypt-secrets.sh immediately before a deploy (chmod 600, removed
+# after use). See scripts/rotate-app-secret.mjs for APP_SECRET_KEY rotation.
+creation_rules:
+  - path_regex: ^secrets/.*\.txt$
+    age: age1tqz3syp0fm7yzxsln6naxmgt6t7xgghdvrwegz7m79c20lqmzsuqzvk23a
+  - path_regex: ^\.env\.production$
+    age: age1tqz3syp0fm7yzxsln6naxmgt6t7xgghdvrwegz7m79c20lqmzsuqzvk23a

@@ -65,7 +65,8 @@ agent/.sisyphus/
 
 # Agent configuration (local only)
 AGENTS.md
-secrets/
+secrets/*.txt
+secrets/*.tmp
 
 # Runtime data (uploads, workdirs)
 /data/
