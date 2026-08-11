@@ -191,6 +191,40 @@ const searchProcessor: SubagentDefinition = {
   },
 }
 
+const plannerSubagent: SubagentDefinition = {
+  agentType: 'planner',
+  displayName: '计划执行',
+  description: '拆分任务生成计划、按计划执行并回写进度。',
+  modality: 'text',
+  promptId: 'agentProfile:planner',
+  allowedToolIds: [
+    'web_search',
+    'web_fetch',
+    'file_read',
+    'file_glob',
+    'file_grep',
+    'file_write',
+    'todolist',
+    'todowrite',
+    'foreground_mark_planner_step',
+    'foreground_complete_planner',
+  ],
+  allowedSkillIds: ['artifact_workflow', 'documentation_search', 'web_research_guidance'],
+  defaultMaxIterations: 12,
+  defaultTimeoutMs: 180_000,
+  supportedExecutionModes: ['sync', 'background'],
+  canRunInBackground: true,
+  providerPolicy: {
+    requiredCapabilities: ['text', 'function_calling', 'long_context', 'json_schema'],
+    fallbackMode: 'any_compatible',
+  },
+  permissionProfile: 'ask_on_write',
+  summaryPolicy: {
+    returnMode: 'summary_with_artifacts',
+    maxSummaryTokens: 1800,
+  },
+}
+
 // ---------------------------------------------------------------------------
 // All built-in definitions in registration order
 // ---------------------------------------------------------------------------
@@ -203,6 +237,7 @@ const BUILTIN_DEFINITIONS: readonly SubagentDefinition[] = [
   codeProcessor,
   researchProcessor,
   searchProcessor,
+  plannerSubagent,
 ]
 
 // ---------------------------------------------------------------------------

@@ -45,6 +45,14 @@ import { createRuntimeDispatcher } from '../dispatcher/runtime-dispatcher.js'
 import type { RuntimeDispatcher, RuntimeDispatcherConfig } from '../dispatcher/types.js'
 import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js'
 import { createPlannerRuntime, type PlannerRuntime } from '../planner/planner-runtime.js'
+import { LLMPlanGenerator } from '../planner/llm-plan-generator.js'
+import { DeterministicPlanGenerator } from '../planner/deterministic-plan-generator.js'
+import { PlanValidator } from '../planner/plan-validator.js'
+import { createPlannerLLMPlanAdapter } from '../planner/llm-plan-adapter.js'
+import {
+  createPlannerMarkStepToolDefinition,
+  createPlannerCompleteToolDefinition,
+} from '../foreground/tools/planner-writeback-tools.js'
 import { AgentKernel } from '../kernel/agent-kernel.js'
 import type { LLMAdapter } from '../llm/adapter.js'
 import { createProviderScopedLLMAdapter, type ProviderScopedLLMAdapter } from '../llm/provider-runtime.js'
@@ -924,6 +932,21 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   })
   const defaultModel = modelResolution.type === 'success' ? (modelResolution.selectedModel ?? undefined) : undefined
 
+  // Plan generator for planner children: LLM plan generation with deterministic
+  // fallback. The planner-domain adapter drives the platform LLM adapter; when
+  // no default model resolves, generation falls back to the deterministic path.
+  const planGenerator = new LLMPlanGenerator({
+    llmAdapter: defaultModel ? createPlannerLLMPlanAdapter({ llmAdapter, model: defaultModel }) : null,
+    deterministicGenerator: new DeterministicPlanGenerator(),
+    validator: new PlanValidator({ toolRegistry }),
+  })
+
+  // Planner write-back tools: registered for child projections (planner
+  // children execute them via injected internal handlers); the main agent's
+  // default projection excludes them (foreground drive removed).
+  toolRegistry.register(createPlannerMarkStepToolDefinition(plannerRuntime))
+  toolRegistry.register(createPlannerCompleteToolDefinition(plannerRuntime))
+
   const providerFamily = resolveProviderFamily(
     modelResolution.type === 'success' ? modelResolution.selectedProviderId : undefined,
     defaultModel,
@@ -1045,6 +1068,8 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     eventStore,
     lifecycleBroadcaster: timelineBroadcaster,
     searchRunner: searchChildRunner,
+    plannerRuntime,
+    planGenerator,
   })
 
   const metricStore = createMetricStore(connection)

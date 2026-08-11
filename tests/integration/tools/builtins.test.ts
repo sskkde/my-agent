@@ -227,6 +227,14 @@ class MockPlanStore implements PlanStore {
       if (step) step.status = status as PlanStep['status']
     }
   }
+
+  updateSteps(planId: string, steps: PlanStep[]): ExecutionPlanRecord {
+    const plan = this.plans.get(planId)
+    if (!plan) throw new Error(`Plan ${planId} not found`)
+    const updated = { ...plan, steps, updatedAt: new Date().toISOString() }
+    this.plans.set(planId, updated)
+    return updated
+  }
 }
 
 class MockToolResultStore implements ToolResultStore {

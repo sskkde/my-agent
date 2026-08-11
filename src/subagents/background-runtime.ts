@@ -1,6 +1,7 @@
 import type { BackgroundRunStore, BackgroundRun } from '../storage/background-run-store.js'
 import type { EventStore, EventRecord, SourceModule, SensitivityLevel, RetentionClass } from '../storage/event-store.js'
 import type { SubagentTaskSpec, SubagentResult } from './types.js'
+import type { ChildTaskSpec } from './child-session-task-runtime.js'
 import type { ContextItem } from '../context/types.js'
 import {
   sanitizeChildTaskSummary,
@@ -13,7 +14,7 @@ export interface BackgroundRunInput {
   sessionId?: string
   agentType: string
   agentProfile?: string
-  taskSpec: SubagentTaskSpec
+  taskSpec: SubagentTaskSpec & Partial<ChildTaskSpec>
   launchSource: string
   priority?: number
   scheduledAt?: string

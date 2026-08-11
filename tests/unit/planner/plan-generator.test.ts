@@ -70,36 +70,36 @@ describe('DeterministicPlanGenerator', () => {
     }
   }
 
-  it('generates 1-2 steps for a simple Chinese goal', () => {
+  it('generates 1-2 steps for a simple Chinese goal', async () => {
     const input = makeInput({ goal: '帮我查一下状态' })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
     expect(output.plan.steps.length).toBeGreaterThanOrEqual(1)
     expect(output.plan.steps.length).toBeLessThanOrEqual(2)
   })
 
-  it('generates 1-2 steps for a simple English goal', () => {
+  it('generates 1-2 steps for a simple English goal', async () => {
     const input = makeInput({ goal: 'check status' })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
     expect(output.plan.steps.length).toBeGreaterThanOrEqual(1)
     expect(output.plan.steps.length).toBeLessThanOrEqual(2)
   })
 
-  it('generates 3+ steps for a complex goal with write keywords', () => {
+  it('generates 3+ steps for a complex goal with write keywords', async () => {
     const input = makeInput({ goal: '帮我创建项目计划并发送给团队' })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
     expect(output.plan.steps.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('generates 3+ steps for a complex English goal', () => {
+  it('generates 3+ steps for a complex English goal', async () => {
     const input = makeInput({ goal: 'create a new project and send it to the team' })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
     expect(output.plan.steps.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('produces identical step IDs for the same input (deterministic)', () => {
+  it('produces identical step IDs for the same input (deterministic)', async () => {
     const input = makeInput({ goal: '创建一个测试文件' })
-    const out1 = generator.generate(input)
-    const out2 = generator.generate(input)
+    const out1 = await generator.generate(input)
+    const out2 = await generator.generate(input)
 
     expect(out1.plan.id).toBe(out2.plan.id)
     expect(out1.plan.steps.length).toBe(out2.plan.steps.length)
@@ -110,12 +110,12 @@ describe('DeterministicPlanGenerator', () => {
     }
   })
 
-  it('includes approval requirement for write goals', () => {
+  it('includes approval requirement for write goals', async () => {
     const input = makeInput({
       goal: '创建一个文件',
       availableTools: ['read_tool', 'write_tool'],
     })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
 
     const writeSteps = output.plan.steps.filter((s) => s.kind === 'tool_call' && s.toolName === 'write_tool')
     expect(writeSteps.length).toBeGreaterThan(0)
@@ -128,31 +128,31 @@ describe('DeterministicPlanGenerator', () => {
     expect(output.plan.requiredApprovals!.length).toBeGreaterThan(0)
   })
 
-  it('generated plan passes PlanValidator.validate()', () => {
+  it('generated plan passes PlanValidator.validate()', async () => {
     const input = makeInput({
       goal: 'read config file',
       availableTools: ['read_tool'],
     })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
 
     const result = validator.validate(output.plan)
     expect(result.errors).toEqual([])
     expect(result.valid).toBe(true)
   })
 
-  it('generated write plan passes PlanValidator.validate()', () => {
+  it('generated write plan passes PlanValidator.validate()', async () => {
     const input = makeInput({
       goal: '创建一个文件',
       availableTools: ['read_tool', 'write_tool'],
     })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
 
     const result = validator.validate(output.plan)
     expect(result.errors).toEqual([])
     expect(result.valid).toBe(true)
   })
 
-  it('generates only valid step kinds', () => {
+  it('generates only valid step kinds', async () => {
     const inputs: PlanGenerationInput[] = [
       makeInput({ goal: '简单查询' }),
       makeInput({ goal: '创建并发送项目计划给团队' }),
@@ -160,32 +160,32 @@ describe('DeterministicPlanGenerator', () => {
     ]
 
     for (const input of inputs) {
-      const output = generator.generate(input)
+      const output = await generator.generate(input)
       for (const step of output.plan.steps) {
         expect(VALID_STEP_KINDS.has(step.kind)).toBe(true)
       }
     }
   })
 
-  it('respects maxSteps constraint', () => {
+  it('respects maxSteps constraint', async () => {
     const input = makeInput({
       goal: '创建项目计划并发送给团队',
       constraints: { maxSteps: 2 },
     })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
     expect(output.plan.steps.length).toBeLessThanOrEqual(2)
   })
 
-  it('respects maxSteps constraint with larger limit', () => {
+  it('respects maxSteps constraint with larger limit', async () => {
     const input = makeInput({
       goal: '创建项目计划并发送给团队',
       constraints: { maxSteps: 4 },
     })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
     expect(output.plan.steps.length).toBeLessThanOrEqual(4)
   })
 
-  it('always ends with a final_response step', () => {
+  it('always ends with a final_response step', async () => {
     const inputs: PlanGenerationInput[] = [
       makeInput({ goal: '简单查询' }),
       makeInput({ goal: '创建并发送项目计划给团队' }),
@@ -194,13 +194,13 @@ describe('DeterministicPlanGenerator', () => {
     ]
 
     for (const input of inputs) {
-      const output = generator.generate(input)
+      const output = await generator.generate(input)
       const lastStep = output.plan.steps[output.plan.steps.length - 1]
       expect(lastStep.kind).toBe('final_response')
     }
   })
 
-  it('generates plans with valid executor types', () => {
+  it('generates plans with valid executor types', async () => {
     const validExecutors = new Set(['agent_kernel', 'tool_plane', 'subagent', 'workflow_runtime', 'foreground'])
 
     const inputs: PlanGenerationInput[] = [
@@ -209,16 +209,16 @@ describe('DeterministicPlanGenerator', () => {
     ]
 
     for (const input of inputs) {
-      const output = generator.generate(input)
+      const output = await generator.generate(input)
       for (const step of output.plan.steps) {
         expect(validExecutors.has(step.executor)).toBe(true)
       }
     }
   })
 
-  it('generates plans with non-empty goal and id', () => {
+  it('generates plans with non-empty goal and id', async () => {
     const input = makeInput({ goal: '帮我查一下状态' })
-    const output = generator.generate(input)
+    const output = await generator.generate(input)
 
     expect(output.plan.id).toBeTruthy()
     expect(output.plan.goal).toBe(input.goal)

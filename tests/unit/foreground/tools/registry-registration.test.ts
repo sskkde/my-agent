@@ -8,8 +8,6 @@ import {
   STATUS_QUERY_TOOL_ID,
   SPAWN_PLANNER_TOOL_ID,
   RESUME_PLANNER_TOOL_ID,
-  COMPLETE_PLANNER_TOOL_ID,
-  MARK_PLANNER_STEP_TOOL_ID,
   LAUNCH_SUBAGENT_TOOL_ID,
   CANCEL_MODIFY_TOOL_ID,
   CANCEL_PLANNER_TOOL_ID,
@@ -33,8 +31,6 @@ describe('Foreground Tool Registry Registration', () => {
       expect(registry.hasTool(STATUS_QUERY_TOOL_ID)).toBe(true)
       expect(registry.hasTool(SPAWN_PLANNER_TOOL_ID)).toBe(true)
       expect(registry.hasTool(RESUME_PLANNER_TOOL_ID)).toBe(true)
-      expect(registry.hasTool(COMPLETE_PLANNER_TOOL_ID)).toBe(true)
-      expect(registry.hasTool(MARK_PLANNER_STEP_TOOL_ID)).toBe(true)
       expect(registry.hasTool(LAUNCH_SUBAGENT_TOOL_ID)).toBe(true)
       expect(registry.hasTool(CANCEL_MODIFY_TOOL_ID)).toBe(true)
       expect(registry.hasTool(CANCEL_PLANNER_TOOL_ID)).toBe(true)
@@ -48,13 +44,11 @@ describe('Foreground Tool Registry Registration', () => {
       expect(ids).toContain(STATUS_QUERY_TOOL_ID)
       expect(ids).toContain(SPAWN_PLANNER_TOOL_ID)
       expect(ids).toContain(RESUME_PLANNER_TOOL_ID)
-      expect(ids).toContain(COMPLETE_PLANNER_TOOL_ID)
-      expect(ids).toContain(MARK_PLANNER_STEP_TOOL_ID)
       expect(ids).toContain(LAUNCH_SUBAGENT_TOOL_ID)
       expect(ids).toContain(CANCEL_MODIFY_TOOL_ID)
       expect(ids).toContain(CANCEL_PLANNER_TOOL_ID)
       expect(ids).toContain(APPROVAL_REQUEST_TOOL_ID)
-      expect(ids).toHaveLength(10)
+      expect(ids).toHaveLength(8)
     })
 
     it('should register search_subagent with correct metadata', () => {
@@ -94,28 +88,6 @@ describe('Foreground Tool Registry Registration', () => {
       registerAllForegroundTools(registry)
 
       const tool = registry.getTool(RESUME_PLANNER_TOOL_ID)
-      expect(tool).not.toBeNull()
-      expect(tool?.category).toBe('internal')
-      expect(tool?.sensitivity).toBe('medium')
-      expect(tool?.requiresPermission).toBe(true)
-      expect(tool?.metadata?.requiresApproval).toBe(true)
-    })
-
-    it('should register foreground_complete_planner with correct metadata', () => {
-      registerAllForegroundTools(registry)
-
-      const tool = registry.getTool(COMPLETE_PLANNER_TOOL_ID)
-      expect(tool).not.toBeNull()
-      expect(tool?.category).toBe('internal')
-      expect(tool?.sensitivity).toBe('medium')
-      expect(tool?.requiresPermission).toBe(true)
-      expect(tool?.metadata?.requiresApproval).toBe(true)
-    })
-
-    it('should register foreground_mark_planner_step with correct metadata', () => {
-      registerAllForegroundTools(registry)
-
-      const tool = registry.getTool(MARK_PLANNER_STEP_TOOL_ID)
       expect(tool).not.toBeNull()
       expect(tool?.category).toBe('internal')
       expect(tool?.sensitivity).toBe('medium')
@@ -247,8 +219,6 @@ describe('Foreground Tool Registry Registration', () => {
 
       expect(projection.allowedToolIds).toContain(SPAWN_PLANNER_TOOL_ID)
       expect(projection.allowedToolIds).toContain(RESUME_PLANNER_TOOL_ID)
-      expect(projection.allowedToolIds).toContain(COMPLETE_PLANNER_TOOL_ID)
-      expect(projection.allowedToolIds).toContain(MARK_PLANNER_STEP_TOOL_ID)
       expect(projection.allowedToolIds).toContain(LAUNCH_SUBAGENT_TOOL_ID)
       expect(projection.allowedToolIds).toContain(CANCEL_PLANNER_TOOL_ID)
       expect(projection.allowedToolIds).not.toContain(CANCEL_MODIFY_TOOL_ID)
@@ -262,8 +232,6 @@ describe('Foreground Tool Registry Registration', () => {
       expect(defaultIds).toContain(APPROVAL_REQUEST_TOOL_ID)
       expect(defaultIds).toContain(SPAWN_PLANNER_TOOL_ID)
       expect(defaultIds).toContain(RESUME_PLANNER_TOOL_ID)
-      expect(defaultIds).toContain(COMPLETE_PLANNER_TOOL_ID)
-      expect(defaultIds).toContain(MARK_PLANNER_STEP_TOOL_ID)
       expect(defaultIds).toContain(LAUNCH_SUBAGENT_TOOL_ID)
       expect(defaultIds).toContain(CANCEL_PLANNER_TOOL_ID)
       expect(defaultIds).not.toContain(CANCEL_MODIFY_TOOL_ID)
@@ -274,8 +242,6 @@ describe('Foreground Tool Registry Registration', () => {
 
       expect(requiresApprovalIds).toContain(SPAWN_PLANNER_TOOL_ID)
       expect(requiresApprovalIds).toContain(RESUME_PLANNER_TOOL_ID)
-      expect(requiresApprovalIds).toContain(COMPLETE_PLANNER_TOOL_ID)
-      expect(requiresApprovalIds).toContain(MARK_PLANNER_STEP_TOOL_ID)
       expect(requiresApprovalIds).toContain(LAUNCH_SUBAGENT_TOOL_ID)
       expect(requiresApprovalIds).toContain(CANCEL_PLANNER_TOOL_ID)
       expect(requiresApprovalIds).toContain(CANCEL_MODIFY_TOOL_ID)

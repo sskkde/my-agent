@@ -245,6 +245,7 @@ describe('ApiContext Dependencies - Task 4', () => {
           status: 'created',
         }),
         saveCheckpoint: (_id, _data) => {},
+        setPlanSteps: (_id, _steps) => {},
       }
 
       const result = createApiContext({
@@ -822,6 +823,7 @@ describe('ApiContext Dependencies - Task 4', () => {
           status: 'created',
         }),
         saveCheckpoint: (_id, _data) => {},
+        setPlanSteps: (_id, _steps) => {},
       }
 
       const result = createApiContext({

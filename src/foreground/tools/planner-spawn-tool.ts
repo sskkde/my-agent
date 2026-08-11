@@ -1,17 +1,23 @@
 /**
  * Planner Spawn Tool
- * Handles spawning a new planner run from the foreground
+ * Spawns a planner run and enqueues a background planner child that generates
+ * the plan, executes it and writes progress back (auto-closing loop).
  */
 
 import type { PlannerRuntime } from '../../planner/planner-runtime.js'
 import type { PlannerRunResult } from '../../planner/types.js'
 import type { PlanStep } from '../../storage/plan-store.js'
+import type { BackgroundRuntime } from '../../subagents/background-runtime.js'
+import { CHILD_TASK_LAUNCH_SOURCE } from '../../subagents/child-task-policy.js'
 import { createSuccessResult, createErrorResult, type ForegroundToolResult } from './foreground-tool-result.js'
 
 export const SPAWN_PLANNER_TOOL_ID = 'foreground_spawn_planner'
 
+export const PLANNER_CHILD_PROFILE_ID = 'planner'
+
 export interface SpawnPlannerDeps {
   plannerRuntime: PlannerRuntime
+  backgroundRuntime?: BackgroundRuntime
   userId: string
   sessionId: string
 }
@@ -28,10 +34,15 @@ export interface SpawnPlannerData {
   planId: string
   estimatedSteps?: number
   steps: PlanStep[]
+  backgroundRunId?: string
+  status: 'queued' | 'planning'
 }
 
 /**
- * Handles spawning a new planner run
+ * Spawn a planner run and enqueue its auto-execution as a background planner
+ * child. The child generates the plan (LLM with deterministic fallback),
+ * persists it into plan_store, executes it and writes progress back; the
+ * parent receives a completion notification via the background runtime.
  */
 export async function handleSpawnPlanner(
   deps: SpawnPlannerDeps,
@@ -49,7 +60,26 @@ export async function handleSpawnPlanner(
       },
     })
 
-    const objective = input.objective.toLowerCase().replace(/^i've created a plan to /i, '')
+    let backgroundRunId: string | undefined
+    if (deps.backgroundRuntime) {
+      backgroundRunId = deps.backgroundRuntime.enqueueBackgroundRun({
+        userId: deps.userId,
+        sessionId: deps.sessionId,
+        agentType: PLANNER_CHILD_PROFILE_ID,
+        agentProfile: PLANNER_CHILD_PROFILE_ID,
+        taskSpec: {
+          objective: input.objective,
+          profileId: PLANNER_CHILD_PROFILE_ID,
+          plannerRunId: result.plannerRunId,
+          planId: result.planId,
+          parentSessionId: deps.sessionId,
+          launchMode: 'background',
+          maxIterations: 12,
+          timeoutMs: 180_000,
+        },
+        launchSource: CHILD_TASK_LAUNCH_SOURCE,
+      })
+    }
 
     return createSuccessResult<SpawnPlannerData>(
       {
@@ -57,8 +87,12 @@ export async function handleSpawnPlanner(
         planId: result.planId,
         estimatedSteps: input.estimatedSteps,
         steps: result.steps,
+        backgroundRunId,
+        status: backgroundRunId ? 'queued' : 'planning',
       },
-      `I've created a ${result.steps.length}-step plan to ${objective}. Continue executing the steps in this conversation: call foreground_mark_planner_step after each step, then call foreground_complete_planner once all ${result.steps.length} steps are done. (Plan ID: ${result.planId}, Planner Run ID: ${result.plannerRunId})`,
+      backgroundRunId
+        ? `Planner run ${result.plannerRunId} created (plan ${result.planId}) and enqueued for background execution (bg ${backgroundRunId}). It will generate a plan, execute it step by step and write progress back; you will be notified when it completes.`
+        : `Planner run ${result.plannerRunId} created (plan ${result.planId}). Background execution is not available in this environment.`,
       {
         plannerRunIds: [result.plannerRunId],
       },

@@ -112,7 +112,7 @@ export class DeterministicPlanGenerator implements PlanGenerator {
     this.toolClassifier = toolClassifier
   }
 
-  generate(input: PlanGenerationInput): PlanGenerationOutput {
+  async generate(input: PlanGenerationInput): Promise<PlanGenerationOutput> {
     const { goal, availableTools = [], constraints } = input
     const maxSteps = constraints?.maxSteps ?? 10
     const complex = isComplexGoal(goal)

@@ -477,6 +477,7 @@ function createMockPlanStore() {
     getPatches: () => [],
     findByObjectiveHash: () => [],
     updateStepStatus: () => {},
+    updateSteps: () => ({}) as any,
   }
 }
 

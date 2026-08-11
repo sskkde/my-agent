@@ -51,9 +51,13 @@ import {
 import type { ToolPlaneProjection } from '../kernel/model-input/model-input-types.js'
 import type { ToolRegistry } from '../tools/types.js'
 import type { AgentTypeToolEnvelopeRegistry } from '../permissions/agent-type-tool-envelope.js'
-import type { KernelRunResult } from '../kernel/types.js'
+import type { KernelRunResult, InternalToolHandler } from '../kernel/types.js'
 import type { SearchChildRunner } from '../search/search-child-runner.js'
 import { parseSearchPlanHints } from '../search/search-subagent-types.js'
+import type { PlannerRuntime } from '../planner/planner-runtime.js'
+import type { PlanGenerator } from '../planner/plan-generator-interface.js'
+import { mapSchemaPlanStepsToStorage } from '../planner/plan-step-mapper.js'
+import type { PlanStep } from '../storage/plan-store.js'
 
 // ---------------------------------------------------------------------------
 // Typed runtime errors (rejection before execution)
@@ -134,6 +138,10 @@ export interface ChildTaskSpec extends SubagentTaskSpec {
   allowNestedLaunch?: boolean
   /** Fixed identity: equals the child session id. Stamped at launch. */
   taskId?: string
+  /** Planner run the child generates a plan for and writes progress back to. */
+  plannerRunId?: string
+  /** Plan id associated with plannerRunId (bookkeeping / context display). */
+  planId?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -320,6 +328,10 @@ export interface ChildSessionTaskRuntimeDeps {
    * still creating/resuming the search child session.
    */
   searchRunner?: SearchChildRunner
+  /** Planner runtime for planner children to write generated plans / progress back to. */
+  plannerRuntime?: PlannerRuntime
+  /** Plan generator for planner children (LLM plan generation with deterministic fallback). */
+  planGenerator?: PlanGenerator
 }
 
 export interface ChildSessionTaskRuntime {
@@ -353,6 +365,8 @@ export function buildChildContextBundle(input: {
   toolProjection: ToolPlaneProjection
   /** Prior child transcript/context summary — resume ONLY. */
   priorConversation?: string
+  /** Generated plan steps for planner children (injected as explicit context). */
+  planSteps?: PlanStep[]
 }): ContextBundle {
   const { childSession, runId, definition, taskSpec, toolProjection } = input
   const profileLabel = definition.agentProfile ?? definition.agentType
@@ -381,6 +395,25 @@ export function buildChildContextBundle(input: {
     priority: 90,
     isPinned: true,
   })
+
+  // 2b. Generated plan context for planner children (explicit input).
+  if (taskSpec.plannerRunId && input.planSteps && input.planSteps.length > 0) {
+    const stepsText = input.planSteps
+      .map((step, index) => `${index + 1}. [${step.stepId}] ${step.description}`)
+      .join('\n')
+    items.push({
+      itemId: `${bundleId}-planner`,
+      sourceType: 'system_note',
+      semanticType: 'instruction',
+      content:
+        `你正在执行计划（plannerRunId=${taskSpec.plannerRunId}${taskSpec.planId ? `, planId=${taskSpec.planId}` : ''}）。\n` +
+        `计划步骤：\n${stepsText}\n` +
+        `每完成一步调用 foreground_mark_planner_step（参数 stepId/status）回写进度，` +
+        `全部步骤完成后调用 foreground_complete_planner 汇报结果。`,
+      priority: 85,
+      isPinned: true,
+    })
+  }
 
   // 3. Approved references (attachments / file refs) — explicit input only.
   for (const ref of taskSpec.references ?? []) {
@@ -643,6 +676,22 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
     // Explicit context: objective + refs + workdir + platform prompt. On resume
     // this includes ONLY the prior child transcript (never the parent's).
     const priorConversation = this.loadChildConversation(childSession.sessionId, run.tenantId)
+
+    // Planner children: generate the real plan (LLM with deterministic fallback),
+    // persist it into plan_store, then inject the steps into the child context so
+    // the kernel loop executes against the written plan and writes progress back.
+    const isPlannerChild = run.taskSpec.profileId === 'planner' || run.taskSpec.agentType === 'planner'
+    let planSteps: PlanStep[] | undefined
+    if (isPlannerChild && run.taskSpec.plannerRunId && this.deps.planGenerator && this.deps.plannerRuntime) {
+      const generated = await this.deps.planGenerator.generate({
+        goal: run.taskSpec.objective,
+        availableTools: toolProjection.toolIds,
+        constraints: { maxSteps: 10 },
+      })
+      planSteps = mapSchemaPlanStepsToStorage(generated.plan.steps)
+      this.deps.plannerRuntime.setPlanSteps(run.taskSpec.plannerRunId, planSteps)
+    }
+
     const contextBundle = buildChildContextBundle({
       childSession,
       runId: subagentRunId,
@@ -650,7 +699,16 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
       taskSpec: run.taskSpec,
       toolProjection,
       priorConversation,
+      planSteps,
     })
+
+    const internalToolHandlers =
+      isPlannerChild && run.taskSpec.plannerRunId && this.deps.plannerRuntime
+        ? buildPlannerInternalHandlers({
+            plannerRuntime: this.deps.plannerRuntime,
+            plannerRunId: run.taskSpec.plannerRunId,
+          })
+        : undefined
 
     const maxIterations = run.taskSpec.maxIterations ?? this.deps.defaultMaxIterations ?? 10
     const timeoutMs = run.taskSpec.timeoutMs ?? this.deps.defaultTimeoutMs ?? 60000
@@ -677,8 +735,22 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
           taskSpec: run.taskSpec,
           definition,
           signal: this.buildRunSignal(subagentRunId, signal),
+          internalToolHandlers,
         })
         result = this.mapKernelResultToSubagentResult(kernelResult)
+      }
+
+      // Planner child completion fallback: close the planner run even when the
+      // child LLM never called foreground_complete_planner explicitly.
+      if (result.status === 'completed' && run.taskSpec.plannerRunId && this.deps.plannerRuntime) {
+        try {
+          this.deps.plannerRuntime.completePlannerRun(
+            run.taskSpec.plannerRunId,
+            typeof result.response === 'string' ? result.response.slice(0, 500) : undefined,
+          )
+        } catch {
+          // Best-effort: the run may already be terminal (completePlannerRun is idempotent).
+        }
       }
 
       // Idempotent terminal write: a concurrent cancel wins over late completion.
@@ -1177,6 +1249,77 @@ function generateSubagentRunId(): string {
 
 export function createChildSessionTaskRuntime(deps: ChildSessionTaskRuntimeDeps): ChildSessionTaskRuntime {
   return new ChildSessionTaskRuntimeImpl(deps)
+}
+
+function buildPlannerInternalHandlers(deps: {
+  plannerRuntime: PlannerRuntime
+  plannerRunId: string
+}): Record<string, InternalToolHandler> {
+  return {
+    foreground_mark_planner_step: async (request) => {
+      const params = (request.params ?? {}) as { stepId?: string; status?: string; result?: string }
+      if (!params.stepId || typeof params.stepId !== 'string') {
+        return {
+          toolResult: {
+            toolCallId: request.toolCallId,
+            result: null,
+            error: { code: 'INVALID_ARGUMENTS', message: 'stepId is required', recoverable: true },
+          },
+        }
+      }
+      const status =
+        params.status === 'failed' ? 'failed' : params.status === 'in_progress' ? 'in_progress' : 'completed'
+      try {
+        deps.plannerRuntime.markStep(deps.plannerRunId, params.stepId, status, params.result)
+        return {
+          toolResult: {
+            toolCallId: request.toolCallId,
+            result: { stepId: params.stepId, status },
+          },
+        }
+      } catch (error) {
+        return {
+          toolResult: {
+            toolCallId: request.toolCallId,
+            result: null,
+            error: {
+              code: 'MARK_STEP_FAILED',
+              message: error instanceof Error ? error.message : String(error),
+              recoverable: true,
+            },
+          },
+        }
+      }
+    },
+    foreground_complete_planner: async (request) => {
+      const params = (request.params ?? {}) as { summary?: string }
+      try {
+        const outcome = deps.plannerRuntime.completePlannerRun(
+          deps.plannerRunId,
+          typeof params.summary === 'string' ? params.summary : undefined,
+        )
+        return {
+          toolResult: {
+            toolCallId: request.toolCallId,
+            result: { plannerRunId: deps.plannerRunId, status: outcome.status },
+          },
+          stop: true,
+        }
+      } catch (error) {
+        return {
+          toolResult: {
+            toolCallId: request.toolCallId,
+            result: null,
+            error: {
+              code: 'COMPLETE_PLANNER_FAILED',
+              message: error instanceof Error ? error.message : String(error),
+              recoverable: true,
+            },
+          },
+        }
+      }
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -21,6 +21,7 @@ export interface PlannerRuntime {
   resumePlannerRun(plannerRunId: string, event: PlannerResumeEvent): PlannerRunResult
   completePlannerRun(plannerRunId: string, summary?: string): PlannerRunResult
   markStep(plannerRunId: string, stepId: string, status: 'completed' | 'failed' | 'in_progress', result?: string): void
+  setPlanSteps(plannerRunId: string, steps: PlanStep[]): void
   cancelPlannerRun(plannerRunId: string): void
   replan(plannerRunId: string, reason: string): void
   archivePlannerRun(plannerRunId: string): void
@@ -359,6 +360,35 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       stepStatus: status,
       stepResult: result,
       markedAt: new Date().toISOString(),
+    })
+  }
+
+  setPlanSteps(plannerRunId: string, steps: PlanStep[]): void {
+    const run = this.getPlannerRun(plannerRunId)
+
+    if (TERMINAL_STATES.includes(run.status)) {
+      throw new Error(`Cannot set plan steps on run in terminal state: ${run.status}`)
+    }
+
+    if (!steps || steps.length === 0) {
+      throw new Error('Cannot set empty plan steps')
+    }
+
+    const seen = new Set<string>()
+    for (const step of steps) {
+      if (seen.has(step.stepId)) {
+        throw new Error(`Duplicate step id: ${step.stepId}`)
+      }
+      seen.add(step.stepId)
+    }
+
+    this.planStore.updateSteps(run.planId, steps)
+
+    const currentCheckpoint = (run.checkpoint as Checkpoint) || {}
+    this.saveCheckpoint(plannerRunId, {
+      ...currentCheckpoint,
+      planGeneratedAt: new Date().toISOString(),
+      stepCount: steps.length,
     })
   }
 

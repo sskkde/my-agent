@@ -41,6 +41,7 @@ export interface PlanStore {
   getPatches(planId: string): PlanPatch[]
   findByObjectiveHash(objectiveHash: string): ExecutionPlanRecord[]
   updateStepStatus(planId: string, stepId: string, status: PlanStep['status']): void
+  updateSteps(planId: string, steps: PlanStep[]): ExecutionPlanRecord
 }
 
 class PlanStoreImpl implements PlanStore {
@@ -240,6 +241,21 @@ class PlanStoreImpl implements PlanStore {
     `
 
     this.connection.exec(sql, [JSON.stringify(plan.steps), new Date().toISOString(), planId])
+  }
+
+  updateSteps(planId: string, steps: PlanStep[]): ExecutionPlanRecord {
+    const plan = this.getPlan(planId)
+    if (!plan) {
+      throw new Error(`Plan not found: ${planId}`)
+    }
+
+    const sql = `
+      UPDATE plans SET steps = ?, updated_at = ? WHERE plan_id = ?
+    `
+
+    this.connection.exec(sql, [JSON.stringify(steps), new Date().toISOString(), planId])
+
+    return this.getPlan(planId)!
   }
 
   private rowToPlan(row: {

@@ -3,7 +3,7 @@ import type { SubagentDefinition, SubagentRegistry } from './registry.js'
 import { resolveSubagentProvider } from './provider-policy.js'
 import type { SubagentProviderPreferenceStore } from './provider-policy.js'
 import type { AgentKernel } from '../kernel/agent-kernel.js'
-import type { KernelRunInput, KernelRunResult } from '../kernel/types.js'
+import type { KernelRunInput, KernelRunResult, InternalToolHandler } from '../kernel/types.js'
 import type { ContextBundle, AgentType } from '../context/types.js'
 import type { ProviderConfigStore } from '../storage/provider-config-store.js'
 import type { AgentConfigStore } from '../storage/agent-config-store.js'
@@ -100,6 +100,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
     taskSpec?: SubagentTaskSpec
     definition?: SubagentDefinition
     signal?: AbortSignal
+    internalToolHandlers?: Record<string, InternalToolHandler>
   }): Promise<KernelRunResult> {
     const { contextBundle, maxIterations, timeoutMs } = options
     let definition = options.definition
@@ -189,6 +190,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       ...(contextBundle.workDirRoot ? { workDirRoot: contextBundle.workDirRoot } : {}),
       ...(contextBundle.workDirId ? { workDirId: contextBundle.workDirId } : {}),
       ...(options.signal ? { signal: options.signal } : {}),
+      ...(options.internalToolHandlers ? { internalToolHandlers: options.internalToolHandlers } : {}),
     }
 
     const kernelRunFn = () => this.agentKernel.run(kernelInput)

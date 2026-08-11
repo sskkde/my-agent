@@ -4,7 +4,7 @@ import { PlanValidator } from './plan-validator.js'
 import { DeterministicPlanGenerator } from './deterministic-plan-generator.js'
 
 export interface LLMAdapter {
-  generatePlan(input: PlanGenerationInput): ExecutionPlan | null
+  generatePlan(input: PlanGenerationInput): Promise<ExecutionPlan | null>
 }
 
 export class LLMPlanGenerator implements PlanGenerator {
@@ -22,7 +22,7 @@ export class LLMPlanGenerator implements PlanGenerator {
     this.validator = deps.validator
   }
 
-  generate(input: PlanGenerationInput): PlanGenerationOutput {
+  async generate(input: PlanGenerationInput): Promise<PlanGenerationOutput> {
     if (!this.llmAdapter) {
       return this.fallbackGenerator.generate(input)
     }
@@ -32,7 +32,7 @@ export class LLMPlanGenerator implements PlanGenerator {
     let attempts = 0
 
     try {
-      plan = this.callLLMAdapter(input)
+      plan = await this.callLLMAdapter(input)
     } catch {
       plan = null
     }
@@ -45,7 +45,7 @@ export class LLMPlanGenerator implements PlanGenerator {
         validationPassed = true
       } else if (attempts < 2) {
         try {
-          plan = this.callLLMAdapter(input)
+          plan = await this.callLLMAdapter(input)
         } catch {
           plan = null
           break
@@ -60,7 +60,7 @@ export class LLMPlanGenerator implements PlanGenerator {
     return this.fallbackGenerator.generate(input)
   }
 
-  private callLLMAdapter(input: PlanGenerationInput): ExecutionPlan | null {
+  private async callLLMAdapter(input: PlanGenerationInput): Promise<ExecutionPlan | null> {
     if (!this.llmAdapter) return null
     return this.llmAdapter.generatePlan(input)
   }

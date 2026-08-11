@@ -103,6 +103,9 @@ class MockPlanStore implements PlanStore {
     return []
   }
   updateStepStatus() {}
+  updateSteps() {
+    return {} as any
+  }
 }
 
 class MockToolResultStore implements ToolResultStore {

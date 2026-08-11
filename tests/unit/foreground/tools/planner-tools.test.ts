@@ -22,7 +22,7 @@ describe('Planner Tools', () => {
   })
 
   describe('handleSpawnPlanner', () => {
-    it('Planner spawn succeeds — returns plannerRunId with plan steps and execution instructions', async () => {
+    it('Planner spawn succeeds — returns queued background run with plan context', async () => {
       const templateSteps = [
         {
           stepId: 'step_001',
@@ -54,8 +54,13 @@ describe('Planner Tools', () => {
         }),
       } as unknown as PlannerRuntime
 
+      const mockBackgroundRuntime = {
+        enqueueBackgroundRun: vi.fn().mockReturnValue('bg-123'),
+      }
+
       const deps: SpawnPlannerDeps = {
         plannerRuntime: mockPlannerRuntime,
+        backgroundRuntime: mockBackgroundRuntime as never,
         userId: 'user-1',
         sessionId: 'session-1',
       }
@@ -75,6 +80,8 @@ describe('Planner Tools', () => {
         planId: 'plan_456',
         estimatedSteps: 5,
         steps: templateSteps,
+        backgroundRunId: 'bg-123',
+        status: 'queued',
       })
       expect(result.data?.steps).toHaveLength(3)
       expect(
@@ -84,8 +91,8 @@ describe('Planner Tools', () => {
         ),
       ).toBe(true)
       expect(result.userVisibleSummary).toContain('plan_456')
-      expect(result.userVisibleSummary).toContain('foreground_complete_planner')
-      expect(result.userVisibleSummary).toContain('foreground_mark_planner_step')
+      expect(result.userVisibleSummary).toContain('background execution')
+      expect(result.userVisibleSummary).not.toContain('foreground_mark_planner_step')
       expect(result.runtimeSummary?.plannerRunIds).toEqual(['pl_run_123'])
       expect(mockPlannerRuntime.createPlannerRun).toHaveBeenCalledWith({
         objective: 'Create a backup plan',
@@ -97,6 +104,48 @@ describe('Planner Tools', () => {
           reason: 'User requested backup',
         },
       })
+      expect(mockBackgroundRuntime.enqueueBackgroundRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentType: 'planner',
+          agentProfile: 'planner',
+          taskSpec: expect.objectContaining({
+            profileId: 'planner',
+            plannerRunId: 'pl_run_123',
+            planId: 'plan_456',
+            launchMode: 'background',
+            parentSessionId: 'session-1',
+          }),
+          launchSource: 'main_agent_delegation',
+        }),
+      )
+    })
+
+    it('spawn succeeds without background runtime — falls back to planning status', async () => {
+      const mockPlannerRuntime = {
+        createPlannerRun: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          status: 'planning',
+          actions: [],
+          steps: [],
+        }),
+      } as unknown as PlannerRuntime
+
+      const deps: SpawnPlannerDeps = {
+        plannerRuntime: mockPlannerRuntime,
+        userId: 'user-1',
+        sessionId: 'session-1',
+      }
+
+      const input: SpawnPlannerInput = {
+        objective: 'Test objective',
+      }
+
+      const result = await handleSpawnPlanner(deps, input)
+
+      expect(result.success).toBe(true)
+      expect(result.data?.status).toBe('planning')
+      expect(result.data?.backgroundRunId).toBeUndefined()
     })
 
     it('returns error when createPlannerRun throws', async () => {

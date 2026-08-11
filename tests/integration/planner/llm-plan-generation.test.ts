@@ -57,7 +57,7 @@ describe('LLMPlanGenerator', () => {
   })
 
   describe('without LLM adapter', () => {
-    it('should fall back to deterministic generator when no adapter provided', () => {
+    it('should fall back to deterministic generator when no adapter provided', async () => {
       const generator = new LLMPlanGenerator({
         deterministicGenerator,
         validator,
@@ -68,14 +68,14 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.goal).toBe(input.goal)
       expect(result.plan.steps.length).toBeGreaterThan(0)
     })
 
-    it('should fall back to deterministic generator when adapter is null', () => {
+    it('should fall back to deterministic generator when adapter is null', async () => {
       const generator = new LLMPlanGenerator({
         llmAdapter: null,
         deterministicGenerator,
@@ -87,7 +87,7 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.goal).toBe(input.goal)
@@ -95,11 +95,11 @@ describe('LLMPlanGenerator', () => {
   })
 
   describe('with mock LLM adapter', () => {
-    it('should use LLM adapter output when valid plan is returned', () => {
+    it('should use LLM adapter output when valid plan is returned', async () => {
       const validPlan = createValidPlan('Read the test file')
 
       const mockAdapter: LLMAdapter = {
-        generatePlan: () => validPlan,
+        generatePlan: async () => validPlan,
       }
 
       const generator = new LLMPlanGenerator({
@@ -113,7 +113,7 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.id).toBe(validPlan.id)
@@ -121,9 +121,9 @@ describe('LLMPlanGenerator', () => {
       expect(result.plan.steps).toHaveLength(2)
     })
 
-    it('should fall back to deterministic when adapter returns null', () => {
+    it('should fall back to deterministic when adapter returns null', async () => {
       const mockAdapter: LLMAdapter = {
-        generatePlan: () => null,
+        generatePlan: async () => null,
       }
 
       const generator = new LLMPlanGenerator({
@@ -137,15 +137,15 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.goal).toBe(input.goal)
     })
 
-    it('should fall back to deterministic when adapter throws error', () => {
+    it('should fall back to deterministic when adapter throws error', async () => {
       const mockAdapter: LLMAdapter = {
-        generatePlan: () => {
+        generatePlan: async () => {
           throw new Error('LLM service unavailable')
         },
       }
@@ -161,7 +161,7 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.goal).toBe(input.goal)
@@ -169,7 +169,7 @@ describe('LLMPlanGenerator', () => {
   })
 
   describe('validation and repair', () => {
-    it('should fall back to deterministic when LLM returns invalid plan', () => {
+    it('should fall back to deterministic when LLM returns invalid plan', async () => {
       const invalidPlan: ExecutionPlan = {
         id: '',
         goal: '',
@@ -181,7 +181,7 @@ describe('LLMPlanGenerator', () => {
 
       let callCount = 0
       const mockAdapter: LLMAdapter = {
-        generatePlan: () => {
+        generatePlan: async () => {
           callCount++
           return invalidPlan
         },
@@ -198,14 +198,14 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.goal).toBe(input.goal)
       expect(callCount).toBeLessThanOrEqual(2)
     })
 
-    it('should accept repaired plan on second attempt', () => {
+    it('should accept repaired plan on second attempt', async () => {
       const invalidPlan: ExecutionPlan = {
         id: '',
         goal: '',
@@ -219,7 +219,7 @@ describe('LLMPlanGenerator', () => {
 
       let callCount = 0
       const mockAdapter: LLMAdapter = {
-        generatePlan: () => {
+        generatePlan: async () => {
           callCount++
           if (callCount === 1) {
             return invalidPlan
@@ -239,14 +239,14 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.id).toBe(validPlan.id)
       expect(callCount).toBe(2)
     })
 
-    it('should fall back to deterministic after max repair attempts', () => {
+    it('should fall back to deterministic after max repair attempts', async () => {
       const invalidPlan: ExecutionPlan = {
         id: '',
         goal: '',
@@ -258,7 +258,7 @@ describe('LLMPlanGenerator', () => {
 
       let callCount = 0
       const mockAdapter: LLMAdapter = {
-        generatePlan: () => {
+        generatePlan: async () => {
           callCount++
           return invalidPlan
         },
@@ -275,7 +275,7 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.goal).toBe(input.goal)
@@ -284,7 +284,7 @@ describe('LLMPlanGenerator', () => {
   })
 
   describe('with write tool approval validation', () => {
-    it('should reject plan with write tool but no approval', () => {
+    it('should reject plan with write tool but no approval', async () => {
       const planWithWriteTool: ExecutionPlan = {
         id: 'plan_write',
         goal: 'Write to file',
@@ -312,7 +312,7 @@ describe('LLMPlanGenerator', () => {
       }
 
       const mockAdapter: LLMAdapter = {
-        generatePlan: () => planWithWriteTool,
+        generatePlan: async () => planWithWriteTool,
       }
 
       const generator = new LLMPlanGenerator({
@@ -326,7 +326,7 @@ describe('LLMPlanGenerator', () => {
         availableTools: ['read_file', 'write_file'],
       }
 
-      const result = generator.generate(input)
+      const result = await generator.generate(input)
 
       expect(result.plan).toBeDefined()
       expect(result.plan.goal).toBe(input.goal)

@@ -899,6 +899,75 @@ describe('Planner Runtime Integration', () => {
     })
   })
 
+  describe('setPlanSteps', () => {
+    const generatedSteps = [
+      { stepId: 'plan_step_1', description: 'Search web for trends', status: 'pending' as const },
+      {
+        stepId: 'plan_step_2',
+        description: 'Write summary file',
+        status: 'pending' as const,
+        dependencies: ['plan_step_1'],
+      },
+    ]
+
+    it('should replace placeholder steps with the generated plan', () => {
+      const input: PlannerRunInput = {
+        objective: 'Set steps test',
+        userId: 'user_setsteps_001',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+      const planId = result.planId
+
+      plannerRuntime.setPlanSteps(plannerRunId, generatedSteps)
+
+      const plan = planStore.getPlan(planId)
+      expect(plan?.steps).toEqual(generatedSteps)
+      expect(plan?.steps).toHaveLength(2)
+      expect(plan?.updatedAt).not.toBe(plan?.createdAt)
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.checkpoint).toMatchObject({
+        planGeneratedAt: expect.any(String),
+        stepCount: 2,
+      })
+    })
+
+    it('should reject empty step list', () => {
+      const result = plannerRuntime.createPlannerRun({
+        objective: 'Empty steps test',
+        userId: 'user_setsteps_002',
+      })
+
+      expect(() => plannerRuntime.setPlanSteps(result.plannerRunId, [])).toThrow('Cannot set empty plan steps')
+    })
+
+    it('should reject duplicate step ids', () => {
+      const result = plannerRuntime.createPlannerRun({
+        objective: 'Duplicate steps test',
+        userId: 'user_setsteps_003',
+      })
+
+      expect(() => plannerRuntime.setPlanSteps(result.plannerRunId, [generatedSteps[0]!, generatedSteps[0]!])).toThrow(
+        'Duplicate step id',
+      )
+    })
+
+    it('should reject setting steps on a terminal run', () => {
+      const result = plannerRuntime.createPlannerRun({
+        objective: 'Terminal steps test',
+        userId: 'user_setsteps_004',
+      })
+
+      plannerRuntime.transitionState(result.plannerRunId, PLANNER_STATES.COMPLETED)
+
+      expect(() => plannerRuntime.setPlanSteps(result.plannerRunId, generatedSteps)).toThrow(
+        'Cannot set plan steps on run in terminal state',
+      )
+    })
+  })
+
   describe('archivePlannerRun', () => {
     it('should archive completed planner run', () => {
       const input: PlannerRunInput = {

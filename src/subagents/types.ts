@@ -1,5 +1,5 @@
 import type { ContextBundle } from '../context/types.js'
-import type { KernelRunResult } from '../kernel/types.js'
+import type { KernelRunResult, InternalToolHandler } from '../kernel/types.js'
 import type { SubagentRunStore } from '../storage/subagent-run-store.js'
 import type { SubagentTranscriptStore } from '../storage/subagent-transcript-store.js'
 import type { SubagentDefinition } from './registry.js'
@@ -95,6 +95,8 @@ export interface KernelAdapter {
      * or a subagent-run cancellation. Passed through to KernelRunInput.signal.
      */
     signal?: AbortSignal
+    /** In-process tool handlers (bypass dispatcher). Passed to KernelRunInput. */
+    internalToolHandlers?: Record<string, InternalToolHandler>
   }): Promise<KernelRunResult>
 }
 
