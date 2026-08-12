@@ -379,4 +379,66 @@ describe('Background child worker — restart recovery from persisted task spec'
     expect(run2?.status).toBe('failed')
     expect(runtimeC.getPendingNotifications().filter((n) => n.backgroundRunId === bgRunId2)).toHaveLength(1)
   })
+
+  it('resumes the child session carried on the background run row (worker taskId passthrough)', async () => {
+    const objective = 'Resume this background objective in the same child session'
+
+    // First launch creates the child session shell (identity: taskId === childSessionId).
+    const seedKernel = new RecordingKernel([])
+    const seedChildRuntime = makeChildRuntime(h, seedKernel)
+    const seedParentContext: ContextBundle = {
+      bundleId: 'ctx-seed',
+      runId: 'krun_seed',
+      agentId: 'foreground.default',
+      agentType: 'main',
+      userId: 'user_A',
+      invocationSource: 'system',
+      pinnedItems: [],
+      orderedItems: [],
+      tokenEstimate: 0,
+    }
+    const firstLaunch = seedChildRuntime.launchTask({
+      parentContext: seedParentContext,
+      taskSpec: makeChildSpec({ objective }),
+      depth: 1,
+      launchesInParentTurn: 0,
+    })
+    const childSessionId = firstLaunch.childSessionId
+
+    // Enqueue a background run carrying the persisted taskId — the worker must
+    // resume that child session shell instead of creating a fresh one.
+    const runtime = makeBackgroundRuntime(h)
+    const bgRunId = runtime.enqueueBackgroundRun({
+      userId: 'user_A',
+      sessionId: 'sess_parent',
+      agentType: 'document_processor',
+      agentProfile: 'document_processor',
+      taskSpec: makeChildSpec({ objective }),
+      launchSource: 'foreground_request',
+      taskId: childSessionId,
+    })
+
+    const kernel = new RecordingKernel([
+      {
+        finalStatus: 'completed',
+        finalResponse: 'Background resumed task completed',
+        iterationsUsed: 1,
+        toolCalls: [],
+        transcript: [],
+      },
+    ])
+    const worker = makeWorker(h, runtime, makeChildRuntime(h, kernel))
+    await worker.tick()
+
+    const run = runtime.getBackgroundRun(bgRunId)
+    expect(run?.status).toBe('completed')
+    expect(run?.taskId).toBe(childSessionId)
+    expect(run?.childSessionId).toBe(childSessionId)
+
+    // The resumed attempt lives under the SAME child session shell (no new child).
+    const attempts = h.runStore.query({ backgroundRunId: bgRunId })
+    expect(attempts).toHaveLength(1)
+    expect(attempts[0]?.childSessionId).toBe(childSessionId)
+    expect(attempts[0]?.taskId).toBe(childSessionId)
+  })
 })

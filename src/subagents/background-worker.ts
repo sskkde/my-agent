@@ -158,6 +158,7 @@ class BackgroundSubagentWorkerImpl implements BackgroundSubagentWorkerInstance {
         parentRunId: bgRunId,
         rootRunId: bgRunId,
         backgroundRunId: bgRunId,
+        ...(run.taskId ? { taskId: run.taskId } : {}),
       })
 
       this.backgroundRunStore.linkChildTask(bgRunId, {
