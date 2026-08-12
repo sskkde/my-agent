@@ -70,6 +70,7 @@ secrets/*.tmp
 
 # Runtime data (uploads, workdirs)
 /data/
+/backups/
 
 # OpenCode metadata
 .omo/
