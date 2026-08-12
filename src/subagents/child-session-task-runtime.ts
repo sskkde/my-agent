@@ -396,7 +396,8 @@ export function buildChildContextBundle(input: {
     isPinned: true,
   })
 
-  // 2b. Generated plan context for planner children (explicit input).
+  // 2b. Generated plan context for planner children (explicit input — dynamic
+  //     data only; the execution protocol lives in the agentProfile:planner template).
   if (taskSpec.plannerRunId && input.planSteps && input.planSteps.length > 0) {
     const stepsText = input.planSteps
       .map((step, index) => `${index + 1}. [${step.stepId}] ${step.description}`)
@@ -406,10 +407,9 @@ export function buildChildContextBundle(input: {
       sourceType: 'system_note',
       semanticType: 'instruction',
       content:
-        `你正在执行计划（plannerRunId=${taskSpec.plannerRunId}${taskSpec.planId ? `, planId=${taskSpec.planId}` : ''}）。\n` +
-        `计划步骤：\n${stepsText}\n` +
-        `每完成一步调用 foreground_mark_planner_step（参数 stepId/status）回写进度，` +
-        `全部步骤完成后调用 foreground_complete_planner 汇报结果。`,
+        `当前计划（plannerRunId=${taskSpec.plannerRunId}${taskSpec.planId ? `, planId=${taskSpec.planId}` : ''}）：\n` +
+        `${stepsText}\n` +
+        `按既定执行协议逐步骤执行并回写进度。`,
       priority: 85,
       isPinned: true,
     })

@@ -180,6 +180,7 @@ class AgentKernelSubagentAdapter implements KernelAdapter {
       runId: contextBundle.runId,
       agentId: contextBundle.agentId,
       agentType: 'subagent',
+      ...(definition.agentProfile ? { agentProfile: definition.agentProfile } : {}),
       userId,
       sessionId,
       toolProjection,

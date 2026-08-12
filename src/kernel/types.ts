@@ -71,6 +71,8 @@ export interface KernelRunInput {
   agentId: string
   /** Agent type for this run - categorizes the agent (main, subagent, background, workflow_step, remote). */
   agentType: AgentType
+  /** Agent profile for this run - resolves the agentProfile T5 taxonomy template (falls back to 'default_main'). */
+  agentProfile?: string
   /** User ID for this run - used for tool dispatch and permission context. */
   userId: string
   /** Session ID for this run - optional, used for LLM request context. */

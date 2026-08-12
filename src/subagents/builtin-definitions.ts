@@ -193,6 +193,7 @@ const searchProcessor: SubagentDefinition = {
 
 const plannerSubagent: SubagentDefinition = {
   agentType: 'planner',
+  agentProfile: 'planner',
   displayName: '计划执行',
   description: '拆分任务生成计划、按计划执行并回写进度。',
   modality: 'text',

@@ -554,7 +554,7 @@ export class AgentKernel {
       : {
           mode: 'function_calling',
           agentType: input.agentType,
-          agentProfile: 'default_main',
+          agentProfile: input.agentProfile ?? 'default_main',
           providerFamily: resolveProviderFamily(this.config.providerFamily, input.model) ?? 'openai',
           contextBundle: contextBundleData,
           transcript: transcriptMessages,
