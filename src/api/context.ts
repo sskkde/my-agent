@@ -1124,6 +1124,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     toolResultStore,
     childTaskRemainingTimeoutMs: DEFAULT_FOREGROUND_CHILD_WAIT_MS,
     backgroundRuntime,
+    backgroundRunStore,
     sessionStore,
   }
   registerAllForegroundTools(toolRegistry, {

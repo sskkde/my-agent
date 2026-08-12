@@ -4,7 +4,13 @@
  */
 
 import type { PlannerRuntime } from '../../planner/planner-runtime.js'
-import type { PlannerRunStore } from '../../storage/planner-run-store.js'
+import type { PlannerRunRecord, PlannerRunStore } from '../../storage/planner-run-store.js'
+import type { BackgroundRuntime } from '../../subagents/background-runtime.js'
+import type { BackgroundRunStore } from '../../storage/background-run-store.js'
+import type { SessionStore } from '../../storage/session-store.js'
+import { CHILD_TASK_LAUNCH_SOURCE } from '../../subagents/child-task-policy.js'
+import type { Checkpoint } from '../../planner/types.js'
+import { PLANNER_CHILD_PROFILE_ID } from './planner-spawn-tool.js'
 import { createSuccessResult, createErrorResult, type ForegroundToolResult } from './foreground-tool-result.js'
 
 export const RESUME_PLANNER_TOOL_ID = 'foreground_resume_planner'
@@ -12,6 +18,9 @@ export const RESUME_PLANNER_TOOL_ID = 'foreground_resume_planner'
 export interface ResumePlannerDeps {
   plannerRuntime: PlannerRuntime
   plannerRunStore: PlannerRunStore
+  backgroundRuntime?: BackgroundRuntime
+  backgroundRunStore?: BackgroundRunStore
+  sessionStore?: SessionStore
   userId: string
   sessionId: string
 }
@@ -25,6 +34,31 @@ export interface ResumePlannerInput {
 export interface ResumePlannerData {
   plannerRunId: string
   status: 'resumed'
+  backgroundRunId?: string
+}
+
+/**
+ * Resolve the child session id of the previous background execution of this
+ * planner run so the resumed child reuses the same conversation shell. Reuse
+ * is skipped when the link is missing or the child session is no longer
+ * resumable (archived/closed) — the resumed run then starts a fresh session.
+ */
+function resolveResumeTaskId(
+  run: PlannerRunRecord,
+  deps: Pick<ResumePlannerDeps, 'backgroundRunStore' | 'sessionStore'>,
+): string | undefined {
+  if (!run.backgroundRunId || !deps.backgroundRunStore || !deps.sessionStore) {
+    return undefined
+  }
+  const priorRun = deps.backgroundRunStore.getById(run.backgroundRunId)
+  if (!priorRun?.taskId) {
+    return undefined
+  }
+  const childSession = deps.sessionStore.getChildSessionById(priorRun.taskId)
+  if (!childSession || childSession.status === 'archived' || childSession.status === 'closed') {
+    return undefined
+  }
+  return priorRun.taskId
 }
 
 /**
@@ -56,7 +90,7 @@ export async function handleResumePlanner(
       )
     }
 
-    deps.plannerRuntime.resumePlannerRun(input.plannerRunId, {
+    const resumeResult = deps.plannerRuntime.resumePlannerRun(input.plannerRunId, {
       eventType: 'user_resume',
       payload: {
         userMessage: input.userMessage,
@@ -64,12 +98,45 @@ export async function handleResumePlanner(
       },
     })
 
+    let backgroundRunId: string | undefined
+    if (deps.backgroundRuntime) {
+      const checkpoint = (run.checkpoint ?? null) as Checkpoint | null
+      const objective =
+        resumeResult.context?.objective ?? checkpoint?.objective ?? `Resume planner run ${input.plannerRunId}`
+      const taskId = resolveResumeTaskId(run, deps)
+      backgroundRunId = deps.backgroundRuntime.enqueueBackgroundRun({
+        userId: deps.userId,
+        sessionId: deps.sessionId,
+        agentType: PLANNER_CHILD_PROFILE_ID,
+        agentProfile: PLANNER_CHILD_PROFILE_ID,
+        taskSpec: {
+          objective,
+          profileId: PLANNER_CHILD_PROFILE_ID,
+          plannerRunId: input.plannerRunId,
+          planId: run.planId,
+          parentSessionId: deps.sessionId,
+          launchMode: 'background',
+          maxIterations: 12,
+          timeoutMs: 180_000,
+        },
+        launchSource: CHILD_TASK_LAUNCH_SOURCE,
+        ...(taskId ? { taskId } : {}),
+      })
+    }
+
+    const data: ResumePlannerData = {
+      plannerRunId: input.plannerRunId,
+      status: 'resumed',
+    }
+    if (backgroundRunId) {
+      data.backgroundRunId = backgroundRunId
+    }
+
     return createSuccessResult<ResumePlannerData>(
-      {
-        plannerRunId: input.plannerRunId,
-        status: 'resumed',
-      },
-      "I've resumed work on your existing plan.",
+      data,
+      backgroundRunId
+        ? `I've resumed work on your existing plan and re-queued it for background execution (bg ${backgroundRunId}).`
+        : "I've resumed work on your existing plan.",
       {
         plannerRunIds: [input.plannerRunId],
       },

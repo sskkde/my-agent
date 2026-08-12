@@ -1,5 +1,7 @@
 import type { PlannerRuntime } from '../../planner/planner-runtime.js'
 import type { PlannerRunStore } from '../../storage/planner-run-store.js'
+import type { BackgroundRuntime } from '../../subagents/background-runtime.js'
+import type { BackgroundRunStore } from '../../storage/background-run-store.js'
 import { createSuccessResult, createErrorResult, type ForegroundToolResult } from './foreground-tool-result.js'
 
 export const CANCEL_PLANNER_TOOL_ID = 'foreground_cancel_planner'
@@ -7,6 +9,8 @@ export const CANCEL_PLANNER_TOOL_ID = 'foreground_cancel_planner'
 export interface CancelPlannerDeps {
   plannerRuntime: PlannerRuntime
   plannerRunStore: PlannerRunStore
+  backgroundRuntime?: BackgroundRuntime
+  backgroundRunStore?: BackgroundRunStore
   userId: string
   sessionId: string
 }
@@ -47,6 +51,20 @@ export async function handleCancelPlanner(
     }
 
     deps.plannerRuntime.cancelPlannerRun(input.plannerRunId)
+
+    // Cancel the linked background execution so the planner child stops too
+    // (instead of failing the run later with a confusing notification). Only
+    // non-terminal background runs can be cancelled; failure here is best-effort.
+    if (deps.backgroundRuntime && deps.backgroundRunStore && run.backgroundRunId) {
+      const linked = deps.backgroundRunStore.getById(run.backgroundRunId)
+      if (linked && ['queued', 'running', 'recovering'].includes(linked.status)) {
+        try {
+          deps.backgroundRuntime.cancelBackgroundRun(linked.backgroundRunId)
+        } catch {
+          // ignore: the planner run is already cancelled; bg cleanup is best-effort
+        }
+      }
+    }
 
     return createSuccessResult<CancelPlannerData>(
       {

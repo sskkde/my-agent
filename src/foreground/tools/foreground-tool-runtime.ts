@@ -18,6 +18,7 @@ import type { ForegroundToolResult } from './foreground-tool-result.js'
 import type { ToolExecutionContext, ToolExecutionResult } from '../../tools/types.js'
 import type { ChildSessionTaskRuntime } from '../../subagents/child-session-task-runtime.js'
 import type { BackgroundRuntime } from '../../subagents/background-runtime.js'
+import type { BackgroundRunStore } from '../../storage/background-run-store.js'
 import type { ToolResultStore } from '../../storage/tool-result-store.js'
 
 // ---------------------------------------------------------------------------
@@ -56,6 +57,8 @@ export interface ForegroundToolRuntimeDeps {
    * `background=true`: enqueue + return immediately; the worker completes later.
    */
   backgroundRuntime?: BackgroundRuntime
+  /** Store for looking up the background run linked to a planner run (resume/cancel linkage). */
+  backgroundRunStore?: BackgroundRunStore
   /** Parent session store used to resolve child depth for policy enforcement. */
   sessionStore?: SessionStore
 }

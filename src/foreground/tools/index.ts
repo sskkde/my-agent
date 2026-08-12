@@ -310,6 +310,7 @@ export function createForegroundSpawnPlannerToolDefinition(runtimeDeps?: Foregro
           const result = await handleSpawnPlanner(
             {
               plannerRuntime: runtimeDeps.plannerRuntime,
+              plannerRunStore: runtimeDeps.plannerRunStore,
               backgroundRuntime: runtimeDeps.backgroundRuntime,
               userId: identity.userId,
               sessionId: identity.sessionId,
@@ -367,6 +368,9 @@ export function createForegroundResumePlannerToolDefinition(runtimeDeps?: Foregr
             {
               plannerRuntime: runtimeDeps.plannerRuntime,
               plannerRunStore: runtimeDeps.plannerRunStore,
+              backgroundRuntime: runtimeDeps.backgroundRuntime,
+              backgroundRunStore: runtimeDeps.backgroundRunStore,
+              sessionStore: runtimeDeps.sessionStore,
               userId: identity.userId,
               sessionId: identity.sessionId,
             },
@@ -563,6 +567,8 @@ export function createForegroundCancelPlannerToolDefinition(runtimeDeps?: Foregr
             {
               plannerRuntime: runtimeDeps.plannerRuntime,
               plannerRunStore: runtimeDeps.plannerRunStore,
+              backgroundRuntime: runtimeDeps.backgroundRuntime,
+              backgroundRunStore: runtimeDeps.backgroundRunStore,
               userId: identity.userId,
               sessionId: identity.sessionId,
             },

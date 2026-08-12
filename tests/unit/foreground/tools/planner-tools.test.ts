@@ -58,8 +58,13 @@ describe('Planner Tools', () => {
         enqueueBackgroundRun: vi.fn().mockReturnValue('bg-123'),
       }
 
+      const mockPlannerRunStore = {
+        updateBackgroundRunId: vi.fn(),
+      }
+
       const deps: SpawnPlannerDeps = {
         plannerRuntime: mockPlannerRuntime,
+        plannerRunStore: mockPlannerRunStore as never,
         backgroundRuntime: mockBackgroundRuntime as never,
         userId: 'user-1',
         sessionId: 'session-1',
@@ -118,6 +123,7 @@ describe('Planner Tools', () => {
           launchSource: 'main_agent_delegation',
         }),
       )
+      expect(mockPlannerRunStore.updateBackgroundRunId).toHaveBeenCalledWith('pl_run_123', 'bg-123')
     })
 
     it('spawn succeeds without background runtime — falls back to planning status', async () => {
@@ -355,6 +361,234 @@ describe('Planner Tools', () => {
       expect(result.error?.code).toBe('RESUME_PLANNER_ERROR')
       expect(result.error?.message).toContain('Cannot resume from state')
       expect(result.error?.recoverable).toBe(true)
+      expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalled()
+    })
+
+    it('resume re-enqueues a background planner child after resumePlannerRun succeeds', async () => {
+      const mockPlannerRuntime = {
+        resumePlannerRun: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          status: 'planning',
+          actions: [],
+          steps: [],
+        }),
+      } as unknown as PlannerRuntime
+
+      const mockPlannerRunStore = {
+        getById: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          userId: 'user-1',
+          status: 'waiting_for_user',
+          checkpoint: { step: 'execution', objective: 'Create a backup plan' },
+        }),
+      } as unknown as PlannerRunStore
+
+      const mockBackgroundRuntime = {
+        enqueueBackgroundRun: vi.fn().mockReturnValue('bg-resume-1'),
+      }
+
+      const deps: ResumePlannerDeps = {
+        plannerRuntime: mockPlannerRuntime,
+        plannerRunStore: mockPlannerRunStore,
+        backgroundRuntime: mockBackgroundRuntime as never,
+        userId: 'user-1',
+        sessionId: 'session-1',
+      }
+
+      const input: ResumePlannerInput = {
+        plannerRunId: 'pl_run_123',
+        userMessage: 'Please continue',
+        timestamp: '2024-01-01T00:00:00Z',
+      }
+
+      const result = await handleResumePlanner(deps, input)
+
+      expect(result.success).toBe(true)
+      expect(result.data).toEqual({
+        plannerRunId: 'pl_run_123',
+        status: 'resumed',
+        backgroundRunId: 'bg-resume-1',
+      })
+      expect(result.userVisibleSummary).toContain('re-queued')
+      expect(mockPlannerRuntime.resumePlannerRun).toHaveBeenCalledWith('pl_run_123', {
+        eventType: 'user_resume',
+        payload: {
+          userMessage: 'Please continue',
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      })
+      expect(mockBackgroundRuntime.enqueueBackgroundRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          sessionId: 'session-1',
+          agentType: 'planner',
+          agentProfile: 'planner',
+          taskSpec: expect.objectContaining({
+            objective: 'Create a backup plan',
+            profileId: 'planner',
+            plannerRunId: 'pl_run_123',
+            planId: 'plan_456',
+            parentSessionId: 'session-1',
+            launchMode: 'background',
+            maxIterations: 12,
+            timeoutMs: 180_000,
+          }),
+          launchSource: 'main_agent_delegation',
+        }),
+      )
+    })
+
+    it('resume reuses the prior child session taskId when the linked background run is resumable', async () => {
+      const mockPlannerRuntime = {
+        resumePlannerRun: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          status: 'planning',
+          actions: [],
+          steps: [],
+        }),
+      } as unknown as PlannerRuntime
+
+      const mockPlannerRunStore = {
+        getById: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          userId: 'user-1',
+          status: 'waiting_for_user',
+          checkpoint: { step: 'execution', objective: 'Create a backup plan' },
+          backgroundRunId: 'bg-123',
+        }),
+      } as unknown as PlannerRunStore
+
+      const mockBackgroundRuntime = {
+        enqueueBackgroundRun: vi.fn().mockReturnValue('bg-resume-2'),
+      }
+      const mockBackgroundRunStore = {
+        getById: vi.fn().mockReturnValue({ backgroundRunId: 'bg-123', taskId: 'sess_child_1' }),
+      }
+      const mockSessionStore = {
+        getChildSessionById: vi.fn().mockReturnValue({ sessionId: 'sess_child_1', status: 'active' }),
+      }
+
+      const deps: ResumePlannerDeps = {
+        plannerRuntime: mockPlannerRuntime,
+        plannerRunStore: mockPlannerRunStore,
+        backgroundRuntime: mockBackgroundRuntime as never,
+        backgroundRunStore: mockBackgroundRunStore as never,
+        sessionStore: mockSessionStore as never,
+        userId: 'user-1',
+        sessionId: 'session-1',
+      }
+
+      const result = await handleResumePlanner(deps, {
+        plannerRunId: 'pl_run_123',
+        userMessage: 'continue',
+        timestamp: '2024-01-01T00:00:00Z',
+      })
+
+      expect(result.success).toBe(true)
+      expect(mockBackgroundRunStore.getById).toHaveBeenCalledWith('bg-123')
+      expect(mockSessionStore.getChildSessionById).toHaveBeenCalledWith('sess_child_1')
+      expect(mockBackgroundRuntime.enqueueBackgroundRun).toHaveBeenCalledWith(
+        expect.objectContaining({ taskId: 'sess_child_1' }),
+      )
+    })
+
+    it('resume falls back to a fresh child session when the prior child session is archived', async () => {
+      const mockPlannerRuntime = {
+        resumePlannerRun: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          status: 'planning',
+          actions: [],
+          steps: [],
+        }),
+      } as unknown as PlannerRuntime
+
+      const mockPlannerRunStore = {
+        getById: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          userId: 'user-1',
+          status: 'waiting_for_user',
+          checkpoint: { step: 'execution', objective: 'Create a backup plan' },
+          backgroundRunId: 'bg-123',
+        }),
+      } as unknown as PlannerRunStore
+
+      const mockBackgroundRuntime = {
+        enqueueBackgroundRun: vi.fn().mockReturnValue('bg-resume-3'),
+      }
+      const mockBackgroundRunStore = {
+        getById: vi.fn().mockReturnValue({ backgroundRunId: 'bg-123', taskId: 'sess_child_1' }),
+      }
+      const mockSessionStore = {
+        getChildSessionById: vi.fn().mockReturnValue({ sessionId: 'sess_child_1', status: 'archived' }),
+      }
+
+      const deps: ResumePlannerDeps = {
+        plannerRuntime: mockPlannerRuntime,
+        plannerRunStore: mockPlannerRunStore,
+        backgroundRuntime: mockBackgroundRuntime as never,
+        backgroundRunStore: mockBackgroundRunStore as never,
+        sessionStore: mockSessionStore as never,
+        userId: 'user-1',
+        sessionId: 'session-1',
+      }
+
+      const result = await handleResumePlanner(deps, {
+        plannerRunId: 'pl_run_123',
+        userMessage: 'continue',
+        timestamp: '2024-01-01T00:00:00Z',
+      })
+
+      expect(result.success).toBe(true)
+      expect(mockBackgroundRuntime.enqueueBackgroundRun).toHaveBeenCalledWith(
+        expect.not.objectContaining({ taskId: expect.any(String) }),
+      )
+    })
+
+    it('resume without a background runtime skips re-enqueue and still succeeds', async () => {
+      const mockPlannerRuntime = {
+        resumePlannerRun: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          status: 'planning',
+          actions: [],
+          steps: [],
+        }),
+      } as unknown as PlannerRuntime
+
+      const mockPlannerRunStore = {
+        getById: vi.fn().mockReturnValue({
+          plannerRunId: 'pl_run_123',
+          planId: 'plan_456',
+          userId: 'user-1',
+          status: 'waiting_for_user',
+        }),
+      } as unknown as PlannerRunStore
+
+      const deps: ResumePlannerDeps = {
+        plannerRuntime: mockPlannerRuntime,
+        plannerRunStore: mockPlannerRunStore,
+        userId: 'user-1',
+        sessionId: 'session-1',
+      }
+
+      const result = await handleResumePlanner(deps, {
+        plannerRunId: 'pl_run_123',
+        userMessage: 'continue',
+        timestamp: '2024-01-01T00:00:00Z',
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.data).toEqual({
+        plannerRunId: 'pl_run_123',
+        status: 'resumed',
+      })
+      expect(result.data?.backgroundRunId).toBeUndefined()
     })
   })
 })

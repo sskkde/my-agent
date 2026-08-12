@@ -7,6 +7,7 @@
 import type { PlannerRuntime } from '../../planner/planner-runtime.js'
 import type { PlannerRunResult } from '../../planner/types.js'
 import type { PlanStep } from '../../storage/plan-store.js'
+import type { PlannerRunStore } from '../../storage/planner-run-store.js'
 import type { BackgroundRuntime } from '../../subagents/background-runtime.js'
 import { CHILD_TASK_LAUNCH_SOURCE } from '../../subagents/child-task-policy.js'
 import { createSuccessResult, createErrorResult, type ForegroundToolResult } from './foreground-tool-result.js'
@@ -17,6 +18,7 @@ export const PLANNER_CHILD_PROFILE_ID = 'planner'
 
 export interface SpawnPlannerDeps {
   plannerRuntime: PlannerRuntime
+  plannerRunStore?: PlannerRunStore
   backgroundRuntime?: BackgroundRuntime
   userId: string
   sessionId: string
@@ -79,6 +81,16 @@ export async function handleSpawnPlanner(
         },
         launchSource: CHILD_TASK_LAUNCH_SOURCE,
       })
+
+      // Best-effort link so a later resume can find this background run and
+      // reuse its child session. A write-back failure must not fail the spawn.
+      if (deps.plannerRunStore) {
+        try {
+          deps.plannerRunStore.updateBackgroundRunId(result.plannerRunId, backgroundRunId)
+        } catch {
+          // ignore: linkage is an optimization, not a spawn contract
+        }
+      }
     }
 
     return createSuccessResult<SpawnPlannerData>(
