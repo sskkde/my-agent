@@ -15,6 +15,11 @@ export function mapSchemaPlanStepToStorage(step: SchemaPlanStep): StoragePlanSte
     stepId: step.id,
     description: step.description || step.title,
     status: 'pending',
+    ...(step.kind ? { kind: step.kind } : {}),
+    ...(step.executor ? { executor: step.executor } : {}),
+    ...(step.toolName ? { toolName: step.toolName } : {}),
+    ...(step.approvalRequirementId ? { approvalRequirementId: step.approvalRequirementId } : {}),
+    ...(step.expectedOutput ? { expectedOutput: step.expectedOutput } : {}),
     ...(step.dependsOn && step.dependsOn.length > 0 ? { dependencies: step.dependsOn.map((d) => d.targetStepId) } : {}),
   }
 }
@@ -28,10 +33,13 @@ export function mapSchemaPlanStepsToStorage(steps: SchemaPlanStep[]): StoragePla
 export function mapStoragePlanStepToSchema(step: StoragePlanStep): SchemaPlanStep {
   return {
     id: step.stepId,
-    kind: 'agent_task',
+    kind: step.kind ?? 'agent_task',
     title: step.description,
     description: step.description,
-    executor: 'agent_kernel',
+    executor: step.executor ?? 'agent_kernel',
+    ...(step.toolName ? { toolName: step.toolName } : {}),
+    ...(step.approvalRequirementId ? { approvalRequirementId: step.approvalRequirementId } : {}),
+    ...(step.expectedOutput ? { expectedOutput: step.expectedOutput } : {}),
     ...(step.dependencies && step.dependencies.length > 0
       ? { dependsOn: step.dependencies.map((targetStepId) => ({ type: 'depends_on' as const, targetStepId })) }
       : {}),

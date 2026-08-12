@@ -1,11 +1,17 @@
 import type { ConnectionManager } from './connection.js'
 import type { ExecutionPlanState } from '../shared/states.js'
+import type { PlanExecutor, PlanStepKind } from '../shared/plan-types.js'
 
 export interface PlanStep {
   stepId: string
   description: string
   status: 'pending' | 'in_progress' | 'completed' | 'failed'
   dependencies?: string[]
+  kind?: PlanStepKind
+  executor?: PlanExecutor
+  toolName?: string
+  approvalRequirementId?: string
+  expectedOutput?: string
 }
 
 export interface ExecutionPlanRecord {

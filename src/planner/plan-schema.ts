@@ -1,12 +1,6 @@
-export type PlanStepKind =
-  | 'agent_task'
-  | 'tool_call'
-  | 'subagent_task'
-  | 'workflow_step'
-  | 'user_approval'
-  | 'final_response'
+import type { PlanExecutor, PlanStepKind } from '../shared/plan-types.js'
 
-export type PlanExecutor = 'agent_kernel' | 'tool_plane' | 'subagent' | 'workflow_runtime' | 'foreground'
+export type { PlanStepKind, PlanExecutor } from '../shared/plan-types.js'
 
 export type PlanDependencyType = 'depends_on' | 'blocks' | 'references'
 

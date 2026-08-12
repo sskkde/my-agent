@@ -25,6 +25,9 @@ describe('plan-step-mapper', () => {
       stepId: 'step_001',
       description: 'Search the web for AI trends',
       status: 'pending',
+      kind: 'tool_call',
+      executor: 'agent_kernel',
+      toolName: 'web_search',
       dependencies: ['step_000'],
     })
   })
@@ -53,6 +56,54 @@ describe('plan-step-mapper', () => {
     expect(schema.kind).toBe('agent_task')
     expect(schema.executor).toBe('agent_kernel')
     expect(schema.dependsOn).toEqual([{ type: 'depends_on', targetStepId: 'step_000' }])
+  })
+
+  it('preserves kind, executor and tool metadata through a storage round-trip', () => {
+    const storage = mapSchemaPlanStepToStorage(schemaStep)
+    expect(storage.kind).toBe('tool_call')
+    expect(storage.executor).toBe('agent_kernel')
+    expect(storage.toolName).toBe('web_search')
+
+    const schema = mapStoragePlanStepToSchema(storage)
+    expect(schema.kind).toBe('tool_call')
+    expect(schema.executor).toBe('agent_kernel')
+    expect(schema.toolName).toBe('web_search')
+    expect(schema.title).toBe('Search the web for AI trends')
+  })
+
+  it('passes through approvalRequirementId and expectedOutput when present', () => {
+    const schemaWithMeta: SchemaPlanStep = {
+      ...schemaStep,
+      approvalRequirementId: 'apr_001',
+      expectedOutput: 'structured summary',
+    }
+
+    const storage = mapSchemaPlanStepToStorage(schemaWithMeta)
+    expect(storage.approvalRequirementId).toBe('apr_001')
+    expect(storage.expectedOutput).toBe('structured summary')
+
+    const back = mapStoragePlanStepToSchema(storage)
+    expect(back.approvalRequirementId).toBe('apr_001')
+    expect(back.expectedOutput).toBe('structured summary')
+  })
+
+  it('omits optional metadata fields when absent from the schema step', () => {
+    const storage = mapSchemaPlanStepToStorage({ ...schemaStep, toolName: undefined })
+
+    expect(storage.toolName).toBeUndefined()
+    expect(storage.approvalRequirementId).toBeUndefined()
+    expect(storage.expectedOutput).toBeUndefined()
+  })
+
+  it('defaults kind and executor when absent from the storage step', () => {
+    const schema = mapStoragePlanStepToSchema({
+      stepId: 'step_002',
+      description: 'Wrap up',
+      status: 'pending',
+    })
+
+    expect(schema.kind).toBe('agent_task')
+    expect(schema.executor).toBe('agent_kernel')
   })
 
   it('maps collections both ways', () => {
