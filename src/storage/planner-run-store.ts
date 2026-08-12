@@ -21,6 +21,7 @@ export interface PlannerRunStore {
   findActiveBySession(sessionId: string, statusFilter?: PlannerState): PlannerRunRecord[]
   findByUser(userId: string): PlannerRunRecord[]
   updateStatus(plannerRunId: string, status: PlannerState, checkpoint?: unknown): void
+  updateBackgroundRunId(plannerRunId: string, backgroundRunId: string): void
 }
 
 const TERMINAL_STATES: PlannerState[] = ['completed', 'failed', 'cancelled', 'archived']
@@ -191,6 +192,17 @@ class PlannerRunStoreImpl implements PlannerRunStore {
       new Date().toISOString(),
       plannerRunId,
     ])
+  }
+
+  updateBackgroundRunId(plannerRunId: string, backgroundRunId: string): void {
+    const sql = `
+      UPDATE planner_runs SET
+        background_run_id = ?,
+        updated_at = ?
+      WHERE planner_run_id = ?
+    `
+
+    this.connection.exec(sql, [backgroundRunId, new Date().toISOString(), plannerRunId])
   }
 
   private addPlannerRunToPlan(planId: string, plannerRunId: string): void {
