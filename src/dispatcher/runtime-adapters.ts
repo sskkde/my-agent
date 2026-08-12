@@ -189,6 +189,28 @@ export function registerDefaultRuntimeAdapters(deps: {
           return { cancelled: true, plannerRunId }
         }
 
+        case 'pause_planner_run': {
+          const plannerRunId = payload.plannerRunId as string | undefined
+
+          if (!plannerRunId) {
+            throw new Error('pause_planner_run missing plannerRunId')
+          }
+
+          plannerRuntime.pausePlannerRun(plannerRunId, typeof payload.reason === 'string' ? payload.reason : undefined)
+          return { paused: true, plannerRunId }
+        }
+
+        case 'archive_planner_run': {
+          const plannerRunId = payload.plannerRunId as string | undefined
+
+          if (!plannerRunId) {
+            throw new Error('archive_planner_run missing plannerRunId')
+          }
+
+          plannerRuntime.archivePlannerRun(plannerRunId)
+          return { archived: true, plannerRunId }
+        }
+
         default:
           throw new Error(`Unknown planner_runtime action type: ${actionType}`)
       }

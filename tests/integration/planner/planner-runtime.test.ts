@@ -736,6 +736,32 @@ describe('Planner Runtime Integration', () => {
       expect(resumeResult.status).not.toBe(PLANNER_STATES.WAITING_FOR_EXECUTION_RESULT)
     })
 
+    it('should resume from paused state', () => {
+      const input: PlannerRunInput = {
+        objective: 'Resume from paused test',
+        userId: 'user_resume_paused_001',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.pausePlannerRun(plannerRunId, 'User requested pause')
+
+      let run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.PAUSED)
+
+      const resumeEvent: PlannerResumeEvent = {
+        eventType: 'user_response',
+        payload: { response: 'Continue' },
+      }
+
+      const resumeResult = plannerRuntime.resumePlannerRun(plannerRunId, resumeEvent)
+      expect(resumeResult.status).toBe(PLANNER_STATES.PLANNING)
+
+      run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.PLANNING)
+    })
+
     it('should reject resume from terminal and initializing states', () => {
       const input: PlannerRunInput = {
         objective: 'Resume rejection test',
@@ -1015,6 +1041,75 @@ describe('Planner Runtime Integration', () => {
       expect(() => {
         plannerRuntime.archivePlannerRun(plannerRunId)
       }).toThrow('Cannot archive run in state')
+    })
+  })
+
+  describe('pausePlannerRun', () => {
+    it('should pause a planning run with reason recorded in checkpoint', () => {
+      const input: PlannerRunInput = {
+        objective: 'Pause test',
+        userId: 'user_pause_001',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.pausePlannerRun(plannerRunId, 'User requested pause')
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.PAUSED)
+      expect(run?.checkpoint).toMatchObject({
+        pausedAt: expect.any(String),
+        pauseReason: 'User requested pause',
+      })
+    })
+
+    it('should pause from a waiting state', () => {
+      const input: PlannerRunInput = {
+        objective: 'Pause from waiting test',
+        userId: 'user_pause_002',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.WAITING_FOR_USER)
+      plannerRuntime.pausePlannerRun(plannerRunId)
+
+      const run = plannerRunStore.getById(plannerRunId)
+      expect(run?.status).toBe(PLANNER_STATES.PAUSED)
+    })
+
+    it('should reject pausing a terminal run', () => {
+      const input: PlannerRunInput = {
+        objective: 'Pause terminal test',
+        userId: 'user_pause_003',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.transitionState(plannerRunId, PLANNER_STATES.COMPLETED)
+
+      expect(() => plannerRuntime.pausePlannerRun(plannerRunId)).toThrow('Cannot pause run in state')
+    })
+
+    it('should emit planner_paused event with reason and refs', () => {
+      const input: PlannerRunInput = {
+        objective: 'Pause event test',
+        userId: 'user_pause_004',
+      }
+
+      const result = plannerRuntime.createPlannerRun(input)
+      const plannerRunId = result.plannerRunId
+
+      plannerRuntime.pausePlannerRun(plannerRunId, 'Waiting for user input')
+
+      const events = eventStore.query({ eventType: 'planner_paused', plannerRunId })
+      expect(events).toHaveLength(1)
+      expect(events[0]?.payload.reason).toBe('Waiting for user input')
+      expect(events[0]?.relatedRefs?.plannerRunId).toBe(plannerRunId)
+      expect(events[0]?.relatedRefs?.planId).toBe(result.planId)
     })
   })
 

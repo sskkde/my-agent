@@ -23,6 +23,7 @@ export interface PlannerRuntime {
   markStep(plannerRunId: string, stepId: string, status: 'completed' | 'failed' | 'in_progress', result?: string): void
   setPlanSteps(plannerRunId: string, steps: PlanStep[]): void
   cancelPlannerRun(plannerRunId: string): void
+  pausePlannerRun(plannerRunId: string, reason?: string): void
   replan(plannerRunId: string, reason: string): void
   archivePlannerRun(plannerRunId: string): void
   transitionState(plannerRunId: string, newState: PlannerRunState, checkpointData?: Record<string, unknown>): void
@@ -69,6 +70,12 @@ const VALID_TRANSITIONS: StateTransition[] = [
   { from: [PLANNER_STATES.WAITING_FOR_EXTERNAL_EVENT], to: PLANNER_STATES.FAILED },
   { from: [PLANNER_STATES.REPLANNING], to: PLANNER_STATES.PLANNING },
   { from: [PLANNER_STATES.REPLANNING], to: PLANNER_STATES.FAILED },
+  { from: [PLANNER_STATES.PLANNING], to: PLANNER_STATES.PAUSED },
+  { from: [PLANNER_STATES.WAITING_FOR_USER], to: PLANNER_STATES.PAUSED },
+  { from: [PLANNER_STATES.WAITING_FOR_APPROVAL], to: PLANNER_STATES.PAUSED },
+  { from: [PLANNER_STATES.WAITING_FOR_EXECUTION_RESULT], to: PLANNER_STATES.PAUSED },
+  { from: [PLANNER_STATES.WAITING_FOR_EXTERNAL_EVENT], to: PLANNER_STATES.PAUSED },
+  { from: [PLANNER_STATES.REPLANNING], to: PLANNER_STATES.PAUSED },
   { from: [PLANNER_STATES.PAUSED], to: PLANNER_STATES.PLANNING },
   { from: [PLANNER_STATES.PAUSED], to: PLANNER_STATES.FAILED },
 ]
@@ -256,7 +263,7 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       }
     }
 
-    if (!WAITING_STATES.includes(run.status)) {
+    if (!WAITING_STATES.includes(run.status) && run.status !== PLANNER_STATES.PAUSED) {
       throw new Error(`Cannot resume from state: ${run.status}`)
     }
 
@@ -438,6 +445,33 @@ class PlannerRuntimeImpl implements PlannerRuntime {
       },
       payload: {
         activeRefs: updatedRefs,
+      },
+    })
+  }
+
+  pausePlannerRun(plannerRunId: string, reason?: string): void {
+    const run = this.getPlannerRun(plannerRunId)
+
+    if (TERMINAL_STATES.includes(run.status)) {
+      throw new Error(`Cannot pause run in state: ${run.status}`)
+    }
+
+    this.transitionState(plannerRunId, PLANNER_STATES.PAUSED, {
+      pausedAt: new Date().toISOString(),
+      ...(reason ? { pauseReason: reason } : {}),
+    })
+
+    this.appendEvent({
+      eventType: 'planner_paused',
+      sourceModule: 'planner',
+      userId: run.userId,
+      sessionId: run.sessionId,
+      relatedRefs: {
+        plannerRunId,
+        planId: run.planId,
+      },
+      payload: {
+        ...(reason ? { reason } : {}),
       },
     })
   }
