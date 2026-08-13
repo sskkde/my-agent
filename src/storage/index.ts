@@ -12,6 +12,7 @@ export * from './provider-config-store.js'
 export * from './agent-config-store.js'
 export * from './workflow-run-store.js'
 export * from './artifact-store.js'
+export * from './ask-store.js'
 export { type ToolResultBlob, type ToolResultStore, createToolResultStore } from './tool-result-store.js'
 export {
   type ToolResultBlobRecord,

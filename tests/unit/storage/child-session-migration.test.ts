@@ -6,6 +6,7 @@ import {
   childSessionColumnsMigration,
   subagentChildLinkageMigration,
   backgroundChildTaskPersistenceMigration,
+  askRequestsTableMigration,
 } from '../../../src/storage/all-stores-migrations.js'
 
 const connections: ConnectionManager[] = []
@@ -55,7 +56,7 @@ describe('child session columns migration', () => {
     expect(columns).toContain('launch_mode')
     expect(columns).toContain('subagent_depth')
     expect(columns).toContain('session_kind')
-    expect(runner.getCurrentVersion()).toBe(76)
+    expect(runner.getCurrentVersion()).toBe(77)
   })
 
   it('adds parent and task indexes on sessions', () => {
@@ -70,10 +71,11 @@ describe('child session columns migration', () => {
   it('keeps a pre-migration foreground row valid with new defaults after applying the new migrations', () => {
     const connection = openMemoryConnection()
     const runner = createRunner(connection)
-    // Apply every migration except the child-session/background ones (v74, v75, v76).
+    // Apply every migration except the child-session/background/ask ones (v74–v77).
     runner.apply(
       allStoreMigrations.filter(
-        (migration) => migration.version !== 74 && migration.version !== 75 && migration.version !== 76,
+        (migration) =>
+          migration.version !== 74 && migration.version !== 75 && migration.version !== 76 && migration.version !== 77,
       ),
     )
 
@@ -93,8 +95,13 @@ describe('child session columns migration', () => {
       ],
     )
 
-    // Apply the child-session/background migrations to the existing DB.
-    runner.apply([childSessionColumnsMigration, subagentChildLinkageMigration, backgroundChildTaskPersistenceMigration])
+    // Apply the child-session/background/ask migrations to the existing DB.
+    runner.apply([
+      childSessionColumnsMigration,
+      subagentChildLinkageMigration,
+      backgroundChildTaskPersistenceMigration,
+      askRequestsTableMigration,
+    ])
 
     interface SeededRow {
       session_id: string
@@ -114,7 +121,7 @@ describe('child session columns migration', () => {
     expect(rows[0]!.launch_mode).toBeNull()
     expect(rows[0]!.subagent_depth).toBe(0)
     expect(rows[0]!.session_kind).toBe('foreground')
-    expect(runner.getCurrentVersion()).toBe(76)
+    expect(runner.getCurrentVersion()).toBe(77)
   })
 
   it('accepts internal subagent-shaped rows with parent/task linkage', () => {

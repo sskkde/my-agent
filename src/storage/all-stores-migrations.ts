@@ -2918,6 +2918,44 @@ export const backgroundChildTaskPersistenceMigration: Migration = {
   `,
 }
 
+// v77 — ask_requests table for the ask_user clarification tool (pending asks,
+// persisted answers, and the response-claim marker used for exactly-once
+// synthetic ask_response turns).
+export const askRequestsTableMigration: Migration = {
+  version: 77,
+  name: 'create_ask_requests_table',
+  up: `
+    CREATE TABLE ask_requests (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      question TEXT NOT NULL,
+      options TEXT,
+      multi_select INTEGER NOT NULL DEFAULT 0,
+      context TEXT,
+      answers TEXT,
+      requested_by TEXT NOT NULL,
+      requested_at TEXT NOT NULL,
+      responded_at TEXT,
+      response_by TEXT,
+      response_claimed_at TEXT,
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX idx_ask_requests_user_status ON ask_requests(user_id, status);
+    CREATE INDEX idx_ask_requests_session_status ON ask_requests(session_id, status);
+    CREATE INDEX idx_ask_requests_requested_at ON ask_requests(requested_at)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_ask_requests_user_status;
+    DROP INDEX IF EXISTS idx_ask_requests_session_status;
+    DROP INDEX IF EXISTS idx_ask_requests_requested_at;
+    DROP TABLE IF EXISTS ask_requests
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -3088,6 +3126,7 @@ export const allStoreMigrations: Migration[] = [
   // Subagent run/transcript child linkage and ownership columns
   subagentChildLinkageMigration, // v75
   backgroundChildTaskPersistenceMigration, // v76
+  askRequestsTableMigration, // v77
 ]
 
 /**
