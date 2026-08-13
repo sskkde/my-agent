@@ -35,6 +35,7 @@ export interface PlanStep {
   dependsOn?: PlanDependency[]
   approvalRequirementId?: string
   expectedOutput?: string
+  outOfScope?: string
   retryPolicy?: RetryPolicy
 }
 
@@ -77,6 +78,9 @@ export interface PlanGenerationInput {
   goal: string
   sessionId?: string
   availableTools?: string[]
+  toolDescriptions?: Record<string, string>
+  contextSummary?: string
+  userConstraints?: string[]
   constraints?: PlanGenerationConstraints
 }
 

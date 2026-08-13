@@ -931,12 +931,24 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     includeEnvProviders: true,
   })
   const defaultModel = modelResolution.type === 'success' ? (modelResolution.selectedModel ?? undefined) : undefined
+  const providerFamily = resolveProviderFamily(
+    modelResolution.type === 'success' ? modelResolution.selectedProviderId : undefined,
+    defaultModel,
+  )
 
   // Plan generator for planner children: LLM plan generation with deterministic
   // fallback. The planner-domain adapter drives the platform LLM adapter; when
   // no default model resolves, generation falls back to the deterministic path.
   const planGenerator = new LLMPlanGenerator({
-    llmAdapter: defaultModel ? createPlannerLLMPlanAdapter({ llmAdapter, model: defaultModel }) : null,
+    llmAdapter: defaultModel
+      ? createPlannerLLMPlanAdapter({
+          llmAdapter,
+          model: defaultModel,
+          templateRegistry,
+          templateLoader,
+          providerFamily,
+        })
+      : null,
     deterministicGenerator: new DeterministicPlanGenerator(),
     validator: new PlanValidator({ toolRegistry }),
   })
@@ -946,11 +958,6 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   // default projection excludes them (foreground drive removed).
   toolRegistry.register(createPlannerMarkStepToolDefinition(plannerRuntime))
   toolRegistry.register(createPlannerCompleteToolDefinition(plannerRuntime))
-
-  const providerFamily = resolveProviderFamily(
-    modelResolution.type === 'success' ? modelResolution.selectedProviderId : undefined,
-    defaultModel,
-  )
 
   const agentKernel =
     injectedAgentKernel ??

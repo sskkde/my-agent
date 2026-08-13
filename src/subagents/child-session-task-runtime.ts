@@ -683,9 +683,15 @@ class ChildSessionTaskRuntimeImpl implements ChildSessionTaskRuntime {
     const isPlannerChild = run.taskSpec.profileId === 'planner' || run.taskSpec.agentType === 'planner'
     let planSteps: PlanStep[] | undefined
     if (isPlannerChild && run.taskSpec.plannerRunId && this.deps.planGenerator && this.deps.plannerRuntime) {
+      const toolDescriptions: Record<string, string> = {}
+      for (const tool of toolProjection.tools ?? []) {
+        const { name, description } = tool.function
+        if (name && description) toolDescriptions[name] = description
+      }
       const generated = await this.deps.planGenerator.generate({
         goal: run.taskSpec.objective,
         availableTools: toolProjection.toolIds,
+        toolDescriptions: Object.keys(toolDescriptions).length > 0 ? toolDescriptions : undefined,
         constraints: { maxSteps: 10 },
       })
       planSteps = mapSchemaPlanStepsToStorage(generated.plan.steps)

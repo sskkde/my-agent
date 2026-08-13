@@ -148,6 +148,15 @@ export class PlanValidator {
       if (step.kind === 'final_response') {
         hasFinalResponse = true
       }
+
+      if (!step.expectedOutput || step.expectedOutput.trim() === '') {
+        warnings.push({
+          code: 'NO_EXPECTED_OUTPUT',
+          message: `Step "${step.id}" has no expectedOutput; verification is not possible`,
+          severity: 'warning',
+          path: `steps.${step.id}.expectedOutput`,
+        })
+      }
     }
 
     const cycleError = this.detectCycles(plan.steps)
