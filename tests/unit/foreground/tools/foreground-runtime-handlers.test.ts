@@ -28,6 +28,7 @@ import type { PlannerRunStore } from '../../../../src/storage/planner-run-store.
 import type { SubagentRunStore } from '../../../../src/storage/subagent-run-store.js'
 import type { ApprovalStore, ApprovalRequest } from '../../../../src/storage/approval-store.js'
 import { APPROVAL_STATES } from '../../../../src/storage/approval-store.js'
+import type { AskStore, AskRequest } from '../../../../src/storage/ask-store.js'
 import { createAgentProfileRegistry, registerSystemProfiles } from '../../../../src/taxonomy/agent-profile-registry.js'
 import type { AgentProfileRegistry } from '../../../../src/taxonomy/agent-profile-registry.js'
 
@@ -126,6 +127,17 @@ function buildRuntimeDeps(overrides?: Partial<ForegroundToolRuntimeDeps>): Foreg
     delete: vi.fn(),
   } as unknown as ApprovalStore
 
+  const mockAskStore: AskStore = {
+    create: vi.fn(),
+    getById: vi.fn().mockReturnValue(null),
+    update: vi.fn().mockReturnValue({} as AskRequest),
+    findByUser: vi.fn().mockReturnValue([]),
+    findPendingByUser: vi.fn().mockReturnValue([]),
+    claimResponse: vi.fn().mockReturnValue(true),
+    unclaimResponse: vi.fn(),
+    delete: vi.fn(),
+  } as unknown as AskStore
+
   const profileRegistry: AgentProfileRegistry = createAgentProfileRegistry()
   registerSystemProfiles(profileRegistry)
 
@@ -135,6 +147,7 @@ function buildRuntimeDeps(overrides?: Partial<ForegroundToolRuntimeDeps>): Foreg
     plannerRunStore: mockPlannerRunStore,
     subagentRunStore: mockSubagentRunStore,
     approvalStore: mockApprovalStore,
+    askStore: mockAskStore,
     profileRegistry,
     ...overrides,
   }

@@ -15,7 +15,6 @@ import type { BrowserSessionManager } from '../../search/browser/browser-session
 
 import { createArtifactCreateTool } from './artifact-create.js'
 import { createArtifactUpdateTool } from './artifact-update.js'
-import { createAskUserTool } from './ask-user.js'
 import { createStatusQueryTool } from './status-query.js'
 import { createMemoryRetrieveTool } from './memory-retrieve.js'
 import { createTranscriptSearchTool } from './transcript-search.js'
@@ -77,7 +76,6 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
 
   registry.register(createArtifactCreateTool(artifactStore))
   registry.register(createArtifactUpdateTool(artifactStore))
-  registry.register(createAskUserTool())
   registry.register(createStatusQueryTool({ plannerRunStore, planStore }))
   registry.register(createMemoryRetrieveTool(summaryStore, longTermMemoryStore, toolResultStore))
   registry.register(createTranscriptSearchTool(transcriptStore, toolResultStore))
@@ -130,7 +128,6 @@ export function registerBuiltInTools(registry: ToolRegistry, config: BuiltInTool
 export {
   createArtifactCreateTool,
   createArtifactUpdateTool,
-  createAskUserTool,
   createStatusQueryTool,
   createMemoryRetrieveTool,
   createTranscriptSearchTool,

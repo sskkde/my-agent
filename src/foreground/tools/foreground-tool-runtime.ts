@@ -12,6 +12,7 @@ import type { PlannerRuntime } from '../../planner/planner-runtime.js'
 import type { PlannerRunStore } from '../../storage/planner-run-store.js'
 import type { SubagentRunStore } from '../../storage/subagent-run-store.js'
 import type { ApprovalStore } from '../../storage/approval-store.js'
+import type { AskStore } from '../../storage/ask-store.js'
 import type { SessionStore } from '../../storage/session-store.js'
 import type { AgentProfileRegistry } from '../../taxonomy/agent-profile-registry.js'
 import type { ForegroundToolResult } from './foreground-tool-result.js'
@@ -38,6 +39,7 @@ export interface ForegroundToolRuntimeDeps {
   plannerRunStore: PlannerRunStore
   subagentRunStore: SubagentRunStore
   approvalStore: ApprovalStore
+  askStore: AskStore
   profileRegistry: AgentProfileRegistry
   /**
    * Unified child-session runtime. When wired (Todo 8+), foreground subagent

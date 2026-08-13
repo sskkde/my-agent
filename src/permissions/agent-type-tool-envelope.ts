@@ -235,6 +235,12 @@ export function createAgentTypeToolEnvelopeRegistry(): AgentTypeToolEnvelopeRegi
         return false
       }
 
+      // ask_user is a main-agent-only interactive tool: only the interactive
+      // foreground agent may raise clarification questions to the user.
+      if (toolId === 'ask_user' && agentType !== 'main') {
+        return false
+      }
+
       // Explicit denylist always wins
       if (envelope.deniedToolIds.has(toolId)) {
         return false

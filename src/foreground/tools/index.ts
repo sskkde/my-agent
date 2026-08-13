@@ -58,6 +58,7 @@ import {
   type ApprovalResponseInput,
   type ApprovalResponseData,
 } from './approval-request-tool.js'
+import { ASK_USER_TOOL_ID, handleAskUser, type AskUserInput, type AskUserData } from './ask-user-tool.js'
 import { SEARCH_SUBAGENT_TOOL_ID, type SearchSubagentToolInput } from '../../search/search-subagent-tool.js'
 import type { ToolRegistry } from '../../tools/types.js'
 import {
@@ -75,6 +76,7 @@ export {
   CANCEL_MODIFY_TOOL_ID,
   CANCEL_PLANNER_TOOL_ID,
   APPROVAL_REQUEST_TOOL_ID,
+  ASK_USER_TOOL_ID,
   SEARCH_SUBAGENT_TOOL_ID,
 }
 
@@ -99,6 +101,8 @@ export type {
   ApprovalRequestData,
   ApprovalResponseInput,
   ApprovalResponseData,
+  AskUserInput,
+  AskUserData,
   SearchSubagentToolInput,
 }
 
@@ -110,6 +114,7 @@ export { handleLaunchSubagent } from './subagent-launch-tool.js'
 export { handleCancelOrModifyTask } from './cancel-modify-task-tool.js'
 export { handleCancelPlanner } from './cancel-planner-tool.js'
 export { handleApprovalRequest, handleApprovalResponse } from './approval-request-tool.js'
+export { handleAskUser } from './ask-user-tool.js'
 export { handleSearchSubagentTool } from '../../search/search-subagent-tool.js'
 export type { SearchSubagentToolDeps } from '../../search/search-subagent-tool.js'
 export { DefaultSearchQueryPlanner, DefaultSearchResultNormalizer } from '../../search/search-subagent-tool.js'
@@ -694,6 +699,72 @@ export function createForegroundHandleApprovalToolDefinition(runtimeDeps?: Foreg
 }
 
 /**
+ * Create the foreground_ask_user tool definition.
+ * - sensitivity: 'low'
+ * - category: 'internal'
+ * - requiresApproval: false
+ */
+export function createForegroundAskUserToolDefinition(runtimeDeps?: ForegroundToolRuntimeDeps): ToolDefinition {
+  return {
+    name: ASK_USER_TOOL_ID,
+    description:
+      'Ask the user for clarification or input on a question. The question is persisted and the user answers it out-of-band; the answer is delivered back into this conversation when the user responds.',
+    category: 'internal',
+    sensitivity: 'low',
+    requiresPermission: false,
+    schema: {
+      type: 'object',
+      properties: {
+        question: {
+          type: 'string',
+          description: 'Question to ask the user',
+        },
+        options: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              value: { type: 'string', description: 'Stable option value' },
+              label: { type: 'string', description: 'Human-readable option label' },
+            },
+            required: ['value'],
+          },
+          description: 'Optional predefined answer options',
+        },
+        multiSelect: {
+          type: 'boolean',
+          description: 'Whether the user may select multiple options',
+        },
+        context: {
+          type: 'string',
+          description: 'Additional context for the question',
+        },
+      },
+      required: ['question'],
+    },
+    handler: runtimeDeps
+      ? async (params: unknown, context: ToolExecutionContext): Promise<ToolExecutionResult> => {
+          const identity = resolveTurnIdentity(context)
+          if ('error' in identity) return identity.error
+          const result = await handleAskUser(
+            {
+              askStore: runtimeDeps.askStore,
+              userId: identity.userId,
+              sessionId: identity.sessionId,
+              turnId: identity.turnId,
+            },
+            params as AskUserInput,
+          )
+          return mapForegroundToolResult(result)
+        }
+      : foregroundToolPlaceholderHandler,
+    metadata: {
+      requiresApproval: false,
+    },
+  }
+}
+
+/**
  * Register all foreground tools with the provided registry.
  * The search_subagent tool requires production dependencies.
  *
@@ -771,6 +842,7 @@ export function registerAllForegroundTools(
   registry.register(createForegroundCancelOrModifyTaskToolDefinition(runtimeDeps))
   registry.register(createForegroundCancelPlannerToolDefinition(runtimeDeps))
   registry.register(createForegroundHandleApprovalToolDefinition(runtimeDeps))
+  registry.register(createForegroundAskUserToolDefinition(runtimeDeps))
 }
 
 /**
@@ -787,6 +859,7 @@ export function getForegroundToolIds(): string[] {
     CANCEL_MODIFY_TOOL_ID,
     CANCEL_PLANNER_TOOL_ID,
     APPROVAL_REQUEST_TOOL_ID,
+    ASK_USER_TOOL_ID,
   ]
 }
 
@@ -801,6 +874,7 @@ export function getDefaultProjectionForegroundToolIds(): string[] {
     SEARCH_SUBAGENT_TOOL_ID, // search, medium
     STATUS_QUERY_TOOL_ID, // read, low
     APPROVAL_REQUEST_TOOL_ID, // internal, low
+    ASK_USER_TOOL_ID, // internal, low — clarification questions, safe for main
     SPAWN_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
     RESUME_PLANNER_TOOL_ID, // internal, medium — orchestration, safe for main
     LAUNCH_SUBAGENT_TOOL_ID, // internal, medium — orchestration, safe for main
