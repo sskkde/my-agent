@@ -15,6 +15,8 @@ vi.mock('../../api/client', () => ({
   getSessions: vi.fn(),
   subscribeSessionTimeline: vi.fn(),
   respondApproval: vi.fn(),
+  getAsks: vi.fn(),
+  submitAskAnswer: vi.fn(),
   ApiClientError: class ApiClientError extends Error {
     code: string
     constructor(error: { code: string; message: string }) {
@@ -37,7 +39,7 @@ describe.skip('Streaming Draft UX', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     unsubscribe = vi.fn()
-    
+
     // Capture SSE callbacks
     vi.mocked(api.subscribeSessionTimeline).mockImplementation((sessionId, onEvent, onError, _onStatus, onToken) => {
       onEventCallback = onEvent
@@ -375,7 +377,7 @@ describe.skip('Streaming Draft UX', () => {
     // Verify cursor element exists
     const draftCard = screen.getByText(/Typing/).closest('.timeline-event-card--streaming-draft')
     expect(draftCard).toBeTruthy()
-    
+
     // Check for cursor class
     const cursorElement = draftCard?.querySelector('.streaming-cursor')
     expect(cursorElement).toBeTruthy()

@@ -13,6 +13,8 @@ vi.mock('../../api/client', () => ({
   subscribeSessionTimeline: vi.fn(),
   getApprovals: vi.fn(),
   respondApproval: vi.fn(),
+  getAsks: vi.fn(),
+  submitAskAnswer: vi.fn(),
 }))
 
 import * as api from '../../api/client'

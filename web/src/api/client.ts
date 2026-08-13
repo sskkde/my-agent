@@ -10,6 +10,11 @@ import type {
   CancelActiveSessionRunResponse,
   RunsResponse,
   ApprovalsResponse,
+  AsksResponse,
+  AskInfo,
+  AskOption,
+  AskAnswer,
+  AskSubmitResponse,
   ApprovalDetailResponse,
   ApprovalDecisionRequest,
   ApprovalDecisionResponse,
@@ -114,10 +119,44 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 30000
 const SSE_RECONNECT_BASE_DELAY_MS = 1000
 const SSE_RECONNECT_MAX_DELAY_MS = 30000
 
-async function fetchWithTimeout(
-  url: string,
-  init?: RequestInit & { timeout?: number },
-): Promise<Response> {
+interface AskOptionWire {
+  value: string
+  label?: string
+}
+
+interface AskAnswerWire {
+  value: string
+  label?: string
+}
+
+interface AskInfoWire extends Omit<AskInfo, 'options' | 'answers' | 'answeredAt'> {
+  options?: AskOptionWire[] | null
+  answers?: AskAnswerWire[] | null
+  respondedAt?: string | null
+}
+
+interface AsksResponseWire {
+  asks: AskInfoWire[]
+  total: number
+}
+
+function normalizeAskOption(option: AskOptionWire): AskOption {
+  return {
+    value: option.value,
+    label: option.label ?? option.value,
+  }
+}
+
+function normalizeAskInfo(ask: AskInfoWire): AskInfo {
+  return {
+    ...ask,
+    options: ask.options?.map(normalizeAskOption) ?? null,
+    answers: ask.answers?.map((answer) => ({ question: ask.question, answer: answer.value })) ?? null,
+    answeredAt: ask.respondedAt ?? null,
+  }
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit & { timeout?: number }): Promise<Response> {
   const { timeout = DEFAULT_REQUEST_TIMEOUT_MS, signal: externalSignal, ...rest } = init ?? {}
   const controller = new AbortController()
 
@@ -217,9 +256,7 @@ export async function sendMessage(
   return parseResponse<SendMessageResponse>(response)
 }
 
-export async function cancelActiveSessionRun(
-  sessionId: string,
-): Promise<CancelActiveSessionRunResponse> {
+export async function cancelActiveSessionRun(sessionId: string): Promise<CancelActiveSessionRunResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/cancel-active-run`, {
     method: 'POST',
     credentials: 'include',
@@ -237,6 +274,26 @@ export async function getRuns(): Promise<RunsResponse> {
 export async function getApprovals(): Promise<ApprovalsResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/approvals`, { credentials: 'include' })
   return parseResponse<ApprovalsResponse>(response)
+}
+
+export async function getAsks(sessionId?: string): Promise<AsksResponse> {
+  const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''
+  const response = await fetchWithTimeout(`${API_BASE}/asks${query}`, { credentials: 'include' })
+  const result = await parseResponse<AsksResponseWire>(response)
+  return {
+    asks: result.asks.map(normalizeAskInfo),
+    total: result.total,
+  }
+}
+
+export async function submitAskAnswer(askId: string, answers: AskAnswer[]): Promise<AskSubmitResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/asks/${encodeURIComponent(askId)}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers: answers.map(({ answer }) => ({ value: answer })) }),
+  })
+  return parseResponse<AskSubmitResponse>(response)
 }
 
 export async function getApprovalDetail(approvalId: string): Promise<ApprovalDetailResponse> {
@@ -296,10 +353,7 @@ export function subscribeRuns(onEvent: RunEventCallback, onError?: RunErrorCallb
       if (closed) return
       eventSource?.close()
       eventSource = null
-      const delay = Math.min(
-        SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
-        SSE_RECONNECT_MAX_DELAY_MS,
-      )
+      const delay = Math.min(SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts, SSE_RECONNECT_MAX_DELAY_MS)
       reconnectAttempts += 1
       reconnectTimeoutId = setTimeout(connect, delay)
     }
@@ -400,7 +454,9 @@ export async function getSessionTimeline(
   if (limit !== undefined) params.append('limit', String(limit))
   if (offset !== undefined) params.append('offset', String(offset))
   const query = params.toString() ? `?${params.toString()}` : ''
-  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/timeline${query}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/timeline${query}`, {
+    credentials: 'include',
+  })
   const result = await parseResponse<{ items: ConsoleTimelineEvent[]; total: number; hasMore: boolean }>(response)
   return { events: result.items, total: result.total, hasMore: result.hasMore }
 }
@@ -428,15 +484,12 @@ export async function resumeChildSession(
   parentSessionId: string,
   childSessionId: string,
 ): Promise<ChildSessionResumeResponse> {
-  const response = await fetchWithTimeout(
-    `${API_BASE}/sessions/${parentSessionId}/children/${childSessionId}/resume`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    },
-  )
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${parentSessionId}/children/${childSessionId}/resume`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
   return parseResponse<ChildSessionResumeResponse>(response)
 }
 
@@ -444,15 +497,12 @@ export async function cancelChildSession(
   parentSessionId: string,
   childSessionId: string,
 ): Promise<ChildTaskCancelResponse> {
-  const response = await fetchWithTimeout(
-    `${API_BASE}/sessions/${parentSessionId}/children/${childSessionId}/cancel`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    },
-  )
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${parentSessionId}/children/${childSessionId}/cancel`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
   return parseResponse<ChildTaskCancelResponse>(response)
 }
 
@@ -553,10 +603,7 @@ export function subscribeSessionTimeline(
       if (closed) return
       eventSource?.close()
       eventSource = null
-      const delay = Math.min(
-        SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
-        SSE_RECONNECT_MAX_DELAY_MS,
-      )
+      const delay = Math.min(SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts, SSE_RECONNECT_MAX_DELAY_MS)
       reconnectAttempts += 1
       reconnectTimeoutId = setTimeout(connect, delay)
     }
@@ -855,7 +902,9 @@ export async function getMemories(params?: {
 }
 
 export async function getMemory(memoryId: string): Promise<MemoryItem> {
-  const response = await fetchWithTimeout(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/memory/${encodeURIComponent(memoryId)}`, {
+    credentials: 'include',
+  })
   const detail = await parseResponse<MemoryDetailResponse>(response)
   return detail.memory
 }
@@ -874,7 +923,9 @@ export async function getPlannerRunEvents(plannerRunId: string): Promise<Planner
 }
 
 export async function getPlannerRunSummary(plannerRunId: string): Promise<PlannerRunSummaryResponse> {
-  const response = await fetchWithTimeout(`${API_BASE}/planner-runs/${plannerRunId}/summary`, { credentials: 'include' })
+  const response = await fetchWithTimeout(`${API_BASE}/planner-runs/${plannerRunId}/summary`, {
+    credentials: 'include',
+  })
   return parseResponse<PlannerRunSummaryResponse>(response)
 }
 
@@ -930,10 +981,7 @@ export async function listTodos(sessionId: string, ownerAgentId?: string): Promi
   return parseResponse<TodosResponse>(response)
 }
 
-export async function createSessionTodo(
-  sessionId: string,
-  data: CreateTodoRequest,
-): Promise<TodoResponse> {
+export async function createSessionTodo(sessionId: string, data: CreateTodoRequest): Promise<TodoResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos`, {
     method: 'POST',
     credentials: 'include',
@@ -957,10 +1005,7 @@ export async function updateSessionTodo(
   return parseResponse<TodoResponse>(response)
 }
 
-export async function deleteSessionTodo(
-  sessionId: string,
-  todoId: string,
-): Promise<DeleteTodoResponse> {
+export async function deleteSessionTodo(sessionId: string, todoId: string): Promise<DeleteTodoResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${sessionId}/todos/${todoId}`, {
     method: 'DELETE',
     credentials: 'include',
@@ -1136,10 +1181,7 @@ export async function getSessionWorkdir(sessionId: string): Promise<SessionWorkd
   return parseResponse<SessionWorkdirResponse>(response)
 }
 
-export async function setSessionWorkdir(
-  sessionId: string,
-  workdirId: string,
-): Promise<SessionWorkdirResponse> {
+export async function setSessionWorkdir(sessionId: string, workdirId: string): Promise<SessionWorkdirResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/workdir`, {
     method: 'PUT',
     credentials: 'include',
@@ -1161,10 +1203,7 @@ export async function clearSessionWorkdir(sessionId: string): Promise<ClearSessi
 // Workdir File Tree API
 // =============================================================================
 
-export async function listWorkdirTree(
-  workdirId: string,
-  path?: string,
-): Promise<WorkdirTreeResponse> {
+export async function listWorkdirTree(workdirId: string, path?: string): Promise<WorkdirTreeResponse> {
   const params = new URLSearchParams()
   if (path) params.set('path', path)
   const query = params.toString() ? `?${params.toString()}` : ''
@@ -1174,10 +1213,7 @@ export async function listWorkdirTree(
   return parseResponse<WorkdirTreeResponse>(response)
 }
 
-export async function readWorkdirFile(
-  workdirId: string,
-  path: string,
-): Promise<WorkdirFileContent> {
+export async function readWorkdirFile(workdirId: string, path: string): Promise<WorkdirFileContent> {
   const params = new URLSearchParams({ path })
   const response = await fetchWithTimeout(
     `${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/files?${params.toString()}`,
@@ -1200,10 +1236,7 @@ export async function writeWorkdirFile(
   return parseResponse<WriteWorkdirFileResponse>(response)
 }
 
-export async function createWorkdirDir(
-  workdirId: string,
-  path: string,
-): Promise<CreateWorkdirDirResponse> {
+export async function createWorkdirDir(workdirId: string, path: string): Promise<CreateWorkdirDirResponse> {
   const response = await fetchWithTimeout(`${API_BASE}/workdirs/${encodeURIComponent(workdirId)}/dirs`, {
     method: 'POST',
     credentials: 'include',
@@ -1268,42 +1301,35 @@ export async function uploadWorkdirFile(
 // =============================================================================
 
 export async function getBrowserStatus(sessionId: string): Promise<BrowserStatusResponse> {
-  const response = await fetchWithTimeout(
-    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/status`,
-    { credentials: 'include' },
-  )
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/status`, {
+    credentials: 'include',
+  })
   return parseResponse<BrowserStatusResponse>(response)
 }
 
 export async function acquireTakeover(sessionId: string): Promise<BrowserTakeoverResponse> {
-  const response = await fetchWithTimeout(
-    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/takeover`,
-    { method: 'POST', credentials: 'include' },
-  )
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/takeover`, {
+    method: 'POST',
+    credentials: 'include',
+  })
   return parseResponse<BrowserTakeoverResponse>(response)
 }
 
 export async function releaseTakeover(sessionId: string): Promise<BrowserReleaseResponse> {
-  const response = await fetchWithTimeout(
-    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/release`,
-    { method: 'POST', credentials: 'include' },
-  )
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/release`, {
+    method: 'POST',
+    credentials: 'include',
+  })
   return parseResponse<BrowserReleaseResponse>(response)
 }
 
-export async function sendInput(
-  sessionId: string,
-  input: BrowserInputRequest,
-): Promise<BrowserInputResponse> {
-  const response = await fetchWithTimeout(
-    `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/input`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    },
-  )
+export async function sendInput(sessionId: string, input: BrowserInputRequest): Promise<BrowserInputResponse> {
+  const response = await fetchWithTimeout(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/input`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
   return parseResponse<BrowserInputResponse>(response)
 }
 
@@ -1320,10 +1346,9 @@ export function subscribeToFrames(
   const connect = () => {
     if (closed) return
 
-    eventSource = new EventSource(
-      `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/frame/stream`,
-      { withCredentials: true },
-    )
+    eventSource = new EventSource(`${API_BASE}/sessions/${encodeURIComponent(sessionId)}/browser/frame/stream`, {
+      withCredentials: true,
+    })
 
     eventSource.onmessage = (event) => {
       reconnectAttempts = 0
@@ -1340,10 +1365,7 @@ export function subscribeToFrames(
       eventSource?.close()
       eventSource = null
       onError?.(new Error('Browser frame stream connection error'))
-      const delay = Math.min(
-        SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
-        SSE_RECONNECT_MAX_DELAY_MS,
-      )
+      const delay = Math.min(SSE_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts, SSE_RECONNECT_MAX_DELAY_MS)
       reconnectAttempts += 1
       reconnectTimeoutId = setTimeout(connect, delay)
     }

@@ -8,6 +8,7 @@ import type {
   CreateProviderRequest,
   UpdateProviderRequest,
   TokenStreamPayload,
+  AskAnswer,
 } from '../../api/types'
 import type { TabId } from '../../components/TabNav'
 import { loadPreferences } from '../../commands/preferences'
@@ -15,6 +16,8 @@ import type { CommandContext, AuthContext } from '../../commands/types'
 import { ProcessingStatus } from './ProcessingStatus'
 import { ApprovalDecisionModal } from './ApprovalDecisionModal'
 import { useSessionPendingApproval } from './useSessionPendingApproval'
+import { AskUserModal } from './AskUserModal'
+import { useSessionPendingAsk } from './useSessionPendingAsk'
 import { useSessionList } from './hooks/useSessionList'
 import { useSelectedSession } from './hooks/useSelectedSession'
 import { useSSEStream } from './hooks/useSSEStream'
@@ -90,11 +93,17 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
 
   const [submittingApproval, setSubmittingApproval] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submittingAsk, setSubmittingAsk] = useState(false)
+  const [askSubmitError, setAskSubmitError] = useState<string | null>(null)
+  const [dismissedAskId, setDismissedAskId] = useState<string | null>(null)
 
   const preferences = useMemo(() => loadPreferences(), [])
 
   const shellSidebar = useAgentShellSidebar()
   const { pendingApproval, refresh: refreshPendingApproval } = useSessionPendingApproval(selectedSessionId)
+  const { pendingAsk, refresh: refreshPendingAsk } = useSessionPendingAsk(selectedSessionId)
+  const visiblePendingAsk =
+    pendingAsk?.sessionId === selectedSessionId && pendingAsk.id !== dismissedAskId ? pendingAsk : null
 
   const mountedRef = useRef(true)
   const streamStatusRef = useRef<'connecting' | 'connected' | 'disconnected'>('disconnected')
@@ -180,26 +189,29 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     [updatePendingAssistantPlaceholders],
   )
 
-  const fetchTimeline = useCallback(async (sessionId: string) => {
-    try {
-      const timelineResponse = await api.getSessionTimeline(sessionId)
-      if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
-        setEvents((prev) => {
-          const merged = mergeTimelineEvents(prev, timelineResponse.events)
-          if (merged === prev) return prev
-          const sorted = [...merged]
-          sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-          return sorted
-        })
+  const fetchTimeline = useCallback(
+    async (sessionId: string) => {
+      try {
+        const timelineResponse = await api.getSessionTimeline(sessionId)
+        if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+          setEvents((prev) => {
+            const merged = mergeTimelineEvents(prev, timelineResponse.events)
+            if (merged === prev) return prev
+            const sorted = [...merged]
+            sorted.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+            return sorted
+          })
+        }
+        return timelineResponse.events
+      } catch (err) {
+        if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
+          setTimelineError(err instanceof Error ? err.message : 'Failed to load timeline')
+        }
+        return null
       }
-      return timelineResponse.events
-    } catch (err) {
-      if (mountedRef.current && selectedSessionIdRef.current === sessionId) {
-        setTimelineError(err instanceof Error ? err.message : 'Failed to load timeline')
-      }
-      return null
-    }
-  }, [selectedSessionIdRef])
+    },
+    [selectedSessionIdRef],
+  )
 
   const refreshProviders = useCallback(async () => {
     try {
@@ -261,9 +273,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       }
 
       if (
-        ['approval_request', 'approval_requested', 'approval_decision', 'approval_resolved'].includes(
-          event.eventType,
-        )
+        ['approval_request', 'approval_requested', 'approval_decision', 'approval_resolved'].includes(event.eventType)
       ) {
         refreshPendingApproval()
       }
@@ -412,12 +422,17 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
   }, [pendingAssistantPlaceholders])
 
   useEffect(() => {
+    setDismissedAskId((current) => (pendingAsk?.id === current ? current : null))
+  }, [pendingAsk?.id])
+
+  useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && mountedRef.current) {
         fetchSessions(true)
         if (selectedSessionId) {
           fetchTimeline(selectedSessionId)
           refreshPendingApproval()
+          refreshPendingAsk()
           if (streamStatus === 'disconnected') {
             connectSse(selectedSessionId)
           }
@@ -431,6 +446,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         if (selectedSessionId) {
           fetchTimeline(selectedSessionId)
           refreshPendingApproval()
+          refreshPendingAsk()
           if (streamStatus === 'disconnected') {
             connectSse(selectedSessionId)
           }
@@ -444,6 +460,7 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         if (selectedSessionId) {
           fetchTimeline(selectedSessionId)
           refreshPendingApproval()
+          refreshPendingAsk()
           if (streamStatus === 'disconnected') {
             connectSse(selectedSessionId)
           }
@@ -460,7 +477,15 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('pageshow', handlePageShow)
     }
-  }, [connectSse, fetchSessions, fetchTimeline, selectedSessionId, streamStatus, refreshPendingApproval])
+  }, [
+    connectSse,
+    fetchSessions,
+    fetchTimeline,
+    selectedSessionId,
+    streamStatus,
+    refreshPendingApproval,
+    refreshPendingAsk,
+  ])
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -469,12 +494,13 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
 
     const intervalId = setInterval(() => {
       refreshPendingApproval()
+      refreshPendingAsk()
     }, 3000)
 
     return () => {
       clearInterval(intervalId)
     }
-  }, [selectedSessionId, refreshPendingApproval])
+  }, [selectedSessionId, refreshPendingApproval, refreshPendingAsk])
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -565,13 +591,16 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
     setIsSessionsDrawerOpen(true)
   }, [shellSidebar])
 
-  const handleSelectSession = useCallback((sessionId: string) => {
-    selectSession(sessionId)
-    setDraft('')
-    setSendError(null)
-    setSelectedFiles([])
-    closeSessionsSidebar()
-  }, [selectSession, setDraft, setSendError, setSelectedFiles, closeSessionsSidebar])
+  const handleSelectSession = useCallback(
+    (sessionId: string) => {
+      selectSession(sessionId)
+      setDraft('')
+      setSendError(null)
+      setSelectedFiles([])
+      closeSessionsSidebar()
+    },
+    [selectSession, setDraft, setSendError, setSelectedFiles, closeSessionsSidebar],
+  )
 
   const handlePromptSelect = useCallback(
     (prompt: string) => {
@@ -656,6 +685,33 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
   const handleCloseApprovalModal = useCallback(() => {
     setSubmitError(null)
   }, [])
+
+  const handleSubmitAsk = useCallback(
+    async (answers: AskAnswer[]) => {
+      if (!pendingAsk) return
+
+      setSubmittingAsk(true)
+      setAskSubmitError(null)
+
+      try {
+        await api.submitAskAnswer(pendingAsk.id, answers)
+        await refreshPendingAsk()
+        if (selectedSessionId) {
+          fetchTimeline(selectedSessionId)
+        }
+      } catch (err) {
+        setAskSubmitError(err instanceof Error ? err.message : 'Failed to submit answer')
+      } finally {
+        setSubmittingAsk(false)
+      }
+    },
+    [pendingAsk, refreshPendingAsk, selectedSessionId, fetchTimeline],
+  )
+
+  const handleCloseAskModal = useCallback(() => {
+    setAskSubmitError(null)
+    setDismissedAskId(pendingAsk?.id ?? null)
+  }, [pendingAsk?.id])
 
   const sessionsSidebar = useMemo(
     () => (
@@ -850,6 +906,14 @@ const SessionConsoleTab: React.FC<SessionConsoleTabProps> = ({ setActiveTab, aut
         onApproveOnce={handleApproveOnce}
         onApproveAlways={handleApproveAlways}
         onClose={handleCloseApprovalModal}
+      />
+
+      <AskUserModal
+        ask={visiblePendingAsk}
+        loading={submittingAsk}
+        error={askSubmitError}
+        onSubmit={handleSubmitAsk}
+        onClose={handleCloseAskModal}
       />
     </div>
   )

@@ -152,6 +152,41 @@ export interface ApprovalsResponse {
   total: number
 }
 
+export interface AskOption {
+  label: string
+  description?: string
+  value?: string
+}
+
+export interface AskAnswer {
+  question: string
+  answer: string
+}
+
+export interface AskInfo {
+  id: string
+  sessionId: string
+  status: 'pending' | 'answered' | 'expired' | 'cancelled'
+  question: string
+  context?: string | null
+  options: AskOption[] | null
+  multiSelect: boolean
+  requestedAt: string
+  answeredAt?: string | null
+  answers?: AskAnswer[] | null
+}
+
+export interface AsksResponse {
+  asks: AskInfo[]
+  total: number
+}
+
+export interface AskSubmitResponse {
+  success: boolean
+  askId: string
+  status: string
+}
+
 export type ApprovalResponseType = 'reject' | 'approve_once' | 'approve_always'
 
 export interface ApprovalDecisionRequest {
@@ -1318,11 +1353,7 @@ export interface CreateWorkdirDirResponse {
 // Browser Handoff Types
 // =============================================================================
 
-export type BrowserSessionState =
-  | 'idle'
-  | 'agent_controlled'
-  | 'user_controlled'
-  | 'handoff_requested'
+export type BrowserSessionState = 'idle' | 'agent_controlled' | 'user_controlled' | 'handoff_requested'
 
 export interface BrowserStatusResponse {
   sessionId: string
@@ -1354,10 +1385,7 @@ export interface BrowserHeartbeatEvent {
   timestamp: string
 }
 
-export type BrowserStreamEvent =
-  | BrowserSnapshotEvent
-  | BrowserFrameEvent
-  | BrowserHeartbeatEvent
+export type BrowserStreamEvent = BrowserSnapshotEvent | BrowserFrameEvent | BrowserHeartbeatEvent
 
 export interface BrowserTakeoverResponse {
   sessionId: string
@@ -1371,12 +1399,7 @@ export interface BrowserReleaseResponse {
   previousState: BrowserSessionState
 }
 
-export type BrowserInputAction =
-  | 'click'
-  | 'keypress'
-  | 'type'
-  | 'scroll'
-  | 'navigate'
+export type BrowserInputAction = 'click' | 'keypress' | 'type' | 'scroll' | 'navigate'
 
 export interface BrowserInputRequest {
   action: BrowserInputAction

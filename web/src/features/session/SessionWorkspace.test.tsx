@@ -22,6 +22,8 @@ vi.mock('../../api/client', async (importOriginal) => {
     getSession: vi.fn(),
     getSessionTimeline: vi.fn(),
     sendMessage: vi.fn(),
+    getAsks: vi.fn(),
+    submitAskAnswer: vi.fn(),
     subscribeSessionTimeline: vi.fn(),
     subscribeToFrames: vi.fn(() => () => {}),
     ApiClientError: MockApiClientError,
@@ -31,6 +33,7 @@ vi.mock('../../api/client', async (importOriginal) => {
 import * as api from '../../api/client'
 
 const mockGetSessions = api.getSessions as ReturnType<typeof vi.fn>
+const mockGetAsks = api.getAsks as ReturnType<typeof vi.fn>
 const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>
 
 const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/']) => {
@@ -40,6 +43,7 @@ const renderWithRouter = (ui: React.ReactElement, initialEntries: string[] = ['/
 describe('SessionWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetAsks.mockResolvedValue({ asks: [], total: 0 })
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
     localStorage.clear()
   })

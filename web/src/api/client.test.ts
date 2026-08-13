@@ -12,6 +12,8 @@ import {
   readWorkdirFile,
   writeWorkdirFile,
   createWorkdirDir,
+  getAsks,
+  submitAskAnswer,
 } from './client'
 
 describe('respondApproval', () => {
@@ -141,6 +143,78 @@ describe('respondApproval', () => {
   })
 })
 
+describe('ask user API', () => {
+  const originalFetch = global.fetch
+  const mockFetch = vi.fn()
+
+  beforeEach(() => {
+    global.fetch = mockFetch
+    mockFetch.mockReset()
+  })
+
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it('normalizes backend ask options and response timestamps', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          asks: [
+            {
+              id: 'ask-1',
+              sessionId: 'session-1',
+              status: 'pending',
+              question: 'Which environment?',
+              options: [{ value: 'staging' }],
+              multiSelect: false,
+              requestedAt: '2026-08-13T06:00:00Z',
+              respondedAt: null,
+            },
+          ],
+          total: 1,
+        },
+        requestId: 'request-1',
+      }),
+    })
+
+    const result = await getAsks('session 1')
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/v1/asks?sessionId=session%201',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(result.asks[0]).toMatchObject({
+      id: 'ask-1',
+      options: [{ value: 'staging', label: 'staging' }],
+      answeredAt: null,
+    })
+  })
+
+  it('converts UI answers to backend value payloads', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: { success: true, askId: 'ask-1', status: 'answered' },
+        requestId: 'request-2',
+      }),
+    })
+
+    await submitAskAnswer('ask/1', [{ question: 'Which environment?', answer: 'staging' }])
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/v1/asks/ask%2F1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ answers: [{ value: 'staging' }] }),
+      }),
+    )
+  })
+})
+
 describe('listWorkdirs', () => {
   const originalFetch = global.fetch
   const mockFetch = vi.fn()
@@ -161,7 +235,13 @@ describe('listWorkdirs', () => {
         ok: true,
         data: {
           workdirs: [
-            { id: 'wd-1', userId: 'u1', name: 'My Project', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+            {
+              id: 'wd-1',
+              userId: 'u1',
+              name: 'My Project',
+              createdAt: '2025-01-01T00:00:00Z',
+              updatedAt: '2025-01-01T00:00:00Z',
+            },
           ],
           total: 1,
         },
@@ -216,7 +296,13 @@ describe('createWorkdir', () => {
       json: async () => ({
         ok: true,
         data: {
-          workdir: { id: 'wd-new', userId: 'u1', name: 'New Project', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
+          workdir: {
+            id: 'wd-new',
+            userId: 'u1',
+            name: 'New Project',
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+          },
         },
         requestId: 'req-1',
       }),
@@ -475,10 +561,7 @@ describe('listWorkdirTree', () => {
 
     await listWorkdirTree('wd-1', 'src')
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('path=src'),
-      expect.anything(),
-    )
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('path=src'), expect.anything())
   })
 
   it('tree nodes use relativePath, not absolute', async () => {

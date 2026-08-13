@@ -14,6 +14,8 @@ vi.mock('../../api/client', () => ({
   subscribeSessionTimeline: vi.fn(),
   getApprovals: vi.fn(),
   respondApproval: vi.fn(),
+  getAsks: vi.fn(),
+  submitAskAnswer: vi.fn(),
   listWorkdirs: vi.fn(),
   createWorkdir: vi.fn(),
   renameWorkdir: vi.fn(),
@@ -42,6 +44,7 @@ const mockSendMessage = api.sendMessage as ReturnType<typeof vi.fn>
 const mockSubscribeSessionTimeline = api.subscribeSessionTimeline as ReturnType<typeof vi.fn>
 const mockGetApprovals = api.getApprovals as ReturnType<typeof vi.fn>
 const mockRespondApproval = api.respondApproval as ReturnType<typeof vi.fn>
+const mockGetAsks = api.getAsks as ReturnType<typeof vi.fn>
 const mockListWorkdirs = api.listWorkdirs as ReturnType<typeof vi.fn>
 const mockCreateWorkdir = api.createWorkdir as ReturnType<typeof vi.fn>
 const mockRenameWorkdir = api.renameWorkdir as ReturnType<typeof vi.fn>
@@ -68,6 +71,7 @@ describe.skip('SessionConsoleTab legacy tests', () => {
     mockSubscribeSessionTimeline.mockReturnValue(() => {})
     mockSubscribeToFrames.mockReturnValue(() => {})
     mockGetBrowserStatus.mockResolvedValue({ state: 'idle', url: null })
+    mockGetAsks.mockResolvedValue({ asks: [], total: 0 })
     localStorage.clear()
   })
 
@@ -3613,15 +3617,15 @@ describe.skip('SessionConsoleTab - Command Parsing', () => {
     // Type escaped command with // prefix
     const input = screen.getByTestId('session-message-input')
     fireEvent.change(input, { target: { value: '//help' } })
-    
+
     // Verify input has the value
     expect((input as HTMLInputElement).value).toBe('//help')
-    
+
     // Now the send button should be enabled
     await waitFor(() => {
       expect(screen.getByTestId('session-send-button')).not.toBeDisabled()
     })
-    
+
     // Click send
     fireEvent.click(screen.getByTestId('session-send-button'))
 
@@ -3841,14 +3845,12 @@ describe.skip('SessionConsoleTab - SSE Status Transitions', () => {
     })
     mockGetSessionTimeline.mockResolvedValue({ events: [], total: 0 })
 
-    mockSubscribeSessionTimeline.mockImplementation(
-      (_sessionId, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
-        if (onOpen) {
-          setTimeout(() => onOpen(), 0)
-        }
-        return () => {}
-      },
-    )
+    mockSubscribeSessionTimeline.mockImplementation((_sessionId, _onEvent, _onError, _onStatus, _onToken, onOpen) => {
+      if (onOpen) {
+        setTimeout(() => onOpen(), 0)
+      }
+      return () => {}
+    })
 
     renderWithRouter(<SessionConsoleTab />)
 
