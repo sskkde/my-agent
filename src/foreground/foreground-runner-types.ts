@@ -16,6 +16,7 @@ import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js'
 import type { StructuredDecisionTrace } from '../kernel/decision-trace-types.js'
 import type { TurnTranscript, VisibleMessage } from '../storage/transcript-store.js'
+import type { ContextItem } from '../context/types.js'
 
 /**
  * Status of a foreground turn execution
@@ -97,9 +98,17 @@ export interface ForegroundTurnInput {
   /**
    * Turn source marker. 'background_notification' identifies a synthetic
    * auto-continued turn triggered by a background task reaching a terminal
-   * state; such turns must never launch subagents. Absent = 'user' semantics.
+   * state; 'ask_response' identifies a synthetic continuation turn triggered
+   * by the user answering an ask_user question. Such turns must never launch
+   * subagents. Absent = 'user' semantics.
    */
-  source?: 'user' | 'background_notification'
+  source?: 'user' | 'background_notification' | 'ask_response'
+  /**
+   * Extra context items injected into the model for synthetic continuation
+   * turns (e.g. the user's ask_response answers). Pushed into
+   * contextBundle.orderedItems exactly like background-run notifications.
+   */
+  syntheticContextItems?: ContextItem[]
   /**
    * AbortSignal for cancelling the kernel run from external callers.
    * When aborted, the kernel checks at iteration boundaries, before LLM calls,

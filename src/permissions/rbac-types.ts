@@ -11,6 +11,7 @@ export enum ResourceType {
   settings = 'settings',
   observability = 'observability',
   approval = 'approval',
+  ask = 'ask',
   run = 'run',
   provider = 'provider',
   toolResult = 'tool-result',
@@ -85,6 +86,8 @@ function generateUserPermissions(): Permission[] {
 
   permissions.push({ resource: ResourceType.approval, action: Action.read })
   permissions.push({ resource: ResourceType.approval, action: Action.update })
+  permissions.push({ resource: ResourceType.ask, action: Action.read })
+  permissions.push({ resource: ResourceType.ask, action: Action.update })
   permissions.push({ resource: ResourceType.run, action: Action.read })
   permissions.push({ resource: ResourceType.provider, action: Action.read })
   permissions.push({ resource: ResourceType.toolResult, action: Action.read })

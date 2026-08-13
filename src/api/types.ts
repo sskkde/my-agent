@@ -208,6 +208,49 @@ export interface ApprovalDecisionResponse {
   grantId?: string
 }
 
+export interface AskOption {
+  value: string
+  label?: string
+}
+
+export interface AskAnswer {
+  value: string
+  label?: string
+}
+
+export interface AskInfo {
+  id: string
+  userId: string
+  sessionId: string
+  status: 'pending' | 'answered'
+  question: string
+  options?: AskOption[]
+  multiSelect?: boolean
+  context?: string
+  answers?: AskAnswer[]
+  requestedBy: string
+  requestedAt: string
+  respondedAt?: string
+  responseBy?: string
+}
+
+export interface AskAnswerRequest {
+  answers: AskAnswer[]
+}
+
+export interface AskAnswerResponse {
+  success: boolean
+  askId: string
+  status: 'answered'
+}
+
+export interface AsksResponse {
+  data: {
+    asks: AskInfo[]
+    total: number
+  }
+}
+
 // =============================================================================
 // Console Timeline Types - Canonical API Contracts
 // =============================================================================

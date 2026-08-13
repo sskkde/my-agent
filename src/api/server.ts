@@ -10,6 +10,7 @@ import type { HealthResponse } from './types.js'
 import { registerSessionsRoutes } from './routes/sessions.js'
 import { registerStatusRoutes } from './routes/status.js'
 import { registerApprovalRoutes } from './routes/approvals.js'
+import { registerAskRoutes } from './routes/asks.js'
 import { registerRunRoutes } from './routes/runs.js'
 import { registerUsageRoutes } from './routes/usage.js'
 import { registerLogRoutes } from './routes/logs.js'
@@ -219,6 +220,7 @@ export async function createApiServer(context?: ApiContext): Promise<FastifyInst
     await registerSessionsRoutes(server, context)
     registerStatusRoutes(server, context)
     registerApprovalRoutes(server, context)
+    registerAskRoutes(server, context)
     registerRunRoutes(server, context)
     registerUsageRoutes(server, context)
     registerLogRoutes(server, context)

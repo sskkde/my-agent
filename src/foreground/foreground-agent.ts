@@ -121,6 +121,9 @@ class ForegroundAgentImpl implements ForegroundAgent {
         contextBundle.orderedItems.push(...notifications)
       }
     }
+    if (input.syntheticContextItems && input.syntheticContextItems.length > 0) {
+      contextBundle.orderedItems.push(...input.syntheticContextItems)
+    }
     const allTools = this.getToolSummaries()
     const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)

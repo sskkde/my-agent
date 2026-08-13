@@ -45,6 +45,8 @@ import type {
 import { ProcessingStageLabel, type ProcessingStage } from '../api/types.js'
 import { resolveProviderAndModel, type FallbackMetadata } from '../llm/agent-provider-resolver.js'
 import type { ForegroundTurnInput } from '../foreground/foreground-runner-types.js'
+import type { ContextItem } from '../context/types.js'
+import type { AskAnswer } from '../storage/ask-store.js'
 import type { KernelRunStore } from '../storage/kernel-run-store.js'
 import type { TraceStore } from '../observability/types.js'
 import { KERNEL_RUN_STATES } from '../shared/states.js'
@@ -277,7 +279,14 @@ export function createOrchestrationProcessor(
             workDirId: hydratedSession.activeWorkdir?.workDirId,
             workDirName: hydratedSession.activeWorkdir?.workDirName,
             source:
-              input.metadata?.envelopeEventType === 'background_notification' ? 'background_notification' : 'user',
+              input.metadata?.envelopeEventType === 'background_notification'
+                ? 'background_notification'
+                : input.metadata?.envelopeEventType === 'ask_response'
+                  ? 'ask_response'
+                  : 'user',
+            ...(input.metadata?.envelopeEventType === 'ask_response'
+              ? { syntheticContextItems: buildAskResponseContextItems(input.metadata) }
+              : {}),
             signal: abortController.signal,
           }
 
@@ -760,10 +769,13 @@ function persistTurnTranscript(
 
   const inboundEventId = input.metadata?.inboundEventId as string | undefined
 
-  // T6: synthetic background_notification turns MUST NOT write a userMessageSummary.
-  // Marker is the sole trigger; downstream consumers all skip falsy summaries,
-  // so this single-point guard is sufficient (no per-consumer changes needed).
-  const isBackgroundNotificationTurn = input.metadata?.envelopeEventType === 'background_notification'
+  // T6: synthetic background_notification / ask_response turns MUST NOT write a
+  // userMessageSummary. Marker is the sole trigger; downstream consumers all
+  // skip falsy summaries, so this single-point guard is sufficient (no
+  // per-consumer changes needed).
+  const isBackgroundNotificationTurn =
+    input.metadata?.envelopeEventType === 'background_notification' ||
+    input.metadata?.envelopeEventType === 'ask_response'
   const userMessageSummary = isBackgroundNotificationTurn ? '' : input.text
 
   const runtimeSummary =
@@ -797,6 +809,44 @@ function persistTurnTranscript(
   } catch {
     return false
   }
+}
+
+/**
+ * Build the system-note context item carrying the user's ask_user answers.
+ * Injected into contextBundle.orderedItems (the same injection path background
+ * run notifications use) so the model sees what the user answered.
+ */
+function buildAskResponseContextItems(metadata: Record<string, unknown>): ContextItem[] {
+  const askResponse = metadata.askResponse as { askId?: string; answers?: AskAnswer[]; question?: string } | undefined
+  if (!askResponse?.askId) {
+    return []
+  }
+
+  const answers = Array.isArray(askResponse.answers) ? askResponse.answers : []
+  const answerText = answers
+    .map((answer) =>
+      answer?.label && answer.label !== answer.value ? `${answer.label} (${answer.value})` : answer?.value,
+    )
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join(', ')
+  const question = typeof askResponse.question === 'string' ? askResponse.question.trim() : ''
+  const content = question
+    ? `User answered your question (${askResponse.askId}): ${question} → ${answerText}`
+    : `User answered your question (${askResponse.askId}): ${answerText}`
+
+  return [
+    {
+      itemId: `ask-response-${askResponse.askId}`,
+      sourceType: 'system_note',
+      semanticType: 'fact',
+      content,
+      structuredPayload: { askId: askResponse.askId, answers },
+      priority: 80,
+      isPinned: true,
+      dedupeKey: `ask-response-${askResponse.askId}`,
+      freshnessTs: new Date().toISOString(),
+    },
+  ]
 }
 
 function extractProjectedVisibleMessages(data: unknown): VisibleMessage[] | undefined {

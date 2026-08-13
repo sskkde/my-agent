@@ -460,6 +460,7 @@ function createHarness(options: { childTaskRemainingTimeoutMs: number }): Harnes
     plannerRunStore: { query: () => [] } as never,
     subagentRunStore: runStore,
     approvalStore: { getPendingByUser: () => [] } as never,
+    askStore: { getById: () => null } as never,
     profileRegistry: agentProfileRegistry,
     childSessionTaskRuntime: childRuntime,
     toolResultStore,

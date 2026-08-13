@@ -79,6 +79,12 @@ const EXPECTED_WRITE_ROUTE_PERMISSIONS: WriteRoutePermission[] = [
     path: '/api/v1/approvals/:approvalId',
     permission: "'approval' as ResourceType, Action.update",
   },
+  {
+    file: 'asks.ts',
+    method: 'PATCH',
+    path: '/api/v1/asks/:askId',
+    permission: 'ResourceType.ask, Action.update',
+  },
   { file: 'auth.ts', method: 'POST', path: '/api/v1/auth/login', permission: 'public-auth' },
   { file: 'auth.ts', method: 'POST', path: '/api/v1/auth/logout', permission: 'public-auth' },
   {

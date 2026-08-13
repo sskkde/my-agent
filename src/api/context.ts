@@ -6,6 +6,7 @@ import { createRuntimeActionStore, type RuntimeActionStore } from '../storage/ru
 import { createTranscriptStore, type TranscriptStore } from '../storage/transcript-store.js'
 import { createSummaryStore, type SummaryStore } from '../storage/summary-store.js'
 import { createApprovalStore, type ApprovalStore } from '../storage/approval-store.js'
+import { createAskStore, type AskStore } from '../storage/ask-store.js'
 import { createPermissionGrantStore, type PermissionGrantStore } from '../storage/permission-grant-store.js'
 import { createToolExecutionStore, type ToolExecutionStore } from '../storage/tool-execution-store.js'
 import { createToolResultStore, type ToolResultStore } from '../storage/tool-result-store.js'
@@ -38,6 +39,8 @@ import type { MessageProcessor } from '../processing/types.js'
 import { createMessageProcessor as createMessageProcessorImpl } from '../processing/message-processor.js'
 import { SessionBusyTracker } from '../processing/session-busy-tracker.js'
 import { scheduleBackgroundNotificationTurn } from '../processing/background-notification-turn.js'
+import { scheduleAskResponseTurn } from '../processing/ask-response-turn.js'
+import type { AskAnswer } from '../storage/ask-store.js'
 import { getBackgroundAutoContinueEnabled } from '../config/background-auto-continue.js'
 import { createOrchestrationProcessor, type ProcessorOrchestrationDeps } from '../processing/processor-orchestration.js'
 import { createForegroundAgent, type ForegroundAgent } from '../foreground/foreground-agent.js'
@@ -171,6 +174,17 @@ export interface ApiContext {
   sessionBusyTracker: SessionBusyTracker
   /** Background runtime wired with the `parentTurnTrigger` closure (drives terminal-state auto-continue). */
   backgroundRuntime: BackgroundRuntime
+  /**
+   * Ask-response continuation turns: schedules a synthetic ask_response turn
+   * that injects the user's ask_user answers into the next model turn.
+   */
+  scheduleAskResponseTurn?: (input: {
+    askId: string
+    userId: string
+    sessionId: string
+    answers: AskAnswer[]
+    question?: string
+  }) => void
   foregroundAgent: ForegroundAgent
   runtimeDispatcher: RuntimeDispatcher
   plannerRuntime: PlannerRuntime
@@ -187,6 +201,7 @@ export interface ApiContext {
     transcriptStore: TranscriptStore
     summaryStore: SummaryStore
     approvalStore: ApprovalStore
+    askStore: AskStore
     permissionGrantStore: PermissionGrantStore
     toolExecutionStore: ToolExecutionStore
     toolResultStore: ToolResultStore
@@ -458,6 +473,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let transcriptStore: TranscriptStore
   let summaryStore: SummaryStore
   let approvalStore: ApprovalStore
+  let askStore: AskStore
   let permissionGrantStore: PermissionGrantStore
   let toolExecutionStore: ToolExecutionStore
   let plannerRunStore: PlannerRunStore
@@ -503,6 +519,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     transcriptStore = existingStores?.transcriptStore ?? createTranscriptStore(connection)
     summaryStore = existingStores?.summaryStore ?? createSummaryStore(connection)
     approvalStore = existingStores?.approvalStore ?? createApprovalStore(connection)
+    askStore = existingStores?.askStore ?? createAskStore(connection)
     permissionGrantStore = existingStores?.permissionGrantStore ?? createPermissionGrantStore(connection)
     toolExecutionStore = existingStores?.toolExecutionStore ?? createToolExecutionStore(connection)
     toolResultStore =
@@ -851,6 +868,36 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       : {}),
   })
 
+  // Ask-response continuation turns (ask_user answers → synthetic turn). Same
+  // shape as the background parentTurnTrigger: delayed-resolve the processor,
+  // busy-guard via sessionBusyTracker, deliver via the webui channel.
+  const scheduleAskResponseTurnForUser = (input: {
+    askId: string
+    userId: string
+    sessionId: string
+    answers: AskAnswer[]
+    question?: string
+  }) => {
+    const processor = notificationTurnProcessor
+    if (!processor) {
+      return
+    }
+    void scheduleAskResponseTurn(
+      {
+        messageProcessor: processor,
+        sessionBusyTracker,
+        askStore,
+        sessionStore,
+        runWithProvidersForUser,
+        deliverNotification: async (kind, content, correlationId, userId, sessionId) => {
+          const envelope = gateway.formatOutbound(kind, content, { userId, sessionId, channel: 'webui' }, correlationId)
+          await channelRegistry.deliver('webui', envelope)
+        },
+      },
+      input,
+    )
+  }
+
   // Create foreground agent with tool registry for schema projection
   const foregroundAgent =
     injectedForegroundAgent ??
@@ -1126,6 +1173,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     plannerRunStore,
     subagentRunStore,
     approvalStore,
+    askStore,
     profileRegistry: agentProfileRegistry,
     childSessionTaskRuntime,
     toolResultStore,
@@ -1227,6 +1275,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     messageProcessor,
     sessionBusyTracker,
     backgroundRuntime,
+    scheduleAskResponseTurn: scheduleAskResponseTurnForUser,
     foregroundAgent,
     runtimeDispatcher,
     plannerRuntime,
@@ -1243,6 +1292,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       transcriptStore,
       summaryStore,
       approvalStore,
+      askStore,
       permissionGrantStore,
       toolExecutionStore,
       toolResultStore,

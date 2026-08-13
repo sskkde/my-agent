@@ -9,7 +9,14 @@ import { ResourceType, Action } from '../permissions/rbac-types.js'
  * Extended resource types that include additional resources not in the base ResourceType enum.
  * These are used for route-to-permission mapping where the resource doesn't fit the standard categories.
  */
-export type ExtendedResourceType = ResourceType | 'approval' | 'run' | 'provider' | 'agent-config' | 'tool-result'
+export type ExtendedResourceType =
+  | ResourceType
+  | 'approval'
+  | 'ask'
+  | 'run'
+  | 'provider'
+  | 'agent-config'
+  | 'tool-result'
 
 /**
  * Route policy entry that maps a route pattern to required permission.
@@ -93,6 +100,12 @@ export const ROUTE_POLICY_MAP: RoutePolicyEntry[] = [
   { method: 'GET', pathPattern: '/api/v1/approvals', resource: 'approval', action: Action.read },
   { method: 'GET', pathPattern: '/api/v1/approvals/:approvalId', resource: 'approval', action: Action.read },
   { method: 'PATCH', pathPattern: '/api/v1/approvals/:approvalId', resource: 'approval', action: Action.update },
+
+  // ===========================================
+  // Asks
+  // ===========================================
+  { method: 'GET', pathPattern: '/api/v1/asks', resource: 'ask', action: Action.read },
+  { method: 'PATCH', pathPattern: '/api/v1/asks/:askId', resource: 'ask', action: Action.update },
 
   // ===========================================
   // Runs
