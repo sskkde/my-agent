@@ -583,6 +583,18 @@ const AGENT_PROFILE_PLANNER_TEMPLATE: PromptTemplateRecord = {
   agentProfile: 'planner',
 }
 
+const AGENT_PROFILE_PLANNER_PLAN_TEMPLATE: PromptTemplateRecord = {
+  id: 'agentProfile:planner_plan',
+  version: '2026-08-12',
+  path: 'agentProfile/planner_plan.md',
+  agentKind: 'agentProfile:planner_plan',
+  providerFamily: '*',
+  layer: 5,
+  description: 'Plan generation protocol for the planner LLM call (atomic decomposition)',
+  taxonomyLayer: 'agentProfile',
+  agentProfile: 'planner_plan',
+}
+
 const AGENT_PROFILE_MEMORY_TEMPLATE: PromptTemplateRecord = {
   id: 'agentProfile:memory',
   version: '2026-06-18',
@@ -695,6 +707,7 @@ export const PROMPT_TEMPLATE_REGISTRY: Map<string, PromptTemplateRecord> = new M
   ['agentProfile:default_main', AGENT_PROFILE_DEFAULT_MAIN_TEMPLATE],
   ['agentProfile:foreground', AGENT_PROFILE_FOREGROUND_TEMPLATE],
   ['agentProfile:planner', AGENT_PROFILE_PLANNER_TEMPLATE],
+  ['agentProfile:planner_plan', AGENT_PROFILE_PLANNER_PLAN_TEMPLATE],
   ['agentProfile:memory', AGENT_PROFILE_MEMORY_TEMPLATE],
   ['agentProfile:search', AGENT_PROFILE_SEARCH_TEMPLATE],
   ['agentProfile:document_processor', AGENT_PROFILE_DOCUMENT_PROCESSOR_TEMPLATE],

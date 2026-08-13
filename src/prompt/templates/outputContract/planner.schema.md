@@ -5,20 +5,19 @@
 ## Contract Identity
 
 Contract ID: `output:planner.schema`
-Contract Purpose: Define the JSON contract for PlannerAgent execution plans.
+Contract Purpose: Define the JSON contract for planner plan generation output.
 
 ## Contract Rules
 
 - Output must be valid JSON matching the planner.execution.output schema.
-- All required fields (planId, objective, steps, status) must be present.
-- Step IDs must be unique within a plan.
-- Dependencies must reference existing step IDs.
-- No circular dependencies allowed.
-- Plan ID must match pattern `^plan_[a-zA-Z0-9_-]+$`.
-- Step ID must match pattern `^step_[a-zA-Z0-9_-]+$`.
-- Plan must have at least one step.
-- `estimatedComplexity` must be one of: low, medium, high.
-- `status` must be one of: draft, ready, executing, completed, failed, cancelled.
+- All required fields (id, goal, steps, successCriteria) must be present.
+- Step IDs must be unique within a plan; plan IDs match `^plan_[a-zA-Z0-9_-]+$`.
+- Dependencies must reference existing step IDs; no circular dependencies.
+- Plan must have 1-10 steps (max 10 aligns with MAX_PLAN_STEPS).
+- `kind` must be one of: agent_task, tool_call, subagent_task, workflow_step, user_approval, final_response.
+- `executor` must be one of: agent_kernel, tool_plane, subagent, workflow_runtime, foreground.
+- Every step MUST declare `expectedOutput` (verifiable result of completing the step).
+- Write/delete steps MUST be preceded by a user*approval step carrying `approvalRequirementId` matching `^approval*[a-zA-Z0-9_-]+$`.
 
 ## JSON Schema Definition
 
@@ -27,118 +26,121 @@ Contract Purpose: Define the JSON contract for PlannerAgent execution plans.
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "planner.execution.output",
   "title": "Planner Execution Output",
-  "description": "JSON contract for PlannerAgent execution plans",
+  "description": "JSON contract for planner plan generation output",
   "type": "object",
-  "required": ["planId", "objective", "steps", "status"],
+  "required": ["id", "goal", "steps", "successCriteria"],
   "additionalProperties": false,
   "properties": {
-    "planId": {
+    "id": {
       "type": "string",
-      "description": "Unique identifier for this plan",
       "pattern": "^plan_[a-zA-Z0-9_-]+$"
     },
-    "objective": {
+    "goal": {
       "type": "string",
-      "description": "The overall objective of this plan",
+      "description": "The goal as received from the foreground agent (already intent-resolved)",
       "minLength": 1,
       "maxLength": 2000
     },
-    "steps": {
+    "assumptions": {
       "type": "array",
-      "description": "Ordered list of execution steps",
-      "minItems": 1,
-      "maxItems": 50,
-      "items": {
-        "$ref": "#/definitions/step"
-      }
-    },
-    "missingPreferences": {
-      "type": "array",
-      "description": "Information needed from user before execution",
-      "items": {
-        "type": "string",
-        "maxLength": 500
-      },
+      "description": "Assumptions the plan rests on; if one turns out false during execution, stop and report",
+      "items": { "type": "string", "maxLength": 500 },
       "maxItems": 10
     },
-    "risks": {
+    "riskNotes": {
       "type": "array",
       "description": "Potential issues or risks identified",
-      "items": {
-        "type": "string",
-        "maxLength": 500
-      },
+      "items": { "type": "string", "maxLength": 500 },
       "maxItems": 10
     },
-    "status": {
-      "type": "string",
-      "description": "Current plan status",
-      "enum": ["draft", "ready", "executing", "completed", "failed", "cancelled"]
+    "steps": {
+      "type": "array",
+      "description": "Atomic execution steps",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": { "$ref": "#/definitions/step" }
+    },
+    "successCriteria": {
+      "type": "array",
+      "description": "Acceptance criteria derived from the goal, not from the step list",
+      "minItems": 1,
+      "items": { "type": "string", "maxLength": 500 }
     }
   },
   "definitions": {
     "step": {
       "type": "object",
-      "required": ["stepId", "description", "successCriteria"],
+      "required": ["id", "title", "description", "kind", "executor", "expectedOutput"],
       "additionalProperties": false,
       "properties": {
-        "stepId": {
+        "id": {
           "type": "string",
-          "description": "Unique identifier for this step",
           "pattern": "^step_[a-zA-Z0-9_-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title; a title containing 'and'/'then' means two tasks",
+          "minLength": 1,
+          "maxLength": 120
         },
         "description": {
           "type": "string",
-          "description": "What this step accomplishes",
+          "description": "What this step accomplishes; include exact interface contracts it consumes",
           "minLength": 1,
           "maxLength": 1000
         },
-        "dependencies": {
+        "kind": {
+          "type": "string",
+          "enum": ["agent_task", "tool_call", "subagent_task", "workflow_step", "user_approval", "final_response"]
+        },
+        "executor": {
+          "type": "string",
+          "enum": ["agent_kernel", "tool_plane", "subagent", "workflow_runtime", "foreground"]
+        },
+        "toolName": {
+          "type": "string",
+          "description": "Required when kind is tool_call; must be one of the provided available tools",
+          "pattern": "^[a-z_]+$"
+        },
+        "dependsOn": {
           "type": "array",
           "description": "Step IDs that must complete before this step",
           "items": {
-            "type": "string",
-            "pattern": "^step_[a-zA-Z0-9_-]+$"
+            "type": "object",
+            "required": ["targetStepId"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["depends_on", "blocks", "references"]
+              },
+              "targetStepId": {
+                "type": "string",
+                "pattern": "^step_[a-zA-Z0-9_-]+$"
+              }
+            }
           }
         },
-        "successCriteria": {
+        "expectedOutput": {
           "type": "string",
-          "description": "How to verify this step succeeded",
+          "description": "Verifiable result of completing this step (what 'done' produces)",
           "minLength": 1,
           "maxLength": 500
         },
-        "estimatedComplexity": {
+        "outOfScope": {
           "type": "string",
-          "description": "Estimated complexity of this step",
-          "enum": ["low", "medium", "high"]
-        },
-        "tools": {
-          "type": "array",
-          "description": "Tools needed for this step",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-z_]+$"
-          }
-        },
-        "rollback": {
-          "type": "string",
-          "description": "How to undo this step if needed",
+          "description": "What looks related but must NOT be touched in this step",
           "maxLength": 500
+        },
+        "approvalRequirementId": {
+          "type": "string",
+          "description": "Present on write/delete steps and their preceding user_approval step",
+          "pattern": "^approval_[a-zA-Z0-9_-]+$"
         }
       }
     }
   }
 }
 ```
-
-## Status Definitions
-
-- **draft**: Plan is being created or modified. Steps may be incomplete, dependencies may be invalid, missing preferences may exist.
-- **ready**: Plan is complete and ready for execution. All steps have valid dependencies, no circular dependencies, all required tools available, no missing preferences.
-- **executing**: Plan is currently being executed. At least one step in progress, progress updates being generated, can be cancelled.
-- **completed**: All steps completed successfully. All steps have success status, all success criteria met, evidence collected.
-- **failed**: Execution failed and cannot continue. At least one step failed, failure reason documented, partial results available.
-- **cancelled**: Execution was cancelled by user or system. Cancellation reason documented, partial results available, cleanup performed.
 
 ---
 
