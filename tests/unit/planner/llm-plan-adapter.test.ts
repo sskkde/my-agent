@@ -5,6 +5,16 @@ import {
   parseExecutionPlan,
   createPlannerLLMPlanAdapter,
 } from '../../../src/planner/llm-plan-adapter.js'
+import { PromptTemplateRegistry } from '../../../src/prompt/prompt-template-registry.js'
+import { TemplateLoader } from '../../../src/prompt/template-loader.js'
+import type { LLMMessage } from '../../../src/llm/types.js'
+
+function createTemplateDeps() {
+  return {
+    templateRegistry: new PromptTemplateRegistry(),
+    templateLoader: new TemplateLoader(),
+  }
+}
 
 const VALID_PLAN_JSON = JSON.stringify({
   id: 'plan_abc',
@@ -79,6 +89,23 @@ describe('llm-plan-adapter normalizeExecutionPlan', () => {
     const plan = normalizeExecutionPlan(raw)
     expect(plan?.steps).toHaveLength(1)
   })
+
+  it('parses expectedOutput, outOfScope, assumptions and riskNotes', () => {
+    const raw = JSON.parse(VALID_PLAN_JSON) as Record<string, unknown>
+    const steps = raw.steps as unknown[]
+    steps[0] = {
+      ...(steps[0] as object),
+      expectedOutput: 'search results list',
+      outOfScope: 'email notifications',
+    }
+    raw.assumptions = ['network is available']
+    raw.riskNotes = ['rate limits may apply']
+    const plan = normalizeExecutionPlan(raw)
+    expect(plan?.steps[0]?.expectedOutput).toBe('search results list')
+    expect(plan?.steps[0]?.outOfScope).toBe('email notifications')
+    expect(plan?.assumptions).toEqual(['network is available'])
+    expect(plan?.riskNotes).toEqual(['rate limits may apply'])
+  })
 })
 
 describe('llm-plan-adapter parseExecutionPlan', () => {
@@ -97,6 +124,7 @@ describe('createPlannerLLMPlanAdapter', () => {
     const adapter = createPlannerLLMPlanAdapter({
       llmAdapter: {} as never,
       model: '',
+      ...createTemplateDeps(),
     })
     expect(await adapter.generatePlan({ goal: 'g' })).toBeNull()
   })
@@ -108,6 +136,7 @@ describe('createPlannerLLMPlanAdapter', () => {
     const adapter = createPlannerLLMPlanAdapter({
       llmAdapter: platform as never,
       model: 'test-model',
+      ...createTemplateDeps(),
     })
     const plan = await adapter.generatePlan({ goal: 'Search AI trends', availableTools: ['web_search'] })
     expect(plan).not.toBeNull()
@@ -119,6 +148,7 @@ describe('createPlannerLLMPlanAdapter', () => {
     const adapter = createPlannerLLMPlanAdapter({
       llmAdapter: platform as never,
       model: 'test-model',
+      ...createTemplateDeps(),
     })
     expect(await adapter.generatePlan({ goal: 'g' })).toBeNull()
   })
@@ -132,7 +162,61 @@ describe('createPlannerLLMPlanAdapter', () => {
     const adapter = createPlannerLLMPlanAdapter({
       llmAdapter: platform as never,
       model: 'test-model',
+      ...createTemplateDeps(),
     })
     expect(await adapter.generatePlan({ goal: 'g' })).toBeNull()
+  })
+
+  it('assembles the system prompt from seven-layer templates (L1-L5)', async () => {
+    let capturedMessages: LLMMessage[] | null = null
+    const platform = {
+      complete: async (req: { messages: LLMMessage[] }) => {
+        capturedMessages = req.messages
+        return { success: true, response: { content: VALID_PLAN_JSON }, providerId: 'p' }
+      },
+    }
+    const adapter = createPlannerLLMPlanAdapter({
+      llmAdapter: platform as never,
+      model: 'test-model',
+      ...createTemplateDeps(),
+      providerFamily: 'deepseek',
+    })
+    await adapter.generatePlan({ goal: 'Search AI trends' })
+
+    expect(capturedMessages).not.toBeNull()
+    const systemContent = capturedMessages!.find((m) => m.role === 'system')?.content ?? ''
+    expect(systemContent).toContain('Plan Generation Protocol')
+    expect(systemContent).toContain('Decompose into atomic tasks')
+    expect(systemContent).toContain('2-10 tasks per plan')
+    expect(systemContent).toContain('output:planner.schema')
+    expect(systemContent).not.toContain('You are a task planner. Decompose the user goal')
+  })
+
+  it('injects tool descriptions, constraints and context into the user prompt', async () => {
+    let capturedMessages: LLMMessage[] | null = null
+    const platform = {
+      complete: async (req: { messages: LLMMessage[] }) => {
+        capturedMessages = req.messages
+        return { success: true, response: { content: VALID_PLAN_JSON }, providerId: 'p' }
+      },
+    }
+    const adapter = createPlannerLLMPlanAdapter({
+      llmAdapter: platform as never,
+      model: 'test-model',
+      ...createTemplateDeps(),
+    })
+    await adapter.generatePlan({
+      goal: 'Search AI trends',
+      toolDescriptions: { web_search: 'Search the web for current information' },
+      userConstraints: ['No paid services'],
+      contextSummary: 'User is evaluating agent platforms',
+    })
+
+    expect(capturedMessages).not.toBeNull()
+    const userContent = capturedMessages!.find((m) => m.role === 'user')?.content ?? ''
+    expect(userContent).toContain('Goal: Search AI trends')
+    expect(userContent).toContain('- web_search: Search the web for current information')
+    expect(userContent).toContain('Constraints: No paid services')
+    expect(userContent).toContain('Context: User is evaluating agent platforms')
   })
 })

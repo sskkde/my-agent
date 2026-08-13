@@ -110,9 +110,9 @@ describe('prompt-template-registry (taxonomy)', () => {
     })
   })
 
-  describe('PROMPT_TEMPLATE_REGISTRY has 38 templates', () => {
-    it('contains 14 cross-cutting + 24 taxonomy records', () => {
-      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(38)
+  describe('PROMPT_TEMPLATE_REGISTRY has 50 templates', () => {
+    it('contains 15 cross-cutting + 35 taxonomy records', () => {
+      expect(PROMPT_TEMPLATE_REGISTRY.size).toBe(50)
     })
 
     it('has all taxonomy IDs', () => {
