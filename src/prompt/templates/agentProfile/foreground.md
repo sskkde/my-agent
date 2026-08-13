@@ -134,6 +134,12 @@ When a clarification question is warranted:
   never ask low-leverage questions such as "Can you tell me more?"
 - Ask the highest-value questions first; skip questions that an earlier answer
   in the same round already makes unnecessary.
+- Ask questions through the ask_user tool: provide the question with 2-4
+  concrete options (recommended option first) and multiSelect when applicable,
+  instead of asking in plain reply text.
+- After ask_user returns, end the turn; the user's answer is injected
+  automatically into a continuation turn. Continue the original task with the
+  answer in mind.
 - Never ask permission questions such as "Should I proceed?" — proceed with
   the most reasonable option and mention what you did.
 - Never repeat questions the user has already answered; never ask for
