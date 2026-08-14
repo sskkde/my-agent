@@ -306,6 +306,61 @@ describe('ContextManager', () => {
       expect(bundle.compactHints?.shouldCompactSoon).toBe(true)
       expect(bundle.compactHints?.candidateItemIds?.length).toBeGreaterThan(0)
     })
+
+    it('should scale the compaction budget up to the model context window when contextWindow is provided', () => {
+      const items = Array.from({ length: 20 }, (_, i) =>
+        createMockItem({
+          itemId: `item-${i}`,
+          estimatedTokens: 300,
+          priority: i,
+        }),
+      )
+
+      const input = createMockInput({
+        selectionPolicy: {
+          targetMode: 'interactive',
+          tokenBudget: 2000,
+        },
+        contextWindow: 1000000,
+        hydratedState: {
+          sessionId: 'session-001',
+          userId: 'user-001',
+          conversationHistory: items,
+        },
+      })
+
+      const bundle = manager.assemble(input)
+
+      expect(bundle.contextWindow).toBe(1000000)
+      expect(bundle.compactHints?.shouldCompactSoon).toBe(false)
+    })
+
+    it('should fall back to the selectionPolicy tokenBudget when contextWindow is absent', () => {
+      const items = Array.from({ length: 20 }, (_, i) =>
+        createMockItem({
+          itemId: `item-${i}`,
+          estimatedTokens: 300,
+          priority: i,
+        }),
+      )
+
+      const input = createMockInput({
+        selectionPolicy: {
+          targetMode: 'interactive',
+          tokenBudget: 2000,
+        },
+        hydratedState: {
+          sessionId: 'session-001',
+          userId: 'user-001',
+          conversationHistory: items,
+        },
+      })
+
+      const bundle = manager.assemble(input)
+
+      expect(bundle.contextWindow).toBeUndefined()
+      expect(bundle.compactHints?.shouldCompactSoon).toBe(true)
+    })
   })
 
   describe('Pair Integrity', () => {

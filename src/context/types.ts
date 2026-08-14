@@ -314,6 +314,13 @@ export type ContextAssemblyInput = {
   }
   workingContext?: WorkingContext
   selectionPolicy: SelectionPolicy
+  /**
+   * The resolved model's declared context window in tokens (e.g. DeepSeek
+   * 1,000,000). When present it takes precedence over `selectionPolicy.tokenBudget`
+   * for compaction/selection budget computation; when absent the caller-provided
+   * token budget (typically the `context_tokens` resource limit) applies.
+   */
+  contextWindow?: number
 }
 
 export type ArtifactRef = {
@@ -351,6 +358,13 @@ export type ContextBundle = {
   attachmentRefs?: AttachmentRef[]
   tokenEstimate: number
   compactHints?: CompactHints
+  /**
+   * The resolved model's declared context window in tokens (e.g. DeepSeek
+   * 1,000,000). The kernel's compaction trigger uses it as the utilization
+   * budget denominator when present, falling back to the bundle token
+   * estimate otherwise.
+   */
+  contextWindow?: number
   workDirRoot?: string
   workDirId?: string
 }

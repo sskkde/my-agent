@@ -299,6 +299,7 @@ export class ContextManager {
         : undefined,
       tokenEstimate: ctx.report.tokenEstimate || 0,
       compactHints,
+      ...(input.contextWindow !== undefined ? { contextWindow: input.contextWindow } : {}),
     }
   }
 
@@ -347,7 +348,8 @@ export class ContextManager {
   }
 
   private generateCompactHints(ctx: PipelineContext): ContextBundle['compactHints'] {
-    const { tokenBudget } = ctx.input.selectionPolicy
+    const { selectionPolicy } = ctx.input
+    const tokenBudget = ctx.input.contextWindow ?? selectionPolicy.tokenBudget
     const tokenEstimate = ctx.report.tokenEstimate || 0
     const utilizationRatio = tokenEstimate / tokenBudget
 
