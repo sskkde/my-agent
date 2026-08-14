@@ -523,4 +523,49 @@ describe('Batch dispatch (external tools flushed as one batch)', () => {
     expect(soloEntry.result).toEqual({ solo: true })
     expect(soloEntry.error).toBeUndefined()
   })
+
+  // =====================================================================
+  // Per-tool timeout propagation (Fix-P1-2): the batch dispatch must carry
+  // the max PER_TOOL_TIMEOUT_MS value into executionPolicy.timeoutMs so
+  // search_subagent / foreground_launch_subagent get 90s (not the 30s
+  // dispatcher default) when dispatched through the batch path.
+  // =====================================================================
+
+  it('should carry the max PER_TOOL_TIMEOUT_MS into the batch executionPolicy.timeoutMs', async () => {
+    const toolCalls: ToolCall[] = [
+      { id: 'call-search', type: 'function', function: { name: 'search_subagent', arguments: '{}' } },
+      { id: 'call-other', type: 'function', function: { name: 'other-tool', arguments: '{}' } },
+    ]
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('Timeout carried.')])
+    const kernel = new AgentKernel(createConfig(adapter))
+    await kernel.run(createInput({ toolProjection: toolProjectionFor('search_subagent', 'other-tool') }))
+
+    expect(fakeDispatcher.dispatchCalls).toHaveLength(1)
+    const policy = (
+      fakeDispatcher.dispatchCalls[0]?.action?.targetAction as {
+        toolDispatchRequest?: { executionPolicy?: { timeoutMs?: number; maxConcurrency?: number } }
+      }
+    )?.toolDispatchRequest?.executionPolicy
+    expect(policy?.timeoutMs).toBe(90_000)
+    expect(policy?.maxConcurrency).toBe(5)
+  })
+
+  it('should omit executionPolicy.timeoutMs when the batch has no per-tool override', async () => {
+    const toolCalls: ToolCall[] = [
+      { id: 'call-x', type: 'function', function: { name: 'plain-tool', arguments: '{}' } },
+      { id: 'call-y', type: 'function', function: { name: 'plain-tool', arguments: '{}' } },
+    ]
+
+    const adapter = new FakeLLMAdapter([createToolUseResponse(toolCalls), createTextResponse('No override.')])
+    const kernel = new AgentKernel(createConfig(adapter))
+    await kernel.run(createInput({ toolProjection: toolProjectionFor('plain-tool') }))
+
+    const policy = (
+      fakeDispatcher.dispatchCalls[0]?.action?.targetAction as {
+        toolDispatchRequest?: { executionPolicy?: { timeoutMs?: number } }
+      }
+    )?.toolDispatchRequest?.executionPolicy
+    expect(policy?.timeoutMs).toBeUndefined()
+  })
 })

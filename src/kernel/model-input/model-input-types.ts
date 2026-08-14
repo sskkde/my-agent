@@ -587,6 +587,13 @@ export interface BuiltModelInput {
   segments: ModelInputSegments
   /** SHA-256 hashes of each segment */
   segmentHashes: ModelInputSegmentHashes
+  /**
+   * Combined SHA-256 of the Segment A+B+C hashes (the cache-stable prefix).
+   * Segment D is excluded — it is always dynamic. Computed via `computeCacheKey`.
+   * Optional on the type because test fixtures and non-builder callers may
+   * construct a BuiltModelInput without it.
+   */
+  prefixHash?: string
   /** Build metadata */
   metadata: ModelInputMetadata
 }

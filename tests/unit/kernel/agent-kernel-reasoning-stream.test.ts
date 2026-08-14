@@ -450,4 +450,20 @@ describe('AgentKernel reasoning stream broadcast (T4)', () => {
       .filter((entry) => entry.event.eventType === 'thinking_summary')
     expect(thinkingEvents.length).toBe(0)
   })
+
+  it('reasoning-only turn yields a valid empty assistant message instead of a failed turn (P2-3)', async () => {
+    const reasoningDeltas = ['I thought ', REASONING_FIXTURE, ' about it.']
+    const adapter = new ReasoningStreamingLLMAdapter(reasoningDeltas, [])
+
+    const config = makeBaseConfig({ llmAdapter: adapter })
+    const kernel = new AgentKernel(config)
+
+    const result = await kernel.run(makeRunInput())
+
+    expect(result.finalStatus).toBe('completed')
+    // Valid empty assistant message: finalResponse is '' (never null) and the
+    // reasoning fixture is NOT merged into it.
+    expect(result.finalResponse).toBe('')
+    expect(result.reasoningContent).toBe(`I thought ${REASONING_FIXTURE} about it.`)
+  })
 })

@@ -31,8 +31,12 @@ import {
   renderSummaryLayers,
 } from './model-input-types.js'
 import { computeTemplateHash } from '../../prompt/template-hash.js'
+import { computeCacheKey } from './model-input-cache-key.js'
+import { DEFAULT_TENANT_ID } from '../../tenancy/tenant-context.js'
+import { composePrefixKey, type ModelInputPrefixStore } from '../../storage/model-input-prefix-store.js'
 import { enforceSegmentDBudget } from './segment-d-budget.js'
 import { StaticPrefixBuilder } from './static-prefix-builder.js'
+import { stableToolSort } from '../../tools/tool-schema-canonicalizer.js'
 import { renderDocumentsSkillPlane, renderSummarySkillPlane } from './skill-plane-projection-renderer.js'
 import type {
   PromptTemplateRegistry,
@@ -50,16 +54,24 @@ import {
 export interface ModelInputBuilderDeps {
   templateRegistry: PromptTemplateRegistry
   templateLoader: TemplateLoader
+  /**
+   * Optional persistence for the cache-stable prefix fingerprint. When set,
+   * `build()` records the combined prefix hash per tenant and logs a warning
+   * on cross-turn drift (hash change). Best-effort only — never throws.
+   */
+  modelInputPrefixStore?: ModelInputPrefixStore
 }
 
 export class ModelInputBuilder {
   private readonly staticPrefixBuilder: StaticPrefixBuilder
   private readonly templateRegistry: PromptTemplateRegistry
   private readonly templateLoader: TemplateLoader
+  private readonly modelInputPrefixStore: ModelInputPrefixStore | undefined
 
   constructor(deps: ModelInputBuilderDeps) {
     this.templateRegistry = deps.templateRegistry
     this.templateLoader = deps.templateLoader
+    this.modelInputPrefixStore = deps.modelInputPrefixStore
     this.staticPrefixBuilder = new StaticPrefixBuilder(deps.templateRegistry, deps.templateLoader)
   }
 
@@ -84,6 +96,9 @@ export class ModelInputBuilder {
 
     const messages = this.assembleMessages(segmentA, segmentB, segmentC, segmentD, input)
 
+    const prefixHash = computeCacheKey(segmentA.hash, segmentB.hash, segmentC.hash)
+    this.recordPrefixDrift(resolved.agentProfile, input.providerFamily, input.outputContract, prefixHash)
+
     const droppedContextReasons =
       segmentD.droppedContextReasons && segmentD.droppedContextReasons.length > 0
         ? JSON.stringify(segmentD.droppedContextReasons)
@@ -104,6 +119,7 @@ export class ModelInputBuilder {
         segmentC: segmentC.hash,
         segmentD: segmentD.hash,
       },
+      prefixHash,
       metadata: {
         mode: input.mode,
         agentKind: resolved.agentKind,
@@ -114,6 +130,34 @@ export class ModelInputBuilder {
         outputContract: input.outputContract,
         launchSource: input.launchSource,
       },
+    }
+  }
+
+  /**
+   * Best-effort prefix drift detection (observability must never break message
+   * processing — anti-pattern #11): record the combined prefix hash and warn
+   * when it changed since the previous build for the same configuration.
+   */
+  private recordPrefixDrift(
+    agentProfile: string,
+    providerFamily: string,
+    outputContract: string | undefined,
+    prefixHash: string,
+  ): void {
+    if (!this.modelInputPrefixStore) return
+    try {
+      const prefixKey = composePrefixKey(agentProfile, providerFamily, outputContract)
+      if (this.modelInputPrefixStore.recordPrefixHash(DEFAULT_TENANT_ID, prefixKey, prefixHash)) {
+        console.warn('[ModelInputBuilder] model-input prefix drift detected', {
+          prefixKey,
+          prefixHash,
+          timestamp: new Date().toISOString(),
+        })
+      }
+    } catch (err) {
+      console.warn('[ModelInputBuilder] failed to record model-input prefix drift (best-effort)', {
+        error: err instanceof Error ? err.message : String(err),
+      })
     }
   }
 
@@ -611,5 +655,11 @@ export function extractToolsForRequest(input: ModelInputBuildInput): LLMToolDefi
     return undefined
   }
 
-  return input.toolProjection.tools
+  // Canonical order for every consumer (foreground + child sessions): DeepSeek
+  // prefix-cache stability requires LLMRequest.tools to be deterministic
+  // regardless of registry insertion order. LLM-form tools carry no category,
+  // so the sort falls back to name ordering via stableToolSort.
+  return stableToolSort(input.toolProjection.tools.map((tool) => ({ name: tool.function.name, tool }))).map(
+    (entry) => entry.tool,
+  )
 }

@@ -61,7 +61,17 @@ export function computeToolExposureHash(tools: ToolDefinition[]): string {
   return createHash('sha256').update(canonicalTools).digest('hex')
 }
 
-export function stableToolSort(tools: ToolDefinition[]): ToolDefinition[] {
+/**
+ * Minimal fields the deterministic sort reads. `category` is optional so the
+ * same canonical order applies to LLM-form tool definitions (which only carry
+ * `function.name`, no category) — those fall back to name-only ordering.
+ */
+export interface SortableTool {
+  name: string
+  category?: ToolCategory
+}
+
+export function stableToolSort<T extends SortableTool>(tools: T[]): T[] {
   return [...tools].sort((a, b) => {
     const categoryOrder = getCategoryOrder(a.category) - getCategoryOrder(b.category)
     if (categoryOrder !== 0) return categoryOrder
@@ -73,7 +83,7 @@ export function stableToolSort(tools: ToolDefinition[]): ToolDefinition[] {
   })
 }
 
-function getCategoryOrder(category: ToolCategory): number {
+function getCategoryOrder(category: ToolCategory | undefined): number {
   const order: Record<ToolCategory, number> = {
     read: 1,
     search: 2,
@@ -86,7 +96,7 @@ function getCategoryOrder(category: ToolCategory): number {
     admin: 9,
     connector: 10,
   }
-  return order[category] ?? 99
+  return category === undefined ? 99 : (order[category] ?? 99)
 }
 
 export function canonicalizeToolList(tools: ToolDefinition[]): string {

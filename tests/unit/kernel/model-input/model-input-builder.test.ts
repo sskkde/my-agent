@@ -5,6 +5,7 @@ import { PromptTemplateRegistry, type PromptTemplateRecord } from '../../../../s
 import { TemplateLoader } from '../../../../src/prompt/template-loader.js'
 import { ModelInputBuilder, extractToolsForRequest } from '../../../../src/kernel/model-input/model-input-builder.js'
 import { computeCacheKey } from '../../../../src/kernel/model-input/model-input-cache-key.js'
+import { composePrefixKey, type ModelInputPrefixStore } from '../../../../src/storage/model-input-prefix-store.js'
 import { StaticPrefixBuilder } from '../../../../src/kernel/model-input/static-prefix-builder.js'
 import type {
   ModelInputBuildInput,
@@ -146,6 +147,19 @@ function makeMinimalInput(overrides: Partial<ModelInputBuildInput> = {}): ModelI
     agentProfile: 'default_main',
     providerFamily: 'openai',
     ...overrides,
+  }
+}
+
+function makeMockPrefixStore(): ModelInputPrefixStore {
+  const rows = new Map<string, string>()
+  return {
+    recordPrefixHash: (tenantId, prefixKey, prefixHash) => {
+      const key = `${tenantId ?? 'org_default'}|${prefixKey}`
+      const existing = rows.get(key)
+      rows.set(key, prefixHash)
+      return existing !== undefined && existing !== prefixHash
+    },
+    getPrefixHash: (tenantId, prefixKey) => rows.get(`${tenantId ?? 'org_default'}|${prefixKey}`) ?? null,
   }
 }
 
@@ -413,6 +427,84 @@ describe('ModelInputBuilder', () => {
       const key1 = computeCacheKey('hash-a', 'hash-b', 'hash-c')
       const key2 = computeCacheKey('hash-a', 'hash-b', 'hash-c')
       expect(key1).toBe(key2)
+    })
+  })
+
+  describe('prefix hash', () => {
+    it('exposes a 64-char prefix hash on the build result', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(makeMinimalInput())
+      expect(result.prefixHash).toMatch(/^[a-f0-9]{64}$/)
+    })
+
+    it('equals computeCacheKey of the Segment A/B/C hashes', async () => {
+      const builder = makeBuilder()
+      const result = await builder.build(makeMinimalInput())
+      expect(result.prefixHash).toBe(
+        computeCacheKey(result.segmentHashes.segmentA, result.segmentHashes.segmentB, result.segmentHashes.segmentC),
+      )
+    })
+
+    it('is deterministic for the same configuration', async () => {
+      const builder = makeBuilder()
+      const result1 = await builder.build(makeMinimalInput())
+      const result2 = await builder.build(makeMinimalInput())
+      expect(result1.prefixHash).toBe(result2.prefixHash)
+    })
+
+    it('changes when Segment A changes but not when only Segment D changes', async () => {
+      const builder = makeBuilder()
+      const baseline = await builder.build(makeMinimalInput({ currentUserMessage: 'hello' }))
+      const differentD = await builder.build(makeMinimalInput({ currentUserMessage: 'world' }))
+      const differentA = await builder.build(
+        makeMinimalInput({ currentUserMessage: 'hello', agentProfile: 'foreground' }),
+      )
+      expect(differentD.prefixHash).toBe(baseline.prefixHash)
+      expect(differentA.prefixHash).not.toBe(baseline.prefixHash)
+    })
+  })
+
+  describe('prefix drift detection', () => {
+    it('records the fingerprint with the composed prefix key on first build', async () => {
+      const store = makeMockPrefixStore()
+      const templates = makeTestTemplates()
+      const registry = new PromptTemplateRegistry(templates, '/nonexistent')
+      const loader = new TemplateLoader('/nonexistent')
+      const builder = new ModelInputBuilder({
+        templateRegistry: registry,
+        templateLoader: loader,
+        modelInputPrefixStore: store,
+      })
+
+      const result = await builder.build(
+        makeMinimalInput({ agentProfile: 'default_main', outputContract: 'output:default-chat.schema' }),
+      )
+      const key = composePrefixKey('default_main', 'openai', 'output:default-chat.schema')
+      expect(store.getPrefixHash('org_default', key)).toBe(result.prefixHash)
+    })
+
+    it('never throws when the store fails', async () => {
+      const failingStore: ModelInputPrefixStore = {
+        recordPrefixHash: () => {
+          throw new Error('db down')
+        },
+        getPrefixHash: () => null,
+      }
+      const templates = makeTestTemplates()
+      const registry = new PromptTemplateRegistry(templates, '/nonexistent')
+      const loader = new TemplateLoader('/nonexistent')
+      const builder = new ModelInputBuilder({
+        templateRegistry: registry,
+        templateLoader: loader,
+        modelInputPrefixStore: failingStore,
+      })
+
+      await expect(builder.build(makeMinimalInput())).resolves.toBeDefined()
+    })
+
+    it('does not throw when no store is configured', async () => {
+      const builder = makeBuilder()
+      await expect(builder.build(makeMinimalInput())).resolves.toBeDefined()
     })
   })
 
@@ -1118,6 +1210,35 @@ describe('Skill Plane Projection', () => {
       expect(tools).toBeDefined()
       expect(tools).toHaveLength(1)
       expect(tools![0].function.name).toBe('file_read')
+    })
+
+    it('extractToolsForRequest returns tools in canonical order regardless of input order', () => {
+      const makeTool = (name: string) => ({
+        type: 'function' as const,
+        function: {
+          name,
+          description: `Tool ${name}`,
+          parameters: { type: 'object' as const, properties: {} },
+        },
+      })
+
+      const names = ['zebra_tool', 'alpha_tool', 'mike_tool']
+      const expected = ['alpha_tool', 'mike_tool', 'zebra_tool']
+
+      for (const shuffled of [
+        [names[0], names[1], names[2]],
+        [names[2], names[0], names[1]],
+        [names[1], names[2], names[0]],
+      ]) {
+        const input = makeMinimalInput({
+          mode: 'function_calling',
+          toolProjection: { toolIds: expected, tools: shuffled.map(makeTool) },
+        })
+
+        const tools = extractToolsForRequest(input)
+        expect(tools).toBeDefined()
+        expect(tools!.map((t) => t.function.name)).toEqual(expected)
+      }
     })
   })
 

@@ -117,6 +117,52 @@ describe('compact trigger executor invocation', () => {
     // Then: no error thrown, executor simply not present
     expect(config.compactExecutor).toBeUndefined()
   })
+
+  it('executor is NOT called when the model context window is 1M and used tokens are small', async () => {
+    // Given: DeepSeek-scale context window (1M) with only ~10K tokens in context
+    const items = [makeContextItem('item-0', 10_000)]
+    const bundle = makeHighUtilizationBundle({
+      orderedItems: items,
+      tokenEstimate: 10_000,
+      contextWindow: 1_000_000,
+      compactHints: {
+        shouldCompactSoon: true,
+        candidateItemIds: ['item-0'],
+        mustKeepItemIds: [],
+      },
+    })
+    const config = makeBaseConfig({ compactExecutor: mockExecutor })
+    const kernel = new AgentKernel(config)
+
+    // When: kernel runs (10K / 1M = 1% utilization)
+    await kernel.run(makeRunInput(bundle))
+
+    // Then: executor is not called — the 1M window defers compaction
+    expect(mockExecutor).not.toHaveBeenCalled()
+  })
+
+  it('executor IS called when the model context window is 1M and used tokens approach the 0.8 threshold', async () => {
+    // Given: DeepSeek-scale context window (1M) with ~900K tokens in context
+    const items = [makeContextItem('item-0', 900_000)]
+    const bundle = makeHighUtilizationBundle({
+      orderedItems: items,
+      tokenEstimate: 900_000,
+      contextWindow: 1_000_000,
+      compactHints: {
+        shouldCompactSoon: true,
+        candidateItemIds: ['item-0'],
+        mustKeepItemIds: [],
+      },
+    })
+    const config = makeBaseConfig({ compactExecutor: mockExecutor })
+    const kernel = new AgentKernel(config)
+
+    // When: kernel runs (900K / 1M = 90% utilization > 0.8)
+    await kernel.run(makeRunInput(bundle))
+
+    // Then: executor is called at ~1M scale
+    expect(mockExecutor).toHaveBeenCalled()
+  })
 })
 
 // ─── Context Update Tests ────────────────────────────────────────────────────

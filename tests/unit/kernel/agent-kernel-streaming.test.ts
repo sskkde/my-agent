@@ -418,6 +418,91 @@ describe('AgentKernel streaming behavior', () => {
       expect(textBroadcasts[0].token.delta).toBe('Single response')
       expect(broadcasts.some((b) => b.token.isFinal === true)).toBe(true)
     })
+
+    it('accumulates promptCacheHitTokens/promptCacheMissTokens across LLM calls in a turn (P2-1)', async () => {
+      class CacheUsageToolAdapter extends FakeStreamingLLMAdapter {
+        private calls = 0
+
+        async complete(request: LLMRequest): Promise<LLMResult> {
+          this.lastRequest = request
+          this.completeCallCount++
+          this.calls++
+          if (this.calls === 1) {
+            return {
+              success: true,
+              response: {
+                id: 'resp-cache-1',
+                model: request.model,
+                content: '',
+                role: 'assistant',
+                finishReason: 'tool_calls',
+                createdAt: new Date().toISOString(),
+                toolCalls: [{ id: 'call-1', type: 'function', function: { name: 'get_weather', arguments: '{}' } }],
+                usage: {
+                  promptTokens: 100,
+                  completionTokens: 10,
+                  totalTokens: 110,
+                  promptCacheHitTokens: 80,
+                  promptCacheMissTokens: 20,
+                },
+              },
+              providerId: 'fake-cache',
+            }
+          }
+          return {
+            success: true,
+            response: {
+              id: 'resp-cache-2',
+              model: request.model,
+              content: 'done',
+              role: 'assistant',
+              finishReason: 'stop',
+              createdAt: new Date().toISOString(),
+              usage: {
+                promptTokens: 50,
+                completionTokens: 5,
+                totalTokens: 55,
+                promptCacheHitTokens: 30,
+                promptCacheMissTokens: 20,
+              },
+            },
+            providerId: 'fake-cache',
+          }
+        }
+
+        async *stream() {
+          yield* []
+        }
+      }
+
+      const adapter = new CacheUsageToolAdapter()
+      const toolProjection = {
+        toolIds: ['get_weather'],
+        tools: [
+          {
+            type: 'function' as const,
+            function: {
+              name: 'get_weather',
+              description: 'weather',
+              parameters: { type: 'object', properties: {} },
+            },
+          },
+        ],
+      }
+      const config = makeBaseConfig({ llmAdapter: adapter })
+      const kernel = new AgentKernel(config)
+
+      const result = await kernel.run({ ...makeRunInput(), toolProjection, maxIterations: 3 })
+
+      expect(result.finalStatus).toBe('completed')
+      expect(result.finalResponse).toBe('done')
+      expect(result.tokenUsage).toBeDefined()
+      expect(result.tokenUsage!.promptCacheHitTokens).toBe(80 + 30)
+      expect(result.tokenUsage!.promptCacheMissTokens).toBe(20 + 20)
+      expect(result.tokenUsage!.promptTokens).toBe(150)
+      expect(result.tokenUsage!.completionTokens).toBe(15)
+      expect(result.tokenUsage!.totalTokens).toBe(165)
+    })
   })
 
   describe('Streaming failure handling', () => {

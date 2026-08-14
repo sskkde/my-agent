@@ -85,7 +85,13 @@ export class AgentKernel {
     const maxIterations = input.maxIterations ?? this.config.maxIterations
     const timeoutMs = input.timeoutMs ?? this.config.timeoutMs
     const pairingGuard = new ToolResultPairingGuard()
-    const aggregatedUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+    const aggregatedUsage: TokenUsage = {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      promptCacheHitTokens: 0,
+      promptCacheMissTokens: 0,
+    }
 
     if (timeoutMs <= 0) {
       state.status = 'failed'
@@ -221,6 +227,10 @@ export class AgentKernel {
           aggregatedUsage.promptTokens += llmResult.response.usage.promptTokens
           aggregatedUsage.completionTokens += llmResult.response.usage.completionTokens
           aggregatedUsage.totalTokens += llmResult.response.usage.totalTokens
+          aggregatedUsage.promptCacheHitTokens =
+            (aggregatedUsage.promptCacheHitTokens ?? 0) + (llmResult.response.usage.promptCacheHitTokens ?? 0)
+          aggregatedUsage.promptCacheMissTokens =
+            (aggregatedUsage.promptCacheMissTokens ?? 0) + (llmResult.response.usage.promptCacheMissTokens ?? 0)
         }
 
         const llmResponse = llmResult.response
@@ -229,6 +239,10 @@ export class AgentKernel {
           content: llmResponse.content,
           toolCalls: llmResponse.toolCalls,
           finishReason: llmResponse.finishReason,
+          // DeepSeek thinking-mode passback: persist reasoning only on tool-call turns.
+          ...(llmResponse.toolCalls && llmResponse.toolCalls.length > 0 && llmResponse.reasoningContent
+            ? { reasoningContent: llmResponse.reasoningContent }
+            : {}),
         })
 
         // SIGNAL CHECK 3: after LLM response, before tool dispatch
@@ -459,6 +473,17 @@ export class AgentKernel {
           }
           return completedResult
         }
+
+        // Reasoning-only completion: the model answered entirely in the reasoning
+        // channel with no assistant text and no tool calls. Complete the turn with
+        // a VALID empty assistant message (content ''), never a failure.
+        // SAFETY: reasoning is NOT merged into content — finalResponse stays ''.
+        if (llmResponse.reasoningContent) {
+          state.status = 'completed'
+          const completedResult = this.buildResult(state, 'completed', undefined, '', undefined, input, aggregatedUsage)
+          completedResult.reasoningContent = llmResponse.reasoningContent
+          return completedResult
+        }
       }
 
       this.flushPairingGuard(pairingGuard, state, 'max_iterations', input)
@@ -622,6 +647,13 @@ export class AgentKernel {
       tools,
     }
 
+    // DeepSeek thinking-mode tool loops require reasoning_content passback on
+    // assistant tool-call turns. Gate the request so ONLY the deepseek family
+    // emits it on the wire; every other provider stays unchanged.
+    if (resolveProviderFamily(this.config.providerFamily, input.model) === 'deepseek') {
+      llmRequest.reasoningContentPassback = true
+    }
+
     if (input.maxTokens !== undefined) {
       llmRequest.maxTokens = input.maxTokens
     }
@@ -655,6 +687,7 @@ export class AgentKernel {
         const llmContent = entry.content as {
           content?: string
           toolCalls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>
+          reasoningContent?: string
         }
 
         const activeToolCalls = llmContent.toolCalls?.filter((tc) => !state.compactedToolCallIds.has(tc.id))
@@ -666,12 +699,14 @@ export class AgentKernel {
             role: 'assistant',
             content: llmContent.content ?? '',
             toolCalls: activeToolCalls,
+            ...(llmContent.reasoningContent ? { reasoningContent: llmContent.reasoningContent } : {}),
           })
         } else if (isToolLoopV2Enabled() && hasToolCallsWithoutResults) {
           messages.push({
             role: 'assistant',
             content: llmContent.content ?? '',
             toolCalls: activeToolCalls,
+            ...(llmContent.reasoningContent ? { reasoningContent: llmContent.reasoningContent } : {}),
           })
         } else if (llmContent.content) {
           messages.push({
@@ -963,7 +998,12 @@ export class AgentKernel {
         await Promise.race([streamLoop(), timeoutPromise])
       }
 
-      if (aggregator.isEmpty) {
+      // A completion that produced ONLY reasoning (no assistant text, no tool
+      // calls — e.g. DeepSeek reasoning_content) is still a valid completion:
+      // toResponse() below emits an empty assistant message (content: '') with
+      // the reasoning carried separately in reasoningContent. Fail only when the
+      // stream is genuinely empty (no text, no tool calls, no reasoning).
+      if (aggregator.isEmpty && !aggregator.reasoningContent) {
         return { success: false }
       }
 
@@ -1199,6 +1239,15 @@ export class AgentKernel {
       }),
     )
 
+    // Per-tool timeout overrides (PER_TOOL_TIMEOUT_MS) apply at batch level: the
+    // dispatch contract carries a single executionPolicy.timeoutMs, so the batch
+    // uses the max of the per-tool values. Tools without an override keep the
+    // dispatcher default (30s) when no override is present in the batch.
+    const batchTimeoutMs = batch.reduce<number | undefined>((max, { toolRequest }) => {
+      const toolTimeoutMs = PER_TOOL_TIMEOUT_MS[toolRequest.toolName]
+      return toolTimeoutMs !== undefined ? Math.max(max ?? 0, toolTimeoutMs) : max
+    }, undefined)
+
     const toolDispatchRequest = createToolDispatchRequest({
       runId: effectiveRunId,
       userId: input.userId,
@@ -1216,6 +1265,7 @@ export class AgentKernel {
       executionPolicy: {
         maxConcurrency: 5,
         allowParallelReadOnly: true,
+        ...(batchTimeoutMs !== undefined ? { timeoutMs: batchTimeoutMs } : {}),
       },
       ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
       ...(input.workDirId ? { workDirId: input.workDirId } : {}),
@@ -1462,7 +1512,8 @@ export class AgentKernel {
     const tokenEstimate = contextBundle.tokenEstimate
     const usedTokens = state.contextItems.reduce((sum, item) => sum + (item.estimatedTokens || 0), 0)
 
-    const utilizationRatio = usedTokens / (tokenEstimate || 1)
+    const budget = contextBundle.contextWindow ?? tokenEstimate
+    const utilizationRatio = usedTokens / (budget || 1)
 
     if (utilizationRatio > threshold && contextBundle.compactHints?.shouldCompactSoon) {
       return {
