@@ -85,6 +85,9 @@ export function registerDefaultRuntimeAdapters(deps: {
           workDirRoot?: string
           workDirId?: string
           turnSource?: string
+          executionPolicy?: {
+            maxConcurrency?: number
+          }
         }
       }
 
@@ -123,7 +126,22 @@ export function registerDefaultRuntimeAdapters(deps: {
           }
         })
 
-        const orchestrator = createToolOrchestrator({ executor: toolExecutor, registry: toolRegistry })
+        // executionPolicy.maxConcurrency drives read-tool parallelism; validate it
+        // is a positive integer and fall back to the orchestrator default (5) when
+        // absent or invalid.
+        const requestedMaxConcurrency = payload.toolDispatchRequest?.executionPolicy?.maxConcurrency
+        const maxParallelReads =
+          typeof requestedMaxConcurrency === 'number' &&
+          Number.isInteger(requestedMaxConcurrency) &&
+          requestedMaxConcurrency > 0
+            ? requestedMaxConcurrency
+            : undefined
+
+        const orchestrator = createToolOrchestrator({
+          executor: toolExecutor,
+          registry: toolRegistry,
+          ...(maxParallelReads !== undefined ? { maxParallelReads } : {}),
+        })
         return orchestrator.executeBatch(toolUses, { timeoutMs: action.policy?.timeoutMs, signal: context.signal })
       }
 
