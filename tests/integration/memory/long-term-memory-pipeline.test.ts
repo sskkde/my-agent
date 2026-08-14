@@ -76,6 +76,7 @@ describe('Long-term Memory Pipeline Integration', () => {
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
         const elapsed = Date.now() - start
 
@@ -90,6 +91,7 @@ describe('Long-term Memory Pipeline Integration', () => {
             userId: 'user-1',
             sessionId: 'session-1',
             triggerTurnId: 'turn-1',
+            model: 'test-model',
           })
         }).not.toThrow()
       })
@@ -105,6 +107,7 @@ describe('Long-term Memory Pipeline Integration', () => {
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
 
         expect(result).toBeDefined()
@@ -121,10 +124,29 @@ describe('Long-term Memory Pipeline Integration', () => {
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
 
         const runs = memoryExtractionRunStore.listByUser('user-1')
         expect(runs.length).toBeGreaterThanOrEqual(1)
+      })
+
+      it('should skip extraction and record nothing when no model is provided', async () => {
+        seedTranscript('user-1', 'session-1', 'turn-1')
+
+        const scheduler = createScheduler()
+
+        const result = await scheduler.runOnce({
+          userId: 'user-1',
+          sessionId: 'session-1',
+          triggerTurnId: 'turn-1',
+        })
+
+        expect(result).toEqual({ status: 'skipped', reason: 'no_model' })
+        expect(mockLlmAdapter.complete).not.toHaveBeenCalled()
+
+        const runs = memoryExtractionRunStore.listByUser('user-1')
+        expect(runs).toHaveLength(0)
       })
 
       it('should return duplicate for same window hash on second call', async () => {
@@ -136,12 +158,14 @@ describe('Long-term Memory Pipeline Integration', () => {
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
 
         const second = await scheduler.runOnce({
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
 
         if (first.status !== 'failed') {
@@ -166,6 +190,7 @@ describe('Long-term Memory Pipeline Integration', () => {
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
 
         await scheduler.drain()
@@ -184,11 +209,13 @@ describe('Long-term Memory Pipeline Integration', () => {
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
         scheduler.scheduleAfterTurn({
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-2',
+          model: 'test-model',
         })
 
         await scheduler.drain()
@@ -227,6 +254,7 @@ describe('Long-term Memory Pipeline Integration', () => {
           userId: 'user-1',
           sessionId: 'session-1',
           triggerTurnId: 'turn-1',
+          model: 'test-model',
         })
 
         expect(result.status).toBe('failed')
@@ -253,6 +281,7 @@ describe('Long-term Memory Pipeline Integration', () => {
             userId: 'user-1',
             sessionId: 'session-1',
             triggerTurnId: 'turn-1',
+            model: 'test-model',
           })
         }).not.toThrow()
 

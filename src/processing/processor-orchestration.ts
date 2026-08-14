@@ -35,6 +35,7 @@ import type { ProviderConfigStore } from '../storage/provider-config-store.js'
 import type { AgentConfigStore, AgentConfig } from '../storage/agent-config-store.js'
 import type { SessionStore } from '../storage/session-store.js'
 import type { LongTermMemoryScheduler } from '../memory/long-term-memory-scheduler.js'
+import type { RollingSummaryScheduler } from '../memory/rolling-summary-scheduler.js'
 import type { SummaryManager } from '../memory/types.js'
 import type {
   ProcessingStatusPayload,
@@ -95,6 +96,8 @@ export interface ProcessorOrchestrationDeps {
   }
   /** Scheduler for async long-term memory extraction after transcript persistence */
   memoryExtractionScheduler?: LongTermMemoryScheduler
+  /** Scheduler for async rolling-summary generation after transcript persistence */
+  rollingSummaryScheduler?: RollingSummaryScheduler
   /** Summary manager for compact summary persistence — enables compact executor DI */
   summaryManager?: SummaryManager
 }
@@ -489,6 +492,18 @@ export function createOrchestrationProcessor(
           userId: input.userId,
           sessionId: input.sessionId,
           triggerTurnId: input.correlationId,
+          model: resolvedModel,
+          providerId: resolvedProviderId,
+        })
+      }
+
+      if (deps.rollingSummaryScheduler && persisted && output.success) {
+        deps.rollingSummaryScheduler.scheduleAfterTurn({
+          userId: input.userId,
+          sessionId: input.sessionId,
+          triggerTurnId: input.correlationId,
+          model: resolvedModel,
+          providerId: resolvedProviderId,
         })
       }
 

@@ -227,6 +227,7 @@ describe('LongTermMemoryExtractorService', () => {
       memoryExtractionRunStore: extractionRunStore,
       llmAdapter,
       modelInputBuilder: createMockModelInputBuilder(),
+      model: 'test-model',
     }
   }
 
@@ -454,6 +455,69 @@ describe('LongTermMemoryExtractorService', () => {
       expect(memories[0].content.text).toBe('User prefers dark mode')
       expect(memories[0].fingerprint).toBeDefined()
       expect(memories[0].sourceWindowHash).toBeDefined()
+    })
+  })
+
+  describe('Model Resolution', () => {
+    it('should skip extraction when no model is provided and never call the LLM', async () => {
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-1' }))
+
+      const llmAdapter = createMockLLMAdapter(JSON.stringify({ candidates: [] }))
+      const deps = createDeps(llmAdapter)
+      delete deps.model
+
+      const service = createLongTermMemoryExtractorService(deps)
+      const result = await service.run()
+
+      expect(result).toEqual({ status: 'skipped', reason: 'no_model' })
+      expect(llmAdapter.complete).not.toHaveBeenCalled()
+
+      const runs = extractionRunStore.listByUser('user-1')
+      expect(runs).toHaveLength(0)
+    })
+
+    it('should use the provided model for the extraction LLM request', async () => {
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-1' }))
+
+      const llmAdapter = createMockLLMAdapter(JSON.stringify({ candidates: [] }))
+      const deps = createDeps(llmAdapter)
+      deps.model = 'session-resolved-model'
+
+      const service = createLongTermMemoryExtractorService(deps)
+      await service.run()
+
+      const callArgs = (llmAdapter.complete as ReturnType<typeof vi.fn>).mock.calls[0]
+      const request = callArgs[0] as LLMRequest
+      expect(request.model).toBe('session-resolved-model')
+    })
+
+    it('should bound the extraction request with default maxTokens when not provided', async () => {
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-1' }))
+
+      const llmAdapter = createMockLLMAdapter(JSON.stringify({ candidates: [] }))
+      const deps = createDeps(llmAdapter)
+
+      const service = createLongTermMemoryExtractorService(deps)
+      await service.run()
+
+      const callArgs = (llmAdapter.complete as ReturnType<typeof vi.fn>).mock.calls[0]
+      const request = callArgs[0] as LLMRequest
+      expect(request.maxTokens).toBe(2048)
+    })
+
+    it('should respect an explicit maxTokens override', async () => {
+      transcriptStore.saveTurn(makeTurn({ turnId: 'turn-1' }))
+
+      const llmAdapter = createMockLLMAdapter(JSON.stringify({ candidates: [] }))
+      const deps = createDeps(llmAdapter)
+      deps.maxTokens = 512
+
+      const service = createLongTermMemoryExtractorService(deps)
+      await service.run()
+
+      const callArgs = (llmAdapter.complete as ReturnType<typeof vi.fn>).mock.calls[0]
+      const request = callArgs[0] as LLMRequest
+      expect(request.maxTokens).toBe(512)
     })
   })
 

@@ -14,12 +14,18 @@ export type SchedulerDeps = {
   llmAdapter: LLMAdapter
   modelInputBuilder: ModelInputBuilder
   providerFamily?: string
+  /** Bounded output tokens for the extraction call (default: 2048). */
+  maxTokens?: number
 }
 
 export type ScheduleInput = {
   userId: string
   sessionId: string
   triggerTurnId: string
+  /** Session-resolved model id from the turn context (never hardcoded). */
+  model?: string
+  /** Session-resolved provider id (observability only). */
+  providerId?: string
 }
 
 export interface LongTermMemoryScheduler {
@@ -40,6 +46,9 @@ async function executeExtraction(deps: SchedulerDeps, input: ScheduleInput): Pro
     llmAdapter: deps.llmAdapter,
     modelInputBuilder: deps.modelInputBuilder,
     providerFamily: deps.providerFamily,
+    model: input.model,
+    providerId: input.providerId,
+    maxTokens: deps.maxTokens,
   })
 
   return service.run()

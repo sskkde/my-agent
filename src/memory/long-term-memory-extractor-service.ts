@@ -26,17 +26,23 @@ export type ExtractorServiceDeps = {
   memoryExtractionRunStore: MemoryExtractionRunStore
   llmAdapter: LLMAdapter
   modelInputBuilder: ModelInputBuilder
+  /** Session-resolved model id (never hardcoded; no model → extraction skipped). */
   model?: string
   providerFamily?: string
+  /** Session-resolved provider id (observability only). */
+  providerId?: string
+  /** Bounded output tokens for the extraction call (default: 2048). */
+  maxTokens?: number
 }
 
 export type ExtractionResult =
   | { status: 'succeeded'; resultCounts: ResultCounts }
   | { status: 'duplicate' }
   | { status: 'failed'; errorCode: string }
+  | { status: 'skipped'; reason: 'no_model' }
 
 const MAX_PRECEDING_TURNS = 2
-const DEFAULT_MODEL = 'gpt-4o-mini'
+const DEFAULT_MAX_TOKENS = 2048
 
 function buildWindow(deps: ExtractorServiceDeps): MemoryExtractionWindow | null {
   const turns = deps.transcriptStore.findBySession(deps.sessionId)
@@ -143,6 +149,10 @@ function buildMemoryRecord(
 export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps) {
   return {
     async run(): Promise<ExtractionResult> {
+      if (!deps.model) {
+        return { status: 'skipped', reason: 'no_model' }
+      }
+
       const window = buildWindow(deps)
       if (!window) {
         return { status: 'failed', errorCode: 'INVALID_WINDOW' }
@@ -190,9 +200,10 @@ export function createLongTermMemoryExtractorService(deps: ExtractorServiceDeps)
         })
 
         const request: LLMRequest = {
-          model: deps.model ?? DEFAULT_MODEL,
+          model: deps.model,
           messages: builtInput.messages,
           responseFormat: { type: 'json_object' },
+          maxTokens: deps.maxTokens ?? DEFAULT_MAX_TOKENS,
         }
 
         const llmResult = await deps.llmAdapter.complete(request)
