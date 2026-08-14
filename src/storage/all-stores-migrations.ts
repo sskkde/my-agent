@@ -2956,6 +2956,28 @@ export const askRequestsTableMigration: Migration = {
   `,
 }
 
+// v78 — model-input prefix fingerprints per tenant, with cross-turn drift
+// detection (hash change on the cache-stable Segment A+B+C prefix).
+export const modelInputPrefixTableMigration: Migration = {
+  version: 78,
+  name: 'create_model_input_prefix_table',
+  up: `
+    CREATE TABLE model_input_prefix (
+      tenant_id TEXT NOT NULL DEFAULT 'org_default',
+      prefix_key TEXT NOT NULL,
+      prefix_hash TEXT NOT NULL,
+      first_seen_at TEXT NOT NULL,
+      last_seen_at TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, prefix_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_model_input_prefix_tenant_key ON model_input_prefix(tenant_id, prefix_key)
+  `,
+  down: `
+    DROP INDEX IF EXISTS idx_model_input_prefix_tenant_key;
+    DROP TABLE IF EXISTS model_input_prefix
+  `,
+}
+
 export const allStoreMigrations: Migration[] = [
   // Core stores
   eventsTableMigration, // v1
@@ -3127,6 +3149,7 @@ export const allStoreMigrations: Migration[] = [
   subagentChildLinkageMigration, // v75
   backgroundChildTaskPersistenceMigration, // v76
   askRequestsTableMigration, // v77
+  modelInputPrefixTableMigration, // v78
 ]
 
 /**
