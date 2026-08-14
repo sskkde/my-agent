@@ -74,6 +74,23 @@ describe('provider-runtime', () => {
     })
   })
 
+  it('defaults streamIdleTimeoutMs on providers built from candidates', async () => {
+    providerConfigStore.create({
+      providerId: 'provider-idle',
+      userId: 'user-idle',
+      providerType: 'openai',
+      displayName: 'Idle',
+      apiKey: 'sk-idle',
+      selectedModel: 'gpt-4o-mini',
+    })
+
+    const adapter = createProviderScopedLLMAdapter({ providerConfigStore })
+
+    await adapter.runWithUserProviders('user-idle', async () => {
+      expect(adapter.providers[0].config.streamIdleTimeoutMs).toBe(300000)
+    })
+  })
+
   it('skips providers whose API key cannot be decrypted instead of failing the turn', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 

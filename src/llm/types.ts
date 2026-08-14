@@ -20,6 +20,13 @@ export interface LLMMessage {
   name?: string
   toolCalls?: ToolCall[]
   toolCallId?: string
+  /**
+   * Provider reasoning text (e.g. DeepSeek `reasoning_content`) replayed from a
+   * previous assistant tool-call turn. SAFETY: MUST NOT be merged into `content`;
+   * it is only ever emitted as a separate sibling `reasoning_content` field on
+   * the wire, and only for the deepseek family (see `reasoningContentPassback`).
+   */
+  reasoningContent?: string
 }
 
 /**
@@ -52,6 +59,13 @@ export interface LLMRequest {
   responseFormat?: { type: 'json_object' | 'text' }
   /** Session/user reasoning depth; mapped to provider reasoning_effort when supported. */
   reasoningDepth?: import('./reasoning-depth.js').ReasoningDepth
+  /**
+   * DeepSeek-dialect gate: when true, assistant history messages that carried
+   * tool calls re-emit their `reasoningContent` as `reasoning_content` on the
+   * wire (required by DeepSeek thinking mode). Set ONLY by the deepseek path;
+   * false/absent keeps every other provider's request unchanged.
+   */
+  reasoningContentPassback?: boolean
 }
 
 /**
@@ -162,6 +176,7 @@ export interface ProviderConfig {
   enabled: boolean
   priority: number
   timeoutMs: number
+  streamIdleTimeoutMs?: number
   retries: number
   capabilities: ProviderCapabilities
   apiKey?: string

@@ -840,4 +840,30 @@ describe('StreamResponseAggregator reasoning accumulation (T3)', () => {
     expect(response.content).toBe('Final answer.')
     expect(response.content).not.toContain('REASONING_FIXTURE_12345')
   })
+
+  it('isEmpty is false for a reasoning-only stream (P2-3): reasoning counts as non-empty', () => {
+    const agg = new StreamResponseAggregator()
+    agg.apply({ kind: 'reasoning', delta: 'REASONING_FIXTURE_12345', providerId: 'p1' })
+    agg.apply({ kind: 'finish', finishReason: 'stop', providerId: 'p1' })
+    expect(agg.isEmpty).toBe(false)
+    // toResponse emits a valid empty assistant message: content '' (never null),
+    // with reasoning carried separately.
+    const response = agg.toResponse('gpt-4')
+    expect(response.content).toBe('')
+    expect(response.reasoningContent).toBe('REASONING_FIXTURE_12345')
+  })
+
+  it('isEmpty is true only when there is no text, no tool calls, and no reasoning', () => {
+    const empty = new StreamResponseAggregator()
+    empty.apply({ kind: 'finish', finishReason: 'stop', providerId: 'p1' })
+    expect(empty.isEmpty).toBe(true)
+
+    const textOnly = new StreamResponseAggregator()
+    textOnly.apply({ kind: 'text', delta: 'answer', providerId: 'p1' })
+    expect(textOnly.isEmpty).toBe(false)
+
+    const toolOnly = new StreamResponseAggregator()
+    toolOnly.apply({ kind: 'tool_call_delta', index: 0, id: 'c1', name: 'search', providerId: 'p1' })
+    expect(toolOnly.isEmpty).toBe(false)
+  })
 })

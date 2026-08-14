@@ -95,9 +95,9 @@ export class StreamResponseAggregator {
     return this.providerId
   }
 
-  /** True when the stream produced nothing useful (no text and no tool calls). */
+  /** True when the stream produced nothing useful (no text, no tool calls, and no reasoning). */
   get isEmpty(): boolean {
-    return !this.hasContent && !this.hasToolCalls
+    return !this.hasContent && !this.hasToolCalls && this.reasoningParts.length === 0
   }
 
   /**

@@ -84,6 +84,10 @@ export function buildOpenAICompatibleHeaders(input: {
  * @returns OpenAI API request body
  */
 export function buildOpenAIChatRequestBody(request: LLMRequest, stream = false): Record<string, unknown> {
+  // `reasoning_content` is a DeepSeek-dialect field. Only the deepseek path sets
+  // `reasoningContentPassback`, so every other provider's request stays unchanged.
+  const reasoningContentPassback = request.reasoningContentPassback === true
+
   const body: Record<string, unknown> = {
     model: request.model,
     messages: request.messages.map((m) => ({
@@ -101,6 +105,16 @@ export function buildOpenAIChatRequestBody(request: LLMRequest, stream = false):
               arguments: tc.function.arguments,
             },
           })),
+        }),
+      // SAFETY: reasoning is emitted as a separate sibling field — never merged
+      // into content. Only assistant tool-call turns carry it (DeepSeek thinking
+      // mode requires the passback); plain turns omit it to save tokens.
+      ...(reasoningContentPassback &&
+        m.role === 'assistant' &&
+        m.toolCalls &&
+        m.toolCalls.length > 0 &&
+        m.reasoningContent && {
+          reasoning_content: m.reasoningContent,
         }),
     })),
   }

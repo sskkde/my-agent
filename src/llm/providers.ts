@@ -2,7 +2,7 @@ import type { LLMRequest, LLMResponse, LLMResult, ProviderConfig, ProviderStream
 import type { LLMProvider, ProviderStats, ProviderHealthStatus } from './provider'
 import type { CircuitBreaker, CircuitBreakerConfig } from './circuit-breaker'
 import { createCircuitBreaker } from './circuit-breaker'
-import type { RuntimeError, ErrorSource } from '../shared/errors'
+import type { RuntimeError, ErrorSource, TechnicalErrorDetails } from '../shared/errors'
 import {
   buildOpenAIChatRequestBody,
   mapOpenAIChatResponse,
@@ -33,6 +33,44 @@ interface LLMAdapterConfig {
   enableCircuitBreaker: boolean
   circuitBreakerConfig?: Partial<CircuitBreakerConfig>
   enableLogging?: boolean
+}
+
+const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300_000
+
+function attachProviderRequestId(error: RuntimeError, response: Response): RuntimeError {
+  const requestId = response.headers?.get('x-request-id') ?? response.headers?.get('x-deepseek-request-id')
+  if (!requestId) return error
+  const technical: TechnicalErrorDetails & { requestId?: string } = { ...error.technical, requestId }
+  return { ...error, technical }
+}
+
+async function readErrorBody(response: Response): Promise<string | undefined> {
+  try {
+    return await response.text()
+  } catch {
+    return undefined
+  }
+}
+
+function parseRetryAfterMs(response: Response): number | undefined {
+  const header = response.headers?.get('retry-after')
+  if (!header) return undefined
+  const value = header.trim()
+  if (/^\d+$/.test(value)) {
+    return Number(value) * 1000
+  }
+  const dateMs = Date.parse(value)
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now())
+  }
+  return undefined
+}
+
+function caughtErrorTechnical(error: unknown): TechnicalErrorDetails | undefined {
+  if (error && typeof error === 'object' && 'technical' in error && error.technical !== undefined) {
+    return error.technical as TechnicalErrorDetails
+  }
+  return undefined
 }
 
 function redactApiKey(key: string | undefined): string {
@@ -193,7 +231,8 @@ export class BaseProvider implements LLMProvider {
 async function* readStreamLines(
   body: ReadableStream<Uint8Array>,
   parseLine: (line: string) => ProviderStreamEvent | null | ProviderStreamEvent[],
-  signal: AbortSignal,
+  controller: AbortController,
+  streamIdleTimeoutMs: number,
 ): AsyncGenerator<ProviderStreamEvent> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
@@ -208,10 +247,22 @@ async function* readStreamLines(
     yield parsed
   }
 
+  let idleTimer: ReturnType<typeof setTimeout> | undefined
+
+  const armIdleTimer = (): void => {
+    if (idleTimer !== undefined) clearTimeout(idleTimer)
+    idleTimer = setTimeout(() => controller.abort(), streamIdleTimeoutMs)
+  }
+
   try {
     for (;;) {
-      if (signal.aborted) break
+      if (controller.signal.aborted) break
+      armIdleTimer()
       const { done, value } = await reader.read()
+      if (idleTimer !== undefined) {
+        clearTimeout(idleTimer)
+        idleTimer = undefined
+      }
       if (done) break
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split('\n')
@@ -225,6 +276,7 @@ async function* readStreamLines(
       yield* emit(parseLine(remaining))
     }
   } finally {
+    if (idleTimer !== undefined) clearTimeout(idleTimer)
     reader.releaseLock()
   }
 }
@@ -254,6 +306,7 @@ export class OpenAIAdapter extends BaseProvider {
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${this.apiKey}`,
+      'x-request-id': crypto.randomUUID(),
     }
     const headers = safeMergeHeaders(baseHeaders, this.config.headers)
 
@@ -281,7 +334,13 @@ export class OpenAIAdapter extends BaseProvider {
       const latencyMs = Date.now() - startTime
 
       if (!response.ok) {
-        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        const error = attachProviderRequestId(
+          createErrorFromResponse(response.status, response.statusText, this.id, source, {
+            errorBody: await readErrorBody(response),
+            retryAfterMs: parseRetryAfterMs(response),
+          }),
+          response,
+        )
         this.recordError(error)
         this.updateStats(false, latencyMs)
         logResponse(this.id, false, latencyMs, this.config.enableLogging || false)
@@ -334,6 +393,7 @@ export class OpenAIAdapter extends BaseProvider {
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${this.apiKey}`,
+      'x-request-id': crypto.randomUUID(),
     }
     const headers = safeMergeHeaders(baseHeaders, this.config.headers)
 
@@ -357,7 +417,13 @@ export class OpenAIAdapter extends BaseProvider {
       })
 
       if (!response.ok) {
-        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        const error = attachProviderRequestId(
+          createErrorFromResponse(response.status, response.statusText, this.id, source, {
+            errorBody: await readErrorBody(response),
+            retryAfterMs: parseRetryAfterMs(response),
+          }),
+          response,
+        )
         this.recordError(error)
         throw error
       }
@@ -369,7 +435,12 @@ export class OpenAIAdapter extends BaseProvider {
       const startTime = Date.now()
       let yielded = false
 
-      for await (const event of readStreamLines(response.body, parseOpenAIStreamEvents, controller.signal)) {
+      for await (const event of readStreamLines(
+        response.body,
+        parseOpenAIStreamEvents,
+        controller,
+        this.config.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+      )) {
         yielded = true
         yield event
       }
@@ -386,6 +457,7 @@ export class OpenAIAdapter extends BaseProvider {
         this.updateStats(false, latencyMs, true)
         throw timeoutError
       }
+      const caughtTechnical = caughtErrorTechnical(error)
       const connectionError: RuntimeError = {
         errorId: `err_stream_${this.id}_${Date.now()}`,
         category: 'model_error',
@@ -393,6 +465,7 @@ export class OpenAIAdapter extends BaseProvider {
         message: error instanceof Error ? error.message : 'Unknown stream error',
         recoverability: 'retryable_later',
         source,
+        ...(caughtTechnical ? { technical: caughtTechnical } : {}),
         createdAt: new Date().toISOString(),
       }
       this.recordError(connectionError)
@@ -437,6 +510,7 @@ export class OpenRouterAdapter extends BaseProvider {
       appName: this.appName,
       extraHeaders: this.config.headers,
     })
+    headers['x-request-id'] = crypto.randomUUID()
 
     logRequest(url, headers, this.config.enableLogging || false)
 
@@ -458,7 +532,13 @@ export class OpenRouterAdapter extends BaseProvider {
       const latencyMs = Date.now() - startTime
 
       if (!response.ok) {
-        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        const error = attachProviderRequestId(
+          createErrorFromResponse(response.status, response.statusText, this.id, source, {
+            errorBody: await readErrorBody(response),
+            retryAfterMs: parseRetryAfterMs(response),
+          }),
+          response,
+        )
         this.recordError(error)
         this.updateStats(false, latencyMs)
         logResponse(this.id, false, latencyMs, this.config.enableLogging || false)
@@ -515,6 +595,7 @@ export class OpenRouterAdapter extends BaseProvider {
       appName: this.appName,
       extraHeaders: this.config.headers,
     })
+    headers['x-request-id'] = crypto.randomUUID()
 
     let body: Record<string, unknown> = { ...buildRequestBody(request), stream: true }
     body = applyReasoningDepthToBody('openrouter', body, request.reasoningDepth)
@@ -531,7 +612,13 @@ export class OpenRouterAdapter extends BaseProvider {
       })
 
       if (!response.ok) {
-        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        const error = attachProviderRequestId(
+          createErrorFromResponse(response.status, response.statusText, this.id, source, {
+            errorBody: await readErrorBody(response),
+            retryAfterMs: parseRetryAfterMs(response),
+          }),
+          response,
+        )
         this.recordError(error)
         throw error
       }
@@ -543,7 +630,12 @@ export class OpenRouterAdapter extends BaseProvider {
       const startTime = Date.now()
       let yielded = false
 
-      for await (const event of readStreamLines(response.body, parseOpenAIStreamEvents, controller.signal)) {
+      for await (const event of readStreamLines(
+        response.body,
+        parseOpenAIStreamEvents,
+        controller,
+        this.config.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+      )) {
         yielded = true
         yield event
       }
@@ -559,6 +651,7 @@ export class OpenRouterAdapter extends BaseProvider {
         this.updateStats(false, 0, true)
         throw timeoutError
       }
+      const caughtTechnical = caughtErrorTechnical(error)
       const streamError: RuntimeError = {
         errorId: `err_stream_${this.id}_${Date.now()}`,
         category: 'model_error',
@@ -566,6 +659,7 @@ export class OpenRouterAdapter extends BaseProvider {
         message: error instanceof Error ? error.message : 'Unknown stream error',
         recoverability: 'retryable_later',
         source,
+        ...(caughtTechnical ? { technical: caughtTechnical } : {}),
         createdAt: new Date().toISOString(),
       }
       this.recordError(streamError)
@@ -607,6 +701,7 @@ export class OllamaAdapter extends BaseProvider {
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${this.apiKey}`,
+      'x-request-id': crypto.randomUUID(),
     }
     const headers = safeMergeHeaders(baseHeaders, this.config.headers)
 
@@ -630,7 +725,13 @@ export class OllamaAdapter extends BaseProvider {
       const latencyMs = Date.now() - startTime
 
       if (!response.ok) {
-        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        const error = attachProviderRequestId(
+          createErrorFromResponse(response.status, response.statusText, this.id, source, {
+            errorBody: await readErrorBody(response),
+            retryAfterMs: parseRetryAfterMs(response),
+          }),
+          response,
+        )
         this.recordError(error)
         this.updateStats(false, latencyMs)
         logResponse(this.id, false, latencyMs, this.config.enableLogging || false)
@@ -683,6 +784,7 @@ export class OllamaAdapter extends BaseProvider {
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${this.apiKey}`,
+      'x-request-id': crypto.randomUUID(),
     }
     const headers = safeMergeHeaders(baseHeaders, this.config.headers)
 
@@ -702,7 +804,13 @@ export class OllamaAdapter extends BaseProvider {
       })
 
       if (!response.ok) {
-        const error = createErrorFromResponse(response.status, response.statusText, this.id, source)
+        const error = attachProviderRequestId(
+          createErrorFromResponse(response.status, response.statusText, this.id, source, {
+            errorBody: await readErrorBody(response),
+            retryAfterMs: parseRetryAfterMs(response),
+          }),
+          response,
+        )
         this.recordError(error)
         throw error
       }
@@ -714,7 +822,12 @@ export class OllamaAdapter extends BaseProvider {
       const startTime = Date.now()
       let yielded = false
 
-      for await (const event of readStreamLines(response.body, parseOpenAIStreamEvents, controller.signal)) {
+      for await (const event of readStreamLines(
+        response.body,
+        parseOpenAIStreamEvents,
+        controller,
+        this.config.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+      )) {
         yielded = true
         yield event
       }
@@ -730,6 +843,7 @@ export class OllamaAdapter extends BaseProvider {
         this.updateStats(false, 0, true)
         throw timeoutError
       }
+      const caughtTechnical = caughtErrorTechnical(error)
       const streamError: RuntimeError = {
         errorId: `err_stream_${this.id}_${Date.now()}`,
         category: 'model_error',
@@ -737,6 +851,7 @@ export class OllamaAdapter extends BaseProvider {
         message: error instanceof Error ? error.message : 'Unknown stream error',
         recoverability: 'retryable_later',
         source,
+        ...(caughtTechnical ? { technical: caughtTechnical } : {}),
         createdAt: new Date().toISOString(),
       }
       this.recordError(streamError)

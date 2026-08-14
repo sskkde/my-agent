@@ -11,6 +11,7 @@ import { deriveRequestRequirements, canServeRequest } from './routing/request-re
 import { DOMESTIC_PROVIDERS } from './catalog/domestic-providers.js'
 
 const DEFAULT_TIMEOUT_MS = 60000
+const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 300000
 
 interface RefreshLLMProvidersOptions {
   adapter: LLMAdapter
@@ -43,7 +44,11 @@ function createProvider(providerType: ProviderType, config: RuntimeProviderConfi
 }
 
 function createProviderFromCandidate(candidate: ProviderCandidate): LLMProvider {
-  return createProvider(candidate.providerType as ProviderType, candidate.config)
+  const config: RuntimeProviderConfig = {
+    ...candidate.config,
+    streamIdleTimeoutMs: candidate.config.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+  }
+  return createProvider(candidate.providerType as ProviderType, config)
 }
 
 function buildEnvProviderDescriptors(): EnvProviderDescriptor[] {

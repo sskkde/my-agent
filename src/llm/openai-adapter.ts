@@ -1,6 +1,7 @@
 import type { LLMRequest, LLMResponse, LLMResult, ProviderConfig } from './types'
 import { applyReasoningDepthToBody } from './reasoning-depth.js'
 import { mapOpenAIChatResponse } from './transform/openai-chat-transformer.js'
+import { createErrorFromResponse } from './transform/provider-errors.js'
 import type { LLMProvider, ProviderStats, ProviderHealthStatus } from './provider'
 import type { CircuitBreaker, CircuitBreakerConfig } from './circuit-breaker'
 import { createCircuitBreaker } from './circuit-breaker'
@@ -42,52 +43,6 @@ function logResponse(providerId: string, success: boolean, latencyMs: number, en
   if (!enableLogging) return
   const status = success ? 'SUCCESS' : 'FAILED'
   console.log(`[LLM] ${providerId}: ${status} in ${latencyMs}ms`)
-}
-
-function createErrorFromResponse(
-  status: number,
-  statusText: string,
-  providerId: string,
-  source: ErrorSource,
-): RuntimeError {
-  const baseError = {
-    errorId: `err_${providerId}_${Date.now()}`,
-    message: `HTTP ${status}: ${statusText}`,
-    recoverability: 'retryable_later' as const,
-    source,
-    createdAt: new Date().toISOString(),
-  }
-
-  if (status === 429) {
-    return {
-      ...baseError,
-      category: 'connector_rate_limited',
-      code: 'RATE_LIMIT_ERROR',
-      technical: { retryAfterMs: 60000 },
-    }
-  }
-
-  if (status >= 500) {
-    return {
-      ...baseError,
-      category: 'model_error',
-      code: 'PROVIDER_ERROR',
-    }
-  }
-
-  if (status >= 400) {
-    return {
-      ...baseError,
-      category: 'model_error',
-      code: 'REQUEST_ERROR',
-    }
-  }
-
-  return {
-    ...baseError,
-    category: 'model_error',
-    code: 'UNKNOWN_ERROR',
-  }
 }
 
 function mapOpenAIResponse(data: Record<string, unknown>): LLMResponse {

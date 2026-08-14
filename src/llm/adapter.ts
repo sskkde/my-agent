@@ -9,6 +9,50 @@ import { toLLMStreamChunk } from './types.js'
 import type { CircuitBreakerConfig } from './circuit-breaker'
 import type { RuntimeError, ErrorSource } from '../shared/errors'
 import type { RetryPolicy } from '../shared/retry'
+import { isRetryable } from '../shared/retry'
+
+/**
+ * Per-provider retry backoff (exponential with jitter).
+ * Local to the adapter: retry-executor's RetryResult/cancel-token shape does
+ * not map onto a per-provider attempt loop inside one complete()/stream() call.
+ */
+const RETRY_INITIAL_DELAY_MS = 500
+const RETRY_BACKOFF_FACTOR = 2
+const RETRY_MAX_DELAY_MS = 10000
+const RETRY_JITTER_RATIO = 0.1
+
+function computeRetryDelayMs(retryIndex: number): number {
+  const delayMs = RETRY_INITIAL_DELAY_MS * Math.pow(RETRY_BACKOFF_FACTOR, retryIndex)
+  const boundedDelay = Math.min(delayMs, RETRY_MAX_DELAY_MS)
+  const jitter = boundedDelay * RETRY_JITTER_RATIO * Math.random()
+  return Math.min(Math.floor(boundedDelay + jitter), RETRY_MAX_DELAY_MS)
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isRuntimeError(error: unknown): error is RuntimeError {
+  return (
+    typeof error === 'object' && error !== null && 'recoverability' in error && 'code' in error && 'category' in error
+  )
+}
+
+/** Whether a provider error warrants a same-provider retry (recoverability-gated). */
+function shouldRetryProviderError(error: RuntimeError): boolean {
+  // Never retry through an already-open circuit breaker - it is blocking by design.
+  if (error.code === 'CIRCUIT_BREAKER_OPEN') {
+    return false
+  }
+  return isRetryable(error)
+}
+
+/** Backoff wait, never less than the provider Retry-After hint (e.g. 429), capped at the ceiling. */
+function retryWaitMs(error: RuntimeError, retryIndex: number): number {
+  const backoffMs = computeRetryDelayMs(retryIndex)
+  const retryAfterMs = error.technical?.retryAfterMs ?? 0
+  return Math.min(Math.max(backoffMs, retryAfterMs), RETRY_MAX_DELAY_MS)
+}
 
 /**
  * LLM Adapter configuration
@@ -138,7 +182,7 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
       const startTime = Date.now()
 
       try {
-        const result = await provider.complete(request)
+        const result = await completeProviderWithRetries(provider, request)
         const latencyMs = Date.now() - startTime
 
         if (result.success) {
@@ -185,6 +229,53 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
     }
   }
 
+  /**
+   * Attempts one provider up to `retries + 1` times.
+   * Non-retryable errors (auth/quota/invalid request/context overflow) and an
+   * open circuit breaker skip the retry loop immediately; the backoff is
+   * bounded by the provider's own timeout budget so the whole sequence stays
+   * inside a single complete() call. Failover (trying the next provider) is a
+   * separate mechanism in the caller and is unaffected.
+   */
+  const completeProviderWithRetries = async (provider: LLMProvider, req: LLMRequest): Promise<LLMResult> => {
+    const maxRetries = Math.max(0, provider.config.retries ?? 0)
+    const attemptDeadline = Date.now() + Math.max(provider.config.timeoutMs, finalConfig.defaultTimeoutMs)
+    let lastResult: LLMResult | undefined
+
+    for (let retryIndex = 0; retryIndex <= maxRetries; retryIndex++) {
+      try {
+        const result = await provider.complete(req)
+        lastResult = result
+        if (result.success || !shouldRetryProviderError(result.error)) {
+          return result
+        }
+      } catch (error) {
+        lastResult = {
+          success: false,
+          error: {
+            errorId: `err_provider_exception_${Date.now()}`,
+            category: 'model_error',
+            code: 'PROVIDER_EXCEPTION',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            recoverability: 'retryable_later',
+            source: { module: 'llm_adapter', runId: req.model },
+            createdAt: new Date().toISOString(),
+          },
+          providerId: provider.id,
+        }
+      }
+
+      if (retryIndex >= maxRetries) break
+      if (!lastResult || lastResult.success) break
+
+      const waitMs = retryWaitMs(lastResult.error, retryIndex)
+      if (Date.now() + waitMs >= attemptDeadline) break
+      await sleep(waitMs)
+    }
+
+    return lastResult as LLMResult
+  }
+
   async function* stream(request: LLMRequest): AsyncGenerator<LLMStreamChunk> {
     const healthyProviders = getHealthyProviders()
 
@@ -195,10 +286,31 @@ export function createLLMAdapter(config: LLMAdapterConfig): LLMAdapter {
     for (const provider of healthyProviders) {
       if (provider.stream) {
         try {
-          for await (const event of provider.stream(request)) {
-            yield toLLMStreamChunk(event, provider.id, request.model)
+          const maxRetries = Math.max(0, provider.config.retries ?? 0)
+          const attemptDeadline = Date.now() + Math.max(provider.config.timeoutMs, finalConfig.defaultTimeoutMs)
+          let yieldedAny = false
+
+          for (let retryIndex = 0; retryIndex <= maxRetries; retryIndex++) {
+            try {
+              for await (const event of provider.stream(request)) {
+                yieldedAny = true
+                yield toLLMStreamChunk(event, provider.id, request.model)
+              }
+              return
+            } catch (error) {
+              // Never retry a stream that already emitted chunks - replay would duplicate content.
+              if (yieldedAny) throw error
+
+              const runtimeError = isRuntimeError(error) ? error : undefined
+              if (runtimeError !== undefined && !shouldRetryProviderError(runtimeError)) throw error
+              if (retryIndex >= maxRetries) throw error
+
+              const waitMs =
+                runtimeError === undefined ? computeRetryDelayMs(retryIndex) : retryWaitMs(runtimeError, retryIndex)
+              if (Date.now() + waitMs >= attemptDeadline) throw error
+              await sleep(waitMs)
+            }
           }
-          return
         } catch {
           continue
         }
