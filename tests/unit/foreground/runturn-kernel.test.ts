@@ -312,6 +312,44 @@ describe('ForegroundAgent.runTurn via AgentKernel', () => {
     expect(kernelInput.contextBundle.compactHints!.candidateItemIds!.length).toBeGreaterThan(0)
   })
 
+  it('uses the DeepSeek 1M context window as the compaction budget when the model resolves', async () => {
+    const state = createMockForegroundState()
+    state.resolvedProvider = 'deepseek'
+    state.resolvedModel = 'deepseek-v4-flash'
+    const longHistory = Array.from({ length: 20 }, (_, i) => ({
+      turnId: `turn-${i}`,
+      message: 'A'.repeat(1600),
+      timestamp: `2024-01-15T10:0${i}:00.000Z`,
+      role: 'user' as const,
+    }))
+    state.conversationHistory = longHistory
+
+    const input = createMockInput({ foregroundState: state })
+    await agent.runTurn!(input)
+
+    const kernelInput = vi.mocked(mockAgentKernel.run).mock.calls[0][0] as KernelRunInput
+    expect(kernelInput.contextBundle.contextWindow).toBe(1_000_000)
+    expect(kernelInput.contextBundle.compactHints!.shouldCompactSoon).toBe(false)
+  })
+
+  it('falls back to the ~8K-scale budget when the model context window is unresolvable', async () => {
+    const state = createMockForegroundState()
+    const longHistory = Array.from({ length: 20 }, (_, i) => ({
+      turnId: `turn-${i}`,
+      message: 'A'.repeat(1600),
+      timestamp: `2024-01-15T10:0${i}:00.000Z`,
+      role: 'user' as const,
+    }))
+    state.conversationHistory = longHistory
+
+    const input = createMockInput({ foregroundState: state })
+    await agent.runTurn!(input)
+
+    const kernelInput = vi.mocked(mockAgentKernel.run).mock.calls[0][0] as KernelRunInput
+    expect(kernelInput.contextBundle.contextWindow).toBe(8192)
+    expect(kernelInput.contextBundle.compactHints!.shouldCompactSoon).toBe(true)
+  })
+
   // ─── Tool Schema Exposure Tests ─────────────────────────────────────────────
 
   describe('Tool schema projection', () => {

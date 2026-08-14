@@ -324,4 +324,38 @@ describe('buildContextBundleFromForegroundState — compactHints via tokenBudget
 
     expect(bundle.compactHints).toBeUndefined()
   })
+
+  it('carries the model context window onto the bundle when provided', () => {
+    const state = makeForegroundState([])
+    const input = makeTurnInput({ foregroundState: state })
+
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, 8000, undefined, 1_000_000)
+
+    expect(bundle.contextWindow).toBe(1_000_000)
+  })
+
+  it('leaves contextWindow undefined when the model context window is unknown', () => {
+    const state = makeForegroundState([])
+    const input = makeTurnInput({ foregroundState: state })
+
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, 8000)
+
+    expect(bundle.contextWindow).toBeUndefined()
+  })
+
+  it('does not compact at 1M-scale budget even with a long history', () => {
+    const history = Array.from({ length: 20 }, (_, i) => ({
+      turnId: `turn-${i}`,
+      message: 'B'.repeat(800),
+      timestamp: `2024-01-01T00:0${i % 10}:00.000Z`,
+      role: 'user' as const,
+    }))
+    const state = makeForegroundState(history)
+    const input = makeTurnInput({ foregroundState: state })
+
+    const bundle = buildContextBundleFromForegroundState(state, input, undefined, 1_000_000, undefined, 1_000_000)
+
+    expect(bundle.compactHints).toBeDefined()
+    expect(bundle.compactHints!.shouldCompactSoon).toBe(false)
+  })
 })

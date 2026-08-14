@@ -184,6 +184,7 @@ export function buildContextBundleFromForegroundState(
   }>,
   tokenBudget?: number,
   attachmentResolver?: AttachmentResolver,
+  contextWindow?: number,
 ): ContextBundle {
   const pinnedItems: ContextItem[] = buildPinnedItems(state)
   const todoContextItems: ContextItem[] = activeTodos
@@ -222,6 +223,7 @@ export function buildContextBundleFromForegroundState(
       tokenBudget !== undefined
         ? generateForegroundCompactHints([...pinnedItems, ...orderedItems], tokenBudget)
         : undefined,
+    ...(contextWindow !== undefined ? { contextWindow } : {}),
     ...(input.workDirRoot ? { workDirRoot: input.workDirRoot } : {}),
     ...(input.workDirId ? { workDirId: input.workDirId } : {}),
   }

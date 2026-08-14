@@ -11,6 +11,7 @@ import type { AgentConfig } from '../storage/agent-config-store.js'
 import type { BackgroundRuntime } from '../subagents/background-runtime.js'
 import type { ToolRegistry } from '../tools/types.js'
 import { buildContextBundleFromForegroundState, type AttachmentResolver } from './context-bundle-builder.js'
+import { resolveModelInfo } from '../llm/catalog/model-catalog.js'
 import {
   DEFAULT_FOREGROUND_MAX_ITERATIONS,
   DEFAULT_FOREGROUND_TIMEOUT_MS,
@@ -54,6 +55,10 @@ class ForegroundAgentImpl implements ForegroundAgent {
     this.agentKernel = options?.agentKernel
     this.toolCatalog = options?.toolCatalog
     this.toolRegistry = options?.toolRegistry
+    // Foreground turn budget — shared constants in kernel-guard-constants.ts
+    // (20 iterations / 360s). Per-turn input overrides these at runTurn time
+    // (input.maxIterations ?? this.maxIterations), which is what AgentKernel.run
+    // actually enforces.
     this.maxIterations = options?.maxIterations ?? DEFAULT_FOREGROUND_MAX_ITERATIONS
     this.timeoutMs = options?.timeoutMs ?? DEFAULT_FOREGROUND_TIMEOUT_MS
     this.skillRegistry = options?.skillRegistry
@@ -106,12 +111,17 @@ class ForegroundAgentImpl implements ForegroundAgent {
       }
     }
 
+    const effectiveConfig = input.agentConfig ?? this.agentConfig
+    const resolvedModel = input.foregroundState.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini'
+    const modelContextWindow = this.resolveModelContextWindow(resolvedModel, input.foregroundState.resolvedProvider)
+
     const contextBundle = buildContextBundleFromForegroundState(
       input.foregroundState,
       input,
       undefined,
-      DEFAULT_FOREGROUND_TOKEN_BUDGET,
+      modelContextWindow ?? DEFAULT_FOREGROUND_TOKEN_BUDGET,
       this.attachmentResolver,
+      modelContextWindow,
     )
     if (this.backgroundRuntime) {
       const notifications = this.backgroundRuntime.collectParentTurnNotifications({
@@ -127,8 +137,6 @@ class ForegroundAgentImpl implements ForegroundAgent {
     const allTools = this.getToolSummaries()
     const projectionResult = buildForegroundToolProjection(input, allTools, this.toolRegistry)
     const toolProjection = toToolPlaneProjection(projectionResult)
-    const effectiveConfig = input.agentConfig ?? this.agentConfig
-    const resolvedModel = input.foregroundState.resolvedModel ?? effectiveConfig?.model ?? 'gpt-4o-mini'
 
     const skillProjection = await this.buildForegroundSkillProjection(effectiveConfig)
 
@@ -153,6 +161,11 @@ class ForegroundAgentImpl implements ForegroundAgent {
 
     const kernelResult = await this.agentKernel.run(kernelInput)
     return this.mapKernelResultToForegroundResult(kernelResult, input.turnId)
+  }
+
+  private resolveModelContextWindow(model: string, providerId?: string): number | undefined {
+    const contextTokens = resolveModelInfo(providerId ?? '', model).limits.contextTokens
+    return contextTokens > 0 ? contextTokens : undefined
   }
 
   private mapKernelResultToForegroundResult(kernelResult: KernelRunResult, turnId: string): ForegroundTurnResult {

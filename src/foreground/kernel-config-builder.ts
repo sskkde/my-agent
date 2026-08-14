@@ -13,7 +13,11 @@ import type { ContextBundle, ContextItem, RuntimeContextDelta } from '../context
 import type { AttachmentResolver } from './context-bundle-builder.js'
 import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js'
 import { buildContextBundleFromForegroundState } from './context-bundle-builder.js'
-import { DEFAULT_FOREGROUND_TOKEN_BUDGET } from './kernel-guard-constants.js'
+import {
+  DEFAULT_FOREGROUND_MAX_ITERATIONS,
+  DEFAULT_FOREGROUND_TIMEOUT_MS,
+  DEFAULT_FOREGROUND_TOKEN_BUDGET,
+} from './kernel-guard-constants.js'
 import { createForegroundCompactExecutor } from './compact-executor-factory.js'
 
 /**
@@ -25,6 +29,7 @@ export class ForegroundContextManager implements ContextManager {
     foregroundState?: import('./types.js').ForegroundSessionState
     turnInput?: ForegroundTurnInput
     attachmentResolver?: AttachmentResolver
+    contextWindow?: number
     items: ContextItem[]
   } = { items: [] }
 
@@ -36,10 +41,12 @@ export class ForegroundContextManager implements ContextManager {
     foregroundState: import('./types.js').ForegroundSessionState,
     turnInput: ForegroundTurnInput,
     attachmentResolver?: AttachmentResolver,
+    contextWindow?: number,
   ): void {
     this.state.foregroundState = foregroundState
     this.state.turnInput = turnInput
     this.state.attachmentResolver = attachmentResolver
+    this.state.contextWindow = contextWindow
   }
 
   assembleBundle(): ContextBundle {
@@ -48,8 +55,9 @@ export class ForegroundContextManager implements ContextManager {
         this.state.foregroundState,
         this.state.turnInput,
         undefined,
-        DEFAULT_FOREGROUND_TOKEN_BUDGET,
+        this.state.contextWindow ?? DEFAULT_FOREGROUND_TOKEN_BUDGET,
         this.state.attachmentResolver,
+        this.state.contextWindow,
       )
     }
 
@@ -197,8 +205,13 @@ export function buildKernelConfigFromDeps(deps: ProcessorOrchestrationDeps, agen
     contextManager,
     dispatcher,
     modelInputBuilder,
-    maxIterations: 5,
-    timeoutMs: agentConfig?.routingTimeoutMs ?? 60000,
+    // Foreground turn budget — single source of truth is
+    // kernel-guard-constants.ts (20 iterations / 360s). AgentKernel.run
+    // prefers input.maxIterations / input.timeoutMs over this config; the
+    // routingTimeoutMs agent config (when set) still overrides the timeout
+    // default, otherwise the shared constant applies.
+    maxIterations: DEFAULT_FOREGROUND_MAX_ITERATIONS,
+    timeoutMs: agentConfig?.routingTimeoutMs ?? DEFAULT_FOREGROUND_TIMEOUT_MS,
     defaultModel: agentConfig?.model ?? undefined,
     compactExecutor,
   }

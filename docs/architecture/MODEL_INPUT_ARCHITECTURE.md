@@ -513,16 +513,18 @@ interface TokenUsage {
 
 ## Prompt Feature Flags
 
-T5-T7 taxonomy template consumption remains gated for rollout safety. Segment B sub-sections, Segment D provenance, top-level `summaryLayers`, and rich B3 persona rendering are completed default behavior and no longer have migration flags.
+T5-T7 taxonomy template consumption is **enabled by default** (matching `src/prompt/feature-flags.ts` `isEnabledUnlessExplicitlyFalse`). Segment B sub-sections, Segment D provenance, top-level `summaryLayers`, and rich B3 persona rendering are completed default behavior and no longer have migration flags.
+
+> **WARNING:** Flipping a T5/T6/T7 consumption flag to `false` (or setting the env var to `false`) changes the rendered content of Segment B/C/D and therefore **breaks the deepseek prefix-cache stability** (segment hashes change). Do not flip these flags on a stable deployment unless you are intentionally invalidating the cache.
 
 | Flag | Controls | Default |
 |---|---|---|
-| `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` | T5 `agentProfile:*` template rendering in Segment B | OFF |
-| `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` | T6 `toolProjection:*` template rendering in Segment C | OFF |
-| `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` | T7 `runtimeContext:*` template rendering in Segment D | OFF |
+| `PROMPT_T5_TEMPLATE_CONSUMPTION_ENABLED` | T5 `agentProfile:*` template rendering in Segment B | ON |
+| `PROMPT_T6_TEMPLATE_CONSUMPTION_ENABLED` | T6 `toolProjection:*` template rendering in Segment C | ON |
+| `PROMPT_T7_TEMPLATE_CONSUMPTION_ENABLED` | T7 `runtimeContext:*` template rendering in Segment D | ON |
 | `PROMPT_MEMORY_P0_ENABLED` | Base flag for P10 projections | OFF |
 
-When a T5-T7 consumption flag is OFF, the builder skips that taxonomy template path and segment hashes remain unchanged for that path.
+Because the T5-T7 flags are ON unless explicitly set to `false`, the builder renders the taxonomy template paths and the segment hashes reflect that content. Only an explicit `false` skips the path and leaves the corresponding segment hash unchanged.
 
 ---
 

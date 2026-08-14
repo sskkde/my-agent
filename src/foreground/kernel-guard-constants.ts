@@ -15,12 +15,23 @@ import type { KernelRunResult, KernelRunStatus } from '../kernel/types.js'
 /**
  * Default maximum iterations for foreground kernel execution.
  * This limit prevents runaway tool loops in user-facing interactions.
+ *
+ * Single source of truth for the foreground turn budget. Effective runtime
+ * precedence: ForegroundTurnInput.maxIterations > ForegroundAgent options
+ * > this constant. foreground-agent.runTurn always resolves a value
+ * (defaulting here), and AgentKernel.run prefers input over its config, so
+ * the effective foreground budget is 20 iterations unless overridden.
  */
 export const DEFAULT_FOREGROUND_MAX_ITERATIONS = 20
 
 /**
  * Default timeout in milliseconds for foreground kernel execution.
  * Limits total execution time to prevent long-running user-facing requests.
+ *
+ * Same single-source-of-truth role as DEFAULT_FOREGROUND_MAX_ITERATIONS:
+ * ForegroundTurnInput.timeoutMs > ForegroundAgent options > this constant,
+ * with AgentKernel.run preferring the input value. The effective foreground
+ * timeout is 360s (360000ms) unless overridden.
  */
 export const DEFAULT_FOREGROUND_TIMEOUT_MS = 360000
 

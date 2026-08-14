@@ -44,6 +44,10 @@ import type { AskAnswer } from '../storage/ask-store.js'
 import { getBackgroundAutoContinueEnabled } from '../config/background-auto-continue.js'
 import { createOrchestrationProcessor, type ProcessorOrchestrationDeps } from '../processing/processor-orchestration.js'
 import { createForegroundAgent, type ForegroundAgent } from '../foreground/foreground-agent.js'
+import {
+  DEFAULT_FOREGROUND_MAX_ITERATIONS,
+  DEFAULT_FOREGROUND_TIMEOUT_MS,
+} from '../foreground/kernel-guard-constants.js'
 import { createRuntimeDispatcher } from '../dispatcher/runtime-dispatcher.js'
 import type { RuntimeDispatcher, RuntimeDispatcherConfig } from '../dispatcher/types.js'
 import { createKernelDispatcherAdapter } from '../kernel/kernel-dispatcher-adapter.js'
@@ -146,6 +150,7 @@ import { PromptTemplateRegistry } from '../prompt/prompt-template-registry.js'
 import { TemplateLoader } from '../prompt/template-loader.js'
 import { createPromptProjectionResolver } from '../prompt/prompt-projection-resolver.js'
 import { createModelInputSnapshotStore } from '../kernel/model-input/model-input-snapshot-store.js'
+import { createModelInputPrefixStore, type ModelInputPrefixStore } from '../storage/model-input-prefix-store.js'
 import { DEFAULT_SEGMENT_D_BUDGET } from '../kernel/model-input/segment-d-budget.js'
 import { createModelInputRedactor } from '../kernel/model-input/model-input-redactor.js'
 import { createCloakBrowserProvider, type CloakBrowserProvider } from '../search/browser/cloakbrowser-launcher.js'
@@ -512,6 +517,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   let subagentRunStore: SubagentRunStore
   let subagentTranscriptStore: SubagentTranscriptStore
   let subagentProviderPreferenceStore: SubagentProviderPreferenceStore
+  let modelInputPrefixStore: ModelInputPrefixStore
 
   try {
     eventStore = existingStores?.eventStore ?? createEventStore(connection)
@@ -595,6 +601,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
     subagentRunStore = createSubagentRunStore(connection)
     subagentTranscriptStore = createSubagentTranscriptStore(connection)
     subagentProviderPreferenceStore = createSubagentProviderPreferenceStore(connection)
+    modelInputPrefixStore = createModelInputPrefixStore(connection)
   } catch (error) {
     return {
       code: 'STORE_INIT_FAILED',
@@ -684,6 +691,7 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
   const modelInputBuilder = new ModelInputBuilder({
     templateRegistry,
     templateLoader,
+    modelInputPrefixStore,
   })
 
   const promptProjectionResolver = createPromptProjectionResolver(templateRegistry, templateLoader)
@@ -1030,8 +1038,14 @@ export function createApiContext(options: ApiContextOptions = {}): ApiContext | 
       },
       dispatcher: createKernelDispatcherAdapter(runtimeDispatcher),
       modelInputBuilder,
-      maxIterations: 10,
-      timeoutMs: 30000,
+      // Foreground turn budget — single source of truth is
+      // src/foreground/kernel-guard-constants.ts (20 iterations / 360s).
+      // AgentKernel.run prefers input.maxIterations / input.timeoutMs over
+      // this config, and foreground-agent.runTurn always supplies those values
+      // (defaulting to the same shared constants). This config is only the
+      // fallback for kernel invocations that omit the input values.
+      maxIterations: DEFAULT_FOREGROUND_MAX_ITERATIONS,
+      timeoutMs: DEFAULT_FOREGROUND_TIMEOUT_MS,
       defaultModel,
       providerFamily,
       modelInputSnapshotStore,
